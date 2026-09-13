@@ -158,6 +158,26 @@ export function aLayer(name: string): ReferenceLayer {
   return { name, featureCount: 0, geojson: { type: 'FeatureCollection', features: [] } }
 }
 
+/**
+ * The extent every delivered image shares, as a collection reports it.
+ *
+ * Here rather than in each suite: four of them place an image on it, and four
+ * montages of the same value would let one of them prove what another denies.
+ */
+export const FRANCE = { minLon: -9.97, minLat: 39.46, maxLon: 14.55, maxLat: 54.18 }
+
+/**
+ * One delivered image, at the address the index holds it under.
+ *
+ * Here rather than in each suite: four of them build a frame, and the path
+ * convention — `<livraison>/<produit>/<epoch>.png`, which `radar.ts` prefixes
+ * with `radar/` — was written out in three of them. Changed at the source, three
+ * suites would have stayed green against a shape that no longer exists.
+ */
+export function aFrame(iso: string, delivery = '20034', product = 'pluvio1h') {
+  return { at: iso, path: `${delivery}/${product}/${String(Date.parse(iso) / 1_000)}.png` }
+}
+
 /** A radar rainfall series, of a delivery the replay indexed. */
 export function aSeries(one: Partial<RadarRainfallSeries> = {}): RadarRainfallSeries {
   return {
