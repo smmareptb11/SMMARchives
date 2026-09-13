@@ -6,6 +6,7 @@ import {
   clamped,
   cursorAt,
   fractionOf,
+  nearestTo,
   nextMark,
   previousMark,
   startOf,
@@ -85,5 +86,44 @@ describe('jumping from one event to the next', () => {
   it('finds them whatever order they came in', () => {
     expect(nextMark([30, 0, 20, 10], 10)).toBe(20)
     expect(previousMark([30, 0, 20, 10], 25)).toBe(20)
+  })
+})
+
+describe('the entry nearest an instant', () => {
+  const frames = [10, 20, 40].map((at) => ({ at }))
+
+  /**
+   * Not `lastBefore`, and the difference is the whole point. A radar rainfall
+   * image is stamped with the time it was produced, so no frame lands on a slot
+   * and an image four minutes ahead of the reading is a better answer than one
+   * six minutes behind it.
+   */
+  it('takes the one ahead when it is the closer of the two', () => {
+    expect(nearestTo(frames, 18)).toEqual({ at: 20 })
+  })
+
+  it('takes the one behind when it is the closer of the two', () => {
+    expect(nearestTo(frames, 22)).toEqual({ at: 20 })
+  })
+
+  /**
+   * The earlier one, which is the one the reading has already reached: taking
+   * the later would show an image of rain that has not fallen yet.
+   */
+  it('takes the earlier of two equally near', () => {
+    expect(nearestTo(frames, 30)).toEqual({ at: 20 })
+  })
+
+  it('takes the entry the instant falls exactly on', () => {
+    expect(nearestTo(frames, 40)).toEqual({ at: 40 })
+  })
+
+  it('reaches past either end, where there is only one side to take', () => {
+    expect(nearestTo(frames, 0)).toEqual({ at: 10 })
+    expect(nearestTo(frames, 1_000)).toEqual({ at: 40 })
+  })
+
+  it('says nothing of an empty list', () => {
+    expect(nearestTo([], 20)).toBeUndefined()
   })
 })

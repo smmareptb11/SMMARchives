@@ -90,9 +90,38 @@ export function lastBefore<T extends { at: Cursor }>(
   ordered: readonly T[],
   at: Cursor,
 ): T | undefined {
+  return ordered[rankBefore(ordered, at)]
+}
+
+/**
+ * The entry of a list, ordered oldest first, nearest the cursor on either side.
+ *
+ * The other rule, and `AGENTS.md` names what needs it: a radar rainfall image
+ * is stamped with the time it was produced, never with a slot, and the products
+ * of one delivery do not share their instants. An image taken four minutes
+ * ahead of the reading is a better answer than one taken six minutes behind.
+ *
+ * A tie goes to the earlier entry, which is the one the reading has reached:
+ * the later one is rain that has not fallen yet.
+ */
+export function nearestTo<T extends { at: Cursor }>(
+  ordered: readonly T[],
+  at: Cursor,
+): T | undefined {
+  const rank = rankBefore(ordered, at)
+  const before = ordered[rank]
+  const after = ordered[rank + 1]
+
+  if (before === undefined) return after
+  if (after === undefined) return before
+  return at - before.at <= after.at - at ? before : after
+}
+
+/** Where the last entry not after the cursor sits, or `-1` before the first. */
+function rankBefore<T extends { at: Cursor }>(ordered: readonly T[], at: Cursor): number {
   let low = 0
   let high = ordered.length - 1
-  let held: T | undefined
+  let held = -1
 
   while (low <= high) {
     const middle = (low + high) >> 1
@@ -100,7 +129,7 @@ export function lastBefore<T extends { at: Cursor }>(
     if (one === undefined) break
 
     if (one.at <= at) {
-      held = one
+      held = middle
       low = middle + 1
     } else high = middle - 1
   }
@@ -109,7 +138,7 @@ export function lastBefore<T extends { at: Cursor }>(
 
 /** Undefined rather than the cursor itself: a button with nowhere to go is disabled. */
 export function nextMark(marks: readonly Cursor[], cursor: Cursor): Cursor | undefined {
-  return nearest(
+  return closestOnSide(
     marks,
     (one) => one > cursor,
     (one, best) => one < best,
@@ -117,15 +146,21 @@ export function nextMark(marks: readonly Cursor[], cursor: Cursor): Cursor | und
 }
 
 export function previousMark(marks: readonly Cursor[], cursor: Cursor): Cursor | undefined {
-  return nearest(
+  return closestOnSide(
     marks,
     (one) => one < cursor,
     (one, best) => one > best,
   )
 }
 
-/** The closest mark on one side, whatever order the marks arrived in. */
-function nearest(
+/**
+ * The closest mark on one side, whatever order the marks arrived in.
+ *
+ * Not `nearestTo`, which halves an ordered list and looks both ways: this one
+ * walks an unordered one and only ever looks one way. Named apart because the
+ * two sat here under names a letter from each other.
+ */
+function closestOnSide(
   marks: readonly Cursor[],
   onThatSide: (one: Cursor) => boolean,
   closer: (one: Cursor, best: Cursor) => boolean,
