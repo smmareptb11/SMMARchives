@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest'
 import type { RainGauge } from '@smmarchives/shared/contracts/station.ts'
 
 import { silencesOf } from '../src/map/silences.ts'
-import { aGauge, aSeries, aStation, held } from './support/content.ts'
+import { aGauge, aFrame, aSeries, aStation, FRANCE, held } from './support/content.ts'
 
 const NO_RADAR = "Ce rejeu ne porte aucune lame d'eau radar."
+const MAY_BE_SHIFTED =
+  "Les lames d'eau radar, une fois affichées, peuvent être décalées : leur emprise n'est pas confirmée, et un décalage de plusieurs kilomètres ne se voit pas sur une image de pluie."
+const NOT_MILLIMETRES =
+  "La couleur d'une lame d'eau ne se convertit pas en millimètres : sa palette est un dégradé continu, dont une couleur ne redonne pas une mesure."
+const anImage = () => aSeries({ frames: [aFrame('2019-10-22T06:00:00.000Z')] })
 const WHAT_THE_BLUE_COUNTS =
   "Le bleu d'un pluviomètre compte la pluie horodatée dans la période : une mesure journalière y apporte des heures tombées avant le rejeu."
 const NO_COLOUR = "Les pluviomètres n'ont pas de couleur : ce rejeu ne porte aucune mesure."
@@ -88,17 +93,32 @@ describe('what the map says it is not showing', () => {
     ])
   })
 
-  /** The extent of a delivery is not confirmed, and a wrong one shifts it all. */
-  it('says the radar rainfall a replay holds an image of is not drawn', () => {
-    const series = aSeries({ frames: [{ at: '2019-10-22T06:00:00.000Z', path: 'radar/a.tif' }] })
+  /**
+   * The extent's own author annotated it « à vérifier visuellement », and a
+   * shift of a few kilometres is invisible on an image of rain. « une fois
+   * affichées », because the layer opens off and the sentence must not describe
+   * a drawing that is not happening — nor turn false the day one is.
+   */
+  it('says the rainfall it holds may be shifted once it is drawn', () => {
+    expect(silencesOf(held({ series: [anImage()], radarExtent: FRANCE }))).toEqual([
+      MAY_BE_SHIFTED,
+      NOT_MILLIMETRES,
+    ])
+  })
 
-    expect(silencesOf(held({ series: [series] }))).toEqual([
-      "Les lames d'eau radar ne sont pas dessinées : leur emprise n'est pas confirmée.",
+  /**
+   * An image with nowhere to be placed. The extent travels in the collection
+   * report and nowhere else, and a replay built before it did carries none. Said
+   * in the reader's terms: a report is the worker's word, not theirs.
+   */
+  it('says an image it cannot place is not drawn, and why', () => {
+    expect(silencesOf(held({ series: [anImage()] }))).toEqual([
+      "Les lames d'eau radar ne sont pas dessinées : l'emprise sur laquelle les poser n'a pas été enregistrée.",
     ])
   })
 
   /** A delivery indexed with no frame in the period leaves nothing to draw. */
   it('says a replay holding no image of a radar series holds none', () => {
-    expect(silencesOf(held({ series: [aSeries()] }))).toEqual([NO_RADAR])
+    expect(silencesOf(held({ series: [aSeries()], radarExtent: FRANCE }))).toEqual([NO_RADAR])
   })
 })
