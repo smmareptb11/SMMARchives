@@ -4,13 +4,24 @@ import {
   assumedCrossings,
   heldIn,
   lanesOf,
+  radarFamilyOf,
   placeOf,
   spacedOut,
   tiled,
 } from '../src/tracks/lanes.ts'
 import type { FrozenWebcamImage } from '@smmarchives/shared/contracts/webcam.ts'
 
-import { aCamera, aCrossing, aStation, aView, held, period, shown } from './support/content.ts'
+import {
+  aCamera,
+  aCrossing,
+  aFrame,
+  aSeries,
+  aStation,
+  aView,
+  held,
+  period,
+  shown,
+} from './support/content.ts'
 
 describe('placing a segment on the ruler', () => {
   it('is a fraction of the period, never a pixel', () => {
@@ -374,5 +385,45 @@ describe('the frames a strip still shows once thinned', () => {
       { left: 20, width: 20, at: '2019-10-22T02:00:00.000Z' },
       { left: 40, width: 10, at: '2019-10-22T04:00:00.000Z' },
     ])
+  })
+})
+
+describe('a radar rainfall lane', () => {
+  const delivered = (product: string, ...isos: string[]) =>
+    aSeries({ product, frames: isos.map((at) => aFrame(at, '20034', product)) })
+
+  const content = held({
+    series: [
+      delivered('pluvio1h', '2019-10-22T06:00:00.000Z', '2019-10-22T07:00:00.000Z'),
+      delivered('pluvio24h', '2019-10-22T06:00:00.000Z'),
+    ],
+  })
+
+  /**
+   * One lane and not nine. The map draws one cumul at a time, and a frise
+   * carrying the other eight would leave a reader comparing the lane under
+   * their eyes with an image it is not of.
+   */
+  it('is the one product the map is drawing, whatever else was delivered', () => {
+    const family = radarFamilyOf(content, 'pluvio1h')[0]
+
+    expect(family?.lanes.map((one) => one.label)).toEqual(['Cumul 1 h'])
+    expect(family?.lanes[0]?.marks).toHaveLength(2)
+  })
+
+  it('follows the reader from one cumul to another', () => {
+    const family = radarFamilyOf(content, 'pluvio24h')[0]
+
+    expect(family?.lanes.map((one) => one.label)).toEqual(['Cumul 24 h'])
+  })
+
+  /**
+   * Gone rather than empty: the reader chose the cumul, so a lane with no mark
+   * would read as a delivery that left nothing, where the replay simply holds
+   * another product.
+   */
+  it('is not there at all for a product the replay does not carry', () => {
+    expect(radarFamilyOf(content, 'pluvio5mn')).toEqual([])
+    expect(radarFamilyOf(content, undefined)).toEqual([])
   })
 })

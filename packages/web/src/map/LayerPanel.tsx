@@ -3,6 +3,7 @@ import { UNITS } from '@smmarchives/shared'
 import { memo, useMemo } from 'react'
 
 import { MUTES } from '../mutes.ts'
+import { labelOf, productsOf } from '../radar.ts'
 import { SHADES, UNMEASURED } from '../rain.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { familiesOf, NAMES, swatchColourOf, type Family, type Shown } from './families.ts'
@@ -24,6 +25,8 @@ export const LayerPanel = memo(function LayerPanel({
   mutesShown,
   onMutesShown,
   heldBack,
+  product,
+  onProduct,
 }: {
   content: ReplayContent
   shown: Shown
@@ -32,6 +35,8 @@ export const LayerPanel = memo(function LayerPanel({
   onMutesShown: (shown: boolean) => void
   /** How many sources the switch holds back, on the map and on the lanes. */
   heldBack: number
+  product: string | undefined
+  onProduct: (product: string) => void
 }) {
   const families = useMemo(() => familiesOf(content), [content])
   if (families.length === 0) return null
@@ -49,11 +54,53 @@ export const LayerPanel = memo(function LayerPanel({
           }}
         />
       ))}
+      {families.includes('radar') ? (
+        <Products content={content} product={product} onChange={onProduct} />
+      ) : null}
       <Mutes count={heldBack} shown={mutesShown} onChange={onMutesShown} />
       {families.includes('rain-gauge') ? <RainRamp /> : null}
     </fieldset>
   )
 })
+
+/**
+ * Which of the delivered cumuls the map draws, under the row that lights it.
+ *
+ * Live whether the layer is lit or not: it commands the lane under the map as
+ * well, and a five-minute cumul and a twenty-four-hour one are two readings of
+ * the same episode rather than two settings of one.
+ *
+ * The products come from the delivery and never from a list here — the documentation
+ * requires it, the live route serving eight of the nine a delivery carries.
+ */
+function Products({
+  content,
+  product,
+  onChange,
+}: {
+  content: ReplayContent
+  product: string | undefined
+  onChange: (product: string) => void
+}) {
+  const products = useMemo(() => productsOf(content.series), [content.series])
+
+  return (
+    <select
+      className="products"
+      aria-label="Cumul des lames d'eau"
+      value={product ?? ''}
+      onChange={(event) => {
+        onChange(event.target.value)
+      }}
+    >
+      {products.map((one) => (
+        <option key={one} value={one}>
+          {labelOf(one)}
+        </option>
+      ))}
+    </select>
+  )
+}
 
 /**
  * The switch on the sources the replay holds nothing of, and its own limit.

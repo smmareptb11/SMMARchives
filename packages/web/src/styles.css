@@ -133,6 +133,37 @@ main:has(.map) {
 }
 
 /*
+ * An image laid over the map, at the opacity `map/layers.ts` lays it at.
+ *
+ * Grey and not blue, where every other swatch here takes the colour of what it
+ * stands for. A radar image carries a ramp of its own that nothing converts to
+ * millimetres, and a coloured mark would claim a scale the producer publishes
+ * none of — which the sentence under the map says in words.
+ */
+.swatch.radar {
+  background: var(--ink-2);
+  opacity: 0.65;
+  border-radius: 2px;
+}
+
+/*
+ * Which cumul the rainfall layer draws, under the row that lights it.
+ *
+ * Full width and on its own line, because it is not a switch: the row above
+ * says whether the images are drawn, and this says which of the nine.
+ */
+.layers .products {
+  width: 100%;
+  margin-left: 1.4rem;
+  padding: 0.15rem 0.3rem;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid #c7d0d9;
+  border-radius: 3px;
+}
+
+/*
  * The switch on the sources the replay holds nothing of, on a line of its own.
  *
  * Under the families and not among them, because it is not one: it thins every

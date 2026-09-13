@@ -13,13 +13,14 @@ import { api } from './api.ts'
 import { cursorAt } from './transport/reading.ts'
 import { PERIMETERS } from './map/families.ts'
 import { paintedAt } from './map/state.ts'
+import { extentOf, openingProductOf } from './radar.ts'
 import { gaugesOf } from './rain.ts'
 import { describe } from './problems.ts'
 import { Playhead } from './transport/Playhead.tsx'
 import { Transport } from './transport/Transport.tsx'
 import { useCursor } from './transport/useCursor.ts'
 import { ReplayHeading, TrackList } from './tracks/TrackList.tsx'
-import { heldIn, lanesOf, type ReplayContent } from './tracks/lanes.ts'
+import { heldIn, lanesOf, radarFamilyOf, type ReplayContent } from './tracks/lanes.ts'
 
 /**
  * Loaded on the screen that draws one, and on no other.
@@ -73,11 +74,19 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
   // Above the map and the lanes because it reaches both: a replay keeps the
   // sources that answered nothing, and the reader says when to see them.
   const [mutesShown, setMutesShown] = useState(false)
+  // Here too, and for the same reason: the map draws one cumul and the lane
+  // under it shows the images of that one. Chosen once per replay, out of what
+  // the delivery actually carried.
+  const [product, setProduct] = useState(() => openingProductOf(content.series))
   // Built here rather than inside the lanes, because the switch's own count is
   // read off them: built twice, the number on the switch and the lanes under it
   // could disagree. On the replay alone, so a click on the switch filters what
   // is built rather than building it again.
-  const families = useMemo(() => lanesOf(content), [content])
+  const held = useMemo(() => lanesOf(content), [content])
+  // Apart, and `radarFamilyOf` says why: it is the one family a reader's choice
+  // moves, and the others must not be rebuilt to follow it.
+  const radar = useMemo(() => radarFamilyOf(content, product), [content, product])
+  const families = useMemo(() => [...held, ...radar], [held, radar])
   const heldBack = useMemo(() => heldIn(families), [families])
 
   return (
@@ -94,6 +103,8 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
           mutesShown={mutesShown}
           onMutesShown={setMutesShown}
           heldBack={heldBack}
+          product={product}
+          onProduct={setProduct}
         />
       </Suspense>
       <ReplayHeading manifest={manifest} content={content} />
@@ -149,6 +160,7 @@ async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise
     webcams,
     images,
     series,
+    radarExtent: extentOf(datasets['radar-rainfall']),
     layers,
   }
 }

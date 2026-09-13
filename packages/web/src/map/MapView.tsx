@@ -6,16 +6,23 @@ import { createPortal } from 'react-dom'
 
 import type { Cursor } from '../transport/reading.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
-import { drawSources, drawTerritory, paintSources, showFamilies, showMutes } from './layers.ts'
+import {
+  drawRadar,
+  drawSources,
+  drawTerritory,
+  paintSources,
+  showFamilies,
+  showMutes,
+} from './layers.ts'
 import { boundsOf } from './sources.ts'
 import { addShapes } from './symbols.ts'
 import { CalloutView } from './CalloutView.tsx'
 import { useCallout, useSourceClicks, type Open } from './useCallout.ts'
-import { EVERYTHING, type Shown } from './families.ts'
+import { OPENING, type Shown } from './families.ts'
 import { viewsOf, type Views } from '../pictures.ts'
 import { LayerPanel } from './LayerPanel.tsx'
 import { silencesOf } from './silences.ts'
-import { WebcamMarkers } from './WebcamMarkers.tsx'
+import { Following } from './Following.tsx'
 
 /**
  * The one thing a replay does not freeze.
@@ -89,6 +96,9 @@ function useMountedMap(
 /** Everything a replay puts on the map, once there is a style to put it on. */
 function drawEverything(map: MapLibreMap, content: ReplayContent): void {
   addShapes(map)
+  // First of the three, because insertion is the only order this map has: over
+  // the parc, a France-wide mosaic hides what a reader came for.
+  drawRadar(map, content)
   drawTerritory(map, content)
   drawSources(map, content)
 
@@ -183,6 +193,9 @@ export type MapViewProps = {
   onMutesShown: (shown: boolean) => void
   /** How many sources the switch holds back, the lanes' own included. */
   heldBack: number
+  /** The cumul the map draws, which the lanes under it follow. */
+  product: string | undefined
+  onProduct: (product: string) => void
 }
 
 export function MapView({
@@ -193,10 +206,12 @@ export function MapView({
   mutesShown,
   onMutesShown,
   heldBack,
+  product,
+  onProduct,
 }: MapViewProps) {
   const drawn = useRef<MapLibreMap | undefined>(undefined)
   const [ready, setReady] = useState(false)
-  const [shown, setShown] = useState<Shown>(EVERYTHING)
+  const [shown, setShown] = useState<Shown>(OPENING)
 
   // The handle, once there is one to hang anything on. Read from the ref rather
   // than held in state: what says it is there is `ready`, set beside it.
@@ -218,18 +233,20 @@ export function MapView({
         mutesShown={mutesShown}
         onMutesShown={onMutesShown}
         heldBack={heldBack}
+        product={product}
+        onProduct={onProduct}
       />
       <Silences content={content} />
-      {/* Hung on the map rather than drawn by it, and so only once it exists. */}
-      <WebcamMarkers
+      <Following
         map={hung}
         content={content}
         replayId={replayId}
         at={at}
         bubble={bubble}
-        shown={shown.webcam}
+        shown={shown}
         mutesShown={mutesShown}
         views={views}
+        product={product}
       />
       <Callout open={open} content={content} views={views} replayId={replayId} at={at} />
     </>

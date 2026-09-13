@@ -1,12 +1,13 @@
 import type { ReferenceLayer } from '@smmarchives/shared/contracts/reference-layer.ts'
 
 import { MUTED } from '../palette.ts'
+import { radarStandingOf } from '../radar.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { KINDS, kindOf } from './sources.ts'
 import { NEUTRAL } from './state.ts'
 
-/** The families a reader can cut off: the three drawn, and the two others. */
-export const FAMILIES = [...KINDS, 'webcam', 'territory'] as const
+/** The families a reader can cut off: the three drawn, and the three others. */
+export const FAMILIES = [...KINDS, 'webcam', 'territory', 'radar'] as const
 
 export type Family = (typeof FAMILIES)[number]
 
@@ -26,6 +27,7 @@ export const NAMES: Record<Family, { one: string; many: string }> = {
   'rain-gauge': { one: 'Pluviomètre', many: 'Pluviomètres' },
   webcam: { one: 'Webcam', many: 'Webcams' },
   territory: { one: 'Périmètre de syndicat', many: 'Périmètres des syndicats' },
+  radar: { one: "Lame d'eau", many: "Lames d'eau" },
 }
 
 /**
@@ -62,15 +64,24 @@ export function familiesOf(content: ReplayContent): Family[] {
     if (family === 'rain-gauge') return content.rainGauges.length > 0
     if (family === 'webcam') return content.webcams.length > 0
     if (family === 'territory') return territoryOf(content) !== undefined
+    if (family === 'radar') return radarStandingOf(content) === 'drawable'
     return drawn.has(family)
   })
 }
 
-/** Everything drawn, which is where a reader starts. */
-export const EVERYTHING: Shown = {
+/**
+ * What a reader opens on: everything drawn, but the rainfall.
+ *
+ * The extent those images are placed on is the one value the documentation flags as
+ * unconfirmed, and a wrong one shifts the whole layer without anything on
+ * screen saying so. Drawn on asking, rather than put in front of a reader who
+ * did not — what the map says of it below the map says why.
+ */
+export const OPENING: Shown = {
   watercourse: true,
   structure: true,
   'rain-gauge': true,
   webcam: true,
   territory: true,
+  radar: false,
 }

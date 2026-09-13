@@ -1,5 +1,6 @@
 import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
 import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
+import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 import type { RadarRainfallSeries } from '@smmarchives/shared/contracts/radar-rainfall.ts'
 import type { ReferenceLayer } from '@smmarchives/shared/contracts/reference-layer.ts'
 import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.ts'
@@ -7,6 +8,7 @@ import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
 import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
 import { instantOf, viewsOf, type View } from '../pictures.ts'
+import { labelOf, sheetsOf } from '../radar.ts'
 import { barSaid, scaleOf, spanSaid, stepsOf, type Gauges, type Step } from '../rain.ts'
 import { instantAt, type Cursor } from '../transport/reading.ts'
 
@@ -35,6 +37,15 @@ export type ReplayContent = {
   webcams: Webcam[]
   images: FrozenWebcamImage[]
   series: RadarRainfallSeries[]
+  /**
+   * Where the images of those series are placed, as the collection reported it.
+   *
+   * Beside the series and not inside them: one extent is shared by every image,
+   * live and delivered alike, and it reaches the interface through the report
+   * rather than the data set. Nothing when the report carried none, which is
+   * what leaves the layer undrawn.
+   */
+  radarExtent: BoundingBox | undefined
   /** The map's ground. No lane reads them: they are places, not observations. */
   layers: ReferenceLayer[]
 }
@@ -241,9 +252,21 @@ export function lanesOf(content: ReplayContent): Family[] {
   // one picture. Left out, the screen would read as a replay with no webcam.
   push(families, familyOf('webcam', 'Webcams', webcamLanes(content), content.webcams.length))
 
-  push(families, familyOf('radar', "Lames d'eau", radarLanes(content), 0))
-
   return families
+}
+
+/**
+ * The rainfall, apart from the rest, because the reader's own choice moves it.
+ *
+ * Every other family rests on the replay alone, which is what lets a click on a
+ * switch filter what is built rather than build it again. A cumul chosen in the
+ * panel would otherwise rebuild the whole parc — sixty thousand rain bars among
+ * them — to swap the seventeen marks this one draws.
+ */
+export function radarFamilyOf(content: ReplayContent, product: string | undefined): Family[] {
+  const family = familyOf('radar', "Lames d'eau", radarLanes(content, product), 0)
+
+  return family === undefined ? [] : [family]
 }
 
 /**
@@ -396,12 +419,34 @@ function barsOf(
     .sort((one, other) => other.width - one.width)
 }
 
-function radarLanes(content: ReplayContent): Lane[] {
-  return content.series.map((series) => ({
-    id: `radar-${series.delivery}-${series.product}`,
-    label: series.product,
-    marks: series.frames
-      .map((frame) => ({ ...placeOf(content.period, frame.at, frame.at), at: frame.at }))
-      .sort((one, other) => one.left - other.left),
-  }))
+/**
+ * The images of the one cumul the map is drawing, and of no other.
+ *
+ * One lane where the replay holds nine products: the map draws one at a time,
+ * and the other eight under a reader's eyes would be a frise of an image they
+ * are not looking at. Gone rather than empty for a product the replay does not
+ * carry — the reader chose the cumul, so an empty lane would read as a delivery
+ * that left nothing.
+ *
+ * A mark per image and nothing more. the documentation is explicit that no value can be
+ * recovered from these rasters: no bar, no colour by intensity.
+ */
+function radarLanes(content: ReplayContent, product: string | undefined): Lane[] {
+  if (product === undefined) return []
+
+  const sheets = sheetsOf(content.series, product)
+  if (sheets.length === 0) return []
+
+  const bounds = boundsOf(content.period)
+
+  return [
+    {
+      id: `radar-${product}`,
+      label: labelOf(product),
+      marks: sheets.map((sheet) => ({
+        ...placedIn(bounds, sheet.at, sheet.at),
+        at: instantAt(sheet.at),
+      })),
+    },
+  ]
 }

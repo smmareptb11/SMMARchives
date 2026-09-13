@@ -1,5 +1,7 @@
 import type { FeatureCollection } from 'geojson'
-import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, ImageSource, Map as MapLibreMap } from 'maplibre-gl'
+
+import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 
 import { BRAND } from '../palette.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
@@ -60,6 +62,138 @@ export function drawTerritory(map: MapLibreMap, content: ReplayContent): void {
     source: 'territory',
     paint: { 'line-color': BRAND, 'line-opacity': 0.35, 'line-width': 1 },
   })
+}
+
+const RADAR_LAYER = 'radar'
+
+/**
+ * A transparent pixel, because an image source needs an address to be created.
+ *
+ * The layer is added before the reading has picked an image, and holding the
+ * first one back until then would put the layer over the parc rather than under
+ * it — order of insertion is the map's only order.
+ */
+const NO_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+/**
+ * The four corners MapLibre lays an image on, clockwise from the north-west.
+ *
+ * Longitude first, as GeoJSON orders a position and as the parc is written:
+ * swapped, the mosaic lands in the Indian Ocean. Nothing here reprojects — the
+ * corners are laid out linearly in Mercator, which is what `L.imageOverlay`
+ * does in the SMMAR's own crisis Lizmap, so the map reproduces that placing
+ * rather than inventing one of its own.
+ */
+export function cornersOf(extent: BoundingBox): [Corner, Corner, Corner, Corner] {
+  return [
+    [extent.minLon, extent.maxLat],
+    [extent.maxLon, extent.maxLat],
+    [extent.maxLon, extent.minLat],
+    [extent.minLon, extent.minLat],
+  ]
+}
+
+type Corner = [number, number]
+
+/**
+ * The rainfall layer, under the ground and the parc, and drawn on asking.
+ *
+ * Added before them because insertion is the only order this map has, and an
+ * image over three hundred markers hides what a reader came for. Nothing at all
+ * when the replay holds no image or no extent to place one on: `map/families.ts`
+ * answers the same question for the switch, and the two agree by asking it of
+ * the same two halves.
+ */
+export function drawRadar(map: MapLibreMap, content: ReplayContent): void {
+  const extent = content.radarExtent
+  if (extent === undefined || !content.series.some((one) => one.frames.length > 0)) return
+
+  map.addSource(RADAR_LAYER, { type: 'image', url: NO_IMAGE, coordinates: cornersOf(extent) })
+  map.addLayer(
+    {
+      id: RADAR_LAYER,
+      type: 'raster',
+      source: RADAR_LAYER,
+      layout: { visibility: 'none' },
+      paint: {
+        // Nothing here: the documentation records that every entry of the palette carries
+        // `alpha = 128`, the half-transparency being baked into the image. A
+        // second one would leave a pale ramp at a third of its opacity, on the
+        // very layer a reader is asked to judge the placing of.
+        'raster-opacity': 1,
+        // The basin is 0.6 % of a France-wide mosaic, so a reader at basin zoom is
+        // looking at about a hundred pixels blown up.
+        'raster-resampling': 'linear',
+        // A fade between two images leaves a trail behind a reading that moves.
+        'raster-fade-duration': 0,
+      },
+    },
+    firstLabelOf(map),
+  )
+}
+
+/**
+ * The basemap layer the rainfall goes under, which is its first label.
+ *
+ * Appending would put a France-wide mosaic over the coastline, the rivers and
+ * the place names — the very references a reader needs to judge whether the
+ * image is placed right, which is the whole point of drawing it. What the replay
+ * draws stays above, being added later still.
+ */
+function firstLabelOf(map: MapLibreMap): string | undefined {
+  return map.getStyle().layers.find((one) => one.type === 'symbol')?.id
+}
+
+/**
+ * The image the reading stands on, or none at all.
+ *
+ * A frame the index holds and the replay never froze — a build run without media,
+ * or the one copy `replay/media.ts` survives the failure of — is not answered
+ * for here: MapLibre keeps the texture it last had, and the reader sees the
+ * neighbouring image for that one instant. Blanking it needs the source's own
+ * failure, which MapLibre's typed `ErrorEvent` does not carry.
+ *
+ *
+ * One call for both, because they are one answer: an address is what there is
+ * to draw, and its absence is a hole in the delivery rather than a layer the
+ * reader cut off. Whoever calls this holds what it last drew — reassigning the
+ * same address makes the browser release the image and fetch it again, sixty
+ * times a second.
+ */
+export function showRadar(map: RadarCanvas, url: string | undefined): void {
+  if (map.getLayer(RADAR_LAYER) === undefined) return
+
+  if (url !== undefined) (map.getSource(RADAR_LAYER) as ImageSource).updateImage({ url })
+  show(map, [RADAR_LAYER], url !== undefined)
+}
+
+/**
+ * The three questions `showRadar` asks of a map, and nothing besides.
+ *
+ * Narrower than `Map` on purpose. A test can build one of these and have it
+ * type-check, where standing in for the whole of MapLibre takes the double
+ * assertion the lint refuses — and for the reason it gives: a fake built that
+ * way drifts from the real port without a single error.
+ */
+export type RadarCanvas = {
+  getLayer(id: string): unknown
+  getSource(id: string): unknown
+  setLayoutProperty(layer: string, name: string, value: unknown): void
+}
+
+/** What a map already carries: the image on it, and which map it was put on. */
+export type Placed = { map: RadarCanvas; url: string | undefined }
+
+/**
+ * Whether the image the reading now asks for is not the one already on the map.
+ *
+ * The address alone would not do. A map torn down takes its layers with it and
+ * the next one opens without the image, so a reader who reloaded on the same
+ * instant would face a blank until they moved the cursor. Judged on the map's
+ * own identity for that reason, and never on its contents.
+ */
+export function redraws(held: Placed | undefined, next: Placed): boolean {
+  return held?.map !== next.map || held.url !== next.url
 }
 
 /**
@@ -136,8 +270,10 @@ function ringScaleOf(kind: Kind): number {
  * family not be drawn, and rebuilding a filter from what the other families are
  * doing would make each family's answer depend on the others.
  *
- * Every family the map draws itself answers here. The cameras are markers and
- * not layers, so `WebcamMarkers` answers for them — from the same state.
+ * Every family whose drawing is a visibility and nothing else answers here. The
+ * cameras are markers, and the rainfall is a layer whose drawing also depends on
+ * the reading having an image to put on it, so `WebcamMarkers` and `RadarLayer`
+ * answer for those two — from the same state.
  */
 export function showFamilies(map: MapLibreMap, shown: Shown): void {
   for (const kind of KINDS) {
@@ -164,7 +300,7 @@ export function showMutes(map: MapLibreMap, mutesShown: boolean): void {
   }
 }
 
-function show(map: MapLibreMap, layers: string[], shown: boolean): void {
+function show(map: RadarCanvas, layers: string[], shown: boolean): void {
   for (const layer of layers) {
     if (map.getLayer(layer) === undefined) continue
     map.setLayoutProperty(layer, 'visibility', shown ? 'visible' : 'none')

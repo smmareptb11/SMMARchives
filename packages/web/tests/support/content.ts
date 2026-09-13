@@ -31,6 +31,7 @@ export function held(content: Partial<ReplayContent> = {}): ReplayContent {
     webcams: [],
     images: [],
     series: [],
+    radarExtent: undefined,
     layers: [],
     ...content,
   }

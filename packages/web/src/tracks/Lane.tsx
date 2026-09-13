@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
+import { memo, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 
 import { api } from '../api.ts'
 import { formatInstant } from '../time.ts'
@@ -38,7 +38,15 @@ type Preview = {
   style: CSSProperties
 }
 
-export function Lane({ lane, replayId }: LaneProps) {
+/**
+ * Memoised on the lane it draws, because the list around it moves without it.
+ *
+ * Choosing a cumul in the map's panel replaces one family of the parc, and the
+ * array every lane hangs from is new — where the lanes themselves are the ones
+ * the replay already held. Without this, one click redraws two hundred and
+ * twenty-nine gauges and names sixty thousand bars again.
+ */
+export const Lane = memo(function Lane({ lane, replayId }: LaneProps) {
   const film = lane.filmstrip === true
   const marks = drawnMarks(lane, MIN_GAP)
   const [preview, setPreview] = useState<Preview | undefined>(undefined)
@@ -83,7 +91,7 @@ export function Lane({ lane, replayId }: LaneProps) {
       {preview === undefined ? null : <FullImage preview={preview} />}
     </div>
   )
-}
+})
 
 type LaneMarkProps = {
   mark: Mark
