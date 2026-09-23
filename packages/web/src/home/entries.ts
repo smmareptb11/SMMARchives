@@ -31,7 +31,9 @@ export function entryOf(manifest: ReplayManifest): ReplayEntry {
   return {
     id: manifest.id,
     href: replayPath(manifest.id),
-    title: manifest.label ?? 'Rejeu sans titre',
+    // The API accepts a blank label where the form does not, and a blank title
+    // would leave the line with a link nobody can click.
+    title: manifest.label?.trim() || 'Rejeu sans titre',
     period: `Du ${formatInstant(manifest.period.from)} au ${formatInstant(manifest.period.to)}`,
     createdAt: formatInstant(manifest.createdAt),
     state: manifest.state,

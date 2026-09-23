@@ -28,6 +28,11 @@ describe('a line of the replay list', () => {
     expect(entryOf({ ...manifest, label: null }).title).toBe('Rejeu sans titre')
   })
 
+  it('names a replay whose label is blank, which the API accepts', () => {
+    expect(entryOf({ ...manifest, label: '' }).title).toBe('Rejeu sans titre')
+    expect(entryOf({ ...manifest, label: '   ' }).title).toBe('Rejeu sans titre')
+  })
+
   it('says the period in French time', () => {
     const { period } = entryOf(manifest)
     expect(period).toContain('22/10/2019')
