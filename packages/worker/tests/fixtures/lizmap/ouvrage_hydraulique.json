@@ -1,0 +1,71 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "ouvrage_hydraulique.6",
+   "bbox": [
+    2.9667941640917825,
+    43.18007773380081,
+    2.9667941640917825,
+    43.18007773380081
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.966794164,
+     43.180077734
+    ]
+   },
+   "properties": {
+    "id": 6,
+    "type": "amenagement_hydraulique",
+    "nom": "Narbonne - Cap de pla",
+    "prop": "Commune de Narbonne",
+    "gest": "SMDA",
+    "annee": 1982,
+    "classe": "C",
+    "longueur": null,
+    "occurence": "Q5",
+    "volume": 386000,
+    "pop": null,
+    "remarque": null,
+    "photo": "https://carto.test/photos/ouvrage_hydraulique/6-narbonne_rec-veyret-cap-de-pla.jpg",
+    "code": "FRA0110232"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "ouvrage_hydraulique.5",
+   "bbox": [
+    2.6848032173190686,
+    43.13837493922554,
+    2.6848032173190686,
+    43.13837493922554
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.684803217,
+     43.138374939
+    ]
+   },
+   "properties": {
+    "id": 5,
+    "type": "amenagement_hydraulique",
+    "nom": "Fontintruse",
+    "prop": "SBVOJ",
+    "gest": "SBVOJ",
+    "annee": 2015,
+    "classe": "C",
+    "longueur": null,
+    "occurence": "Q120",
+    "volume": 275000,
+    "pop": null,
+    "remarque": null,
+    "photo": "https://carto.test/photos/ouvrage_hydraulique/5-fabrezan.jpg",
+    "code": "FRA0110227"
+   }
+  }
+ ]
+}

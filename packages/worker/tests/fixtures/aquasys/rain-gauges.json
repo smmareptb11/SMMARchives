@@ -1,0 +1,32 @@
+[
+ {
+  "id": 4,
+  "name": "CARCASSONNE",
+  "creationDate": 1757693410481,
+  "x": 2.2955,
+  "y": 43.215333,
+  "projectionType": 16,
+  "townCode": "11069",
+  "code": "11069001",
+  "jobId": 761268,
+  "updateLogin": "agent-a",
+  "updateDate": 1757693410481
+ },
+ {
+  "id": 737,
+  "name": "La Quillane",
+  "x": 627535.5157405251,
+  "y": 6158866.153687981,
+  "projectionType": 26,
+  "code": "C4500_PL1_V1",
+  "updateLogin": "agent-a"
+ },
+ {
+  "id": 744,
+  "name": "Grande Sagne 5",
+  "townCode": "11221",
+  "contactCode": 20,
+  "code": "SMAC5",
+  "updateLogin": "agent-a"
+ }
+]

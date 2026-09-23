@@ -1,0 +1,180 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "webcam.26",
+   "bbox": [
+    2.2639145637200127,
+    43.25760276209591,
+    2.2639145637200127,
+    43.25760276209591
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.263914564,
+     43.257602762
+    ]
+   },
+   "properties": {
+    "id": 26,
+    "source": "ceneau",
+    "commune": "Pezens",
+    "url": "https://media.ceneau.test/consult/station/606\n",
+    "code": "606",
+    "fonctionnel": "oui"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "webcam.27",
+   "bbox": [
+    2.3557385323119724,
+    43.2681440098603,
+    2.3557385323119724,
+    43.2681440098603
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.355738532,
+     43.26814401
+    ]
+   },
+   "properties": {
+    "id": 27,
+    "source": "ceneau",
+    "commune": "Villegailhenc\n",
+    "url": "https://media.ceneau.test/consult/station/550\n",
+    "code": "550",
+    "fonctionnel": "oui"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "webcam.28",
+   "bbox": [
+    2.8278469327396745,
+    43.30313187572558,
+    2.8278469327396745,
+    43.30313187572558
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.827846933,
+     43.303131876
+    ]
+   },
+   "properties": {
+    "id": 28,
+    "source": "ceneau",
+    "commune": "Mailhac",
+    "url": "https://media.ceneau.test/consult/station/215\n",
+    "code": "215",
+    "fonctionnel": "oui"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "webcam.29",
+   "bbox": [
+    2.9458921265454854,
+    43.25382723848072,
+    2.9458921265454854,
+    43.25382723848072
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.945892127,
+     43.253827238
+    ]
+   },
+   "properties": {
+    "id": 29,
+    "source": "ceneau",
+    "commune": "Sallèles d'Aude",
+    "url": "https://media.ceneau.test/consult/station/564\n",
+    "code": "564",
+    "fonctionnel": "oui"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "webcam.30",
+   "bbox": [
+    2.993326090156129,
+    43.175610269403315,
+    2.993326090156129,
+    43.175610269403315
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.99332609,
+     43.175610269
+    ]
+   },
+   "properties": {
+    "id": 30,
+    "source": "ceneau",
+    "commune": "Narbonne",
+    "url": "https://media.ceneau.test/consult/station/649\n",
+    "code": "649",
+    "fonctionnel": "oui"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "webcam.13",
+   "bbox": [
+    2.2172999999999994,
+    43.0718,
+    2.2172999999999994,
+    43.0718
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.2173,
+     43.0718
+    ]
+   },
+   "properties": {
+    "id": 13,
+    "source": "Infoclimat",
+    "commune": "Limoux",
+    "url": "https://infoclimat.test/cartes/getProxyWebcam.php?idw=721&c=30&t=jpg",
+    "code": "721",
+    "fonctionnel": "oui"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "webcam.10",
+   "bbox": [
+    2.7333332999999995,
+    43.14999999999996,
+    2.7333332999999995,
+    43.14999999999996
+   ],
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.7333333,
+     43.15
+    ]
+   },
+   "properties": {
+    "id": 10,
+    "source": "Infoclimat",
+    "commune": "Ferrals-les-Corbières",
+    "url": "https://infoclimat.test/cartes/getProxyWebcam.php?idw=20&c=30&t=jpg",
+    "code": "20",
+    "fonctionnel": "oui"
+   }
+  }
+ ]
+}

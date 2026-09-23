@@ -1,0 +1,29 @@
+[
+ {
+  "id": 1,
+  "code": "85",
+  "name": "Vigilance",
+  "value": 2,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "htmlColor": "#ffff00"
+ },
+ {
+  "id": 2,
+  "code": "85",
+  "name": "Alerte",
+  "value": 3,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "htmlColor": "#ffa500"
+ },
+ {
+  "id": 3,
+  "code": "85",
+  "name": "Crise",
+  "value": 4,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "htmlColor": "#ff0000"
+ }
+]

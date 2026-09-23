@@ -1,0 +1,104 @@
+{
+ "id": 84,
+ "code": "Y082401001",
+ "name": "La Berre à Villesèque-des-Corbières [Ripaud]",
+ "stationType": 1,
+ "creationDate": -31539600000,
+ "x": 686506,
+ "y": 6215497,
+ "projection": 26,
+ "comment": "Ancienne station vandalisée et arrêtée en novembre 2005. Station de remplacement sur le même emplacement et mise en service en août 2008.",
+ "townCode": "11436",
+ "updateLogin": "agent-a",
+ "updateDate": 1787927073555,
+ "jobExecutionId": 12523,
+ "link_work": [],
+ "link_contributors": [
+  {
+   "idStation": 84,
+   "idContributor": 14,
+   "internalReference": "Villesèque",
+   "contributorType": 0
+  }
+ ],
+ "link_altimetrySystems": [
+  {
+   "idStation": 84,
+   "natureCode": 1,
+   "startDate": 1326927600000,
+   "altitude": 56.148,
+   "altimetrySystem": 0,
+   "updateDate": 1787927073557
+  }
+ ],
+ "link_landmarks": [
+  {
+   "idStation": 84,
+   "startDate": 1326927600000,
+   "height": 0,
+   "origin": 1,
+   "altimetrySystemNature": 1,
+   "altimetrySystemDate": 1326927600000,
+   "updateDate": 1787927073558
+  }
+ ],
+ "link_networks": [
+  {
+   "idStation": 84,
+   "idNetwork": 1
+  },
+  {
+   "idStation": 84,
+   "idNetwork": 2
+  }
+ ],
+ "link_measureMethod": [],
+ "link_despoliationModes": [],
+ "link_watermasses": [
+  {
+   "idStation": 84,
+   "watermassCode": "06C0000002000829907"
+  }
+ ],
+ "link_lithology": [],
+ "link_lithologicType": [],
+ "link_geo": [],
+ "link_contacts": [],
+ "link_locations": [],
+ "link_arrangements": [],
+ "link_accessibilities": [],
+ "link_pointPrels": [
+  {
+   "idStation": 84,
+   "point": 1,
+   "typeId": 4,
+   "code": "1",
+   "name": "Point Hauteur",
+   "typePoint": 1,
+   "updateLogin": "agent-a",
+   "updateDate": 1787927073561
+  },
+  {
+   "idStation": 84,
+   "point": 2,
+   "typeId": 5,
+   "code": "2",
+   "name": "Point debit",
+   "typePoint": 1,
+   "updateLogin": "agent-a",
+   "updateDate": 1787927073561
+  }
+ ],
+ "link_tempRefs": [
+  {
+   "idStation": 84,
+   "tempRef": 1,
+   "typeId": 4
+  },
+  {
+   "idStation": 84,
+   "tempRef": 1,
+   "typeId": 5
+  }
+ ]
+}

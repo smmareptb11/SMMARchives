@@ -1,0 +1,47 @@
+{
+  "name": "smmarchives",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p packages/web",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:watch": "vitest",
+    "test:unit:watch": "vitest --project unit",
+    "migrate": "tsx --env-file-if-exists=.env packages/worker/src/scripts/migrate.ts",
+    "fetch:aquasys:stations": "tsx --env-file-if-exists=.env packages/worker/src/scripts/fetch-aquasys-stations.ts",
+    "fetch:aquasys:thresholds": "tsx --env-file-if-exists=.env packages/worker/src/scripts/fetch-aquasys-thresholds.ts",
+    "fetch:aquasys:measures": "tsx --env-file-if-exists=.env packages/worker/src/scripts/fetch-aquasys-measures.ts",
+    "fetch:lizmap:layers": "tsx --env-file-if-exists=.env packages/worker/src/scripts/fetch-lizmap-layers.ts",
+    "fetch:webcams:positions": "tsx --env-file-if-exists=.env packages/worker/src/scripts/fetch-webcam-positions.ts",
+    "fetch:webcams:images": "tsx --env-file-if-exists=.env packages/worker/src/scripts/fetch-webcam-images.ts",
+    "index:radar-rainfall": "tsx --env-file-if-exists=.env packages/worker/src/scripts/index-radar-rainfall.ts",
+    "build:replay": "tsx --env-file-if-exists=.env packages/worker/src/scripts/build-replay.ts",
+    "dev:api": "tsx --env-file-if-exists=.env packages/api/src/main.ts",
+    "dev:web": "vite --config packages/web/vite.config.ts",
+    "build:web": "vite build --config packages/web/vite.config.ts"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.0",
+    "@types/proj4": "^2.5.6",
+    "eslint": "^10.10.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.6",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^3.2.4"
+  }
+}

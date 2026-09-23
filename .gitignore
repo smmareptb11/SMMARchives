@@ -1,0 +1,11 @@
+/data
+.claude/
+node_modules/
+dist/
+coverage/
+
+.env
+.env.local
+!.env.sample
+
+.DS_Store

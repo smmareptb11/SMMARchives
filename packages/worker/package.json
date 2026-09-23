@@ -1,0 +1,23 @@
+{
+  "name": "@smmarchives/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./db/pool.ts": "./src/db/pool.ts",
+    "./replay/catalog.ts": "./src/replay/catalog.ts",
+    "./replay/store.ts": "./src/replay/store.ts",
+    "./replay/postgres/catalog.ts": "./src/replay/postgres/catalog.ts",
+    "./replay/postgres/datasets/index.ts": "./src/replay/postgres/datasets/index.ts",
+    "./replay/postgres/manifest.ts": "./src/replay/postgres/manifest.ts",
+    "./replay/postgres/store.ts": "./src/replay/postgres/store.ts"
+  },
+  "dependencies": {
+    "@smmarchives/shared": "*",
+    "pg": "^8.23.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

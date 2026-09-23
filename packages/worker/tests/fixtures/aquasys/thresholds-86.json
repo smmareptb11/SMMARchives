@@ -1,0 +1,59 @@
+[
+ {
+  "id": 1,
+  "code": "86",
+  "name": "Vigilance",
+  "value": 1.4,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "htmlColor": "#ffff00",
+  "category": 1
+ },
+ {
+  "id": 2,
+  "code": "86",
+  "name": "Alerte",
+  "value": 3.2,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "htmlColor": "#ffa500",
+  "category": 1
+ },
+ {
+  "id": 3,
+  "code": "86",
+  "name": "Crise",
+  "value": 4.4,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "htmlColor": "#ff0000",
+  "category": 1
+ },
+ {
+  "id": 4,
+  "code": "86",
+  "name": "Crue du 14/11/2005",
+  "value": 3.7,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "category": 2
+ },
+ {
+  "id": 5,
+  "code": "86",
+  "name": "Crue du 30/11/2014",
+  "value": 2.93,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "category": 2
+ },
+ {
+  "id": 6,
+  "code": "86",
+  "name": "Crue du 15/10/2018",
+  "value": 1.8,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "category": 2
+ }
+]

@@ -1,0 +1,12 @@
+node_modules/
+package-lock.json
+data/
+
+# Recorded responses from the external sources, not authored code. Reformatting
+# them would make every future re-recording produce a diff that says nothing.
+packages/*/tests/fixtures/
+
+# Markdown is hand-wrapped French prose. A formatter would realign its tables and
+# renumber its lists for no reading gain, and the diff would bury the code it is
+# here to normalise.
+*.md

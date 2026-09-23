@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"]
+  },
+  // Le parent exclut `packages/web` pour le projet racine ; hérité ici, il
+  // exclurait ce projet de lui-même.
+  "exclude": [],
+  "include": ["src", "tests", "vite.config.ts"]
+}

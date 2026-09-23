@@ -1,0 +1,26 @@
+# La base et le volume des médias, pour le développement.
+# Les images de l'API et du worker ne sont pas encore écrites.
+services:
+  db:
+    # Le build multi-architecture de PostGIS : l'image `postgis/postgis` n'est
+    # publiée qu'en amd64, et une machine de développement Apple Silicon ne peut
+    # pas la lancer sans émulation.
+    image: imresamu/postgis:17-3.5-alpine
+    # Les identifiants se règlent dans `.env`, et le repli est ce que le dépôt
+    # livrait en dur. PostgreSQL ne les applique qu'à la création du volume :
+    # les changer ensuite n'a aucun effet tant que le volume `db` existe.
+    environment:
+      POSTGRES_USER: ${DB_USER:-smmarchives}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-smmarchives}
+      POSTGRES_DB: ${DB_NAME:-smmarchives}
+    # Le port publié est réglable : une autre base occupe souvent 5432 sur une
+    # machine de développement. `DB_PORT` se règle dans `.env`.
+    ports: ['${DB_PORT:-5432}:5432']
+    volumes: ['db:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-smmarchives}']
+      interval: 5s
+      retries: 10
+
+volumes:
+  db:

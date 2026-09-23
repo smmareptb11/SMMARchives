@@ -1,0 +1,72 @@
+{
+ "id": 4,
+ "name": "CARCASSONNE",
+ "creationDate": 1757693410481,
+ "x": 2.2955,
+ "y": 43.215333,
+ "projectionType": 16,
+ "townCode": "11069",
+ "code": "11069001",
+ "jobId": 761268,
+ "updateLogin": "agent-a",
+ "updateDate": 1757693410481,
+ "link_work": [],
+ "link_contributors": [
+  {
+   "idStation": 4,
+   "idContributor": 15,
+   "contributorType": 0
+  }
+ ],
+ "link_networks": [],
+ "link_measureMethod": [],
+ "link_geo": [],
+ "link_contacts": [],
+ "link_locations": [],
+ "link_arrangements": [],
+ "link_accessibilities": [],
+ "link_pointPrels": [
+  {
+   "idStation": 4,
+   "point": 2,
+   "typeId": 1,
+   "code": "2",
+   "name": "Point Pluie",
+   "typePoint": 1,
+   "updateLogin": "agent-a",
+   "updateDate": 1766149957653
+  },
+  {
+   "idStation": 4,
+   "point": 3,
+   "typeId": 4,
+   "code": "3",
+   "name": "Point Température",
+   "typePoint": 1,
+   "updateLogin": "agent-a",
+   "updateDate": 1766149957657
+  },
+  {
+   "idStation": 4,
+   "point": 4,
+   "typeId": 9,
+   "code": "4",
+   "name": "Point Rayonnement",
+   "typePoint": 1,
+   "updateLogin": "agent-a",
+   "updateDate": 1766149957659
+  },
+  {
+   "idStation": 4,
+   "point": 1,
+   "typeId": 3,
+   "code": "1",
+   "name": "Point ETP",
+   "typePoint": 1,
+   "updateLogin": "agent-a",
+   "updateDate": 1766149957656
+  }
+ ],
+ "link_tempRefs": [],
+ "link_ponds": []
+}

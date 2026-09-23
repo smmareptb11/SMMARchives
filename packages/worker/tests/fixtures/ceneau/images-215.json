@@ -1,0 +1,21 @@
+{
+ "id": "215",
+ "name": "Répudre - Mailhac",
+ "pictures": [
+  {
+   "date": "2026-09-09T12:03:04.000Z",
+   "uri": "https://media.ceneau.test/station-media/ST215_QyMTU00QyM/mailhac_E_20260909_120200_U2NzkwMzU5.jpg",
+   "thumb_uri": "https://media.ceneau.test/station-media/ST215_QyMTU00QyM//thumbs/mailhac_E_20260909_120200_U2NzkwMzU5.jpg"
+  },
+  {
+   "date": "2026-09-09T00:03:28.000Z",
+   "uri": "https://media.ceneau.test/station-media/ST215_QyMTU00QyM/mailhac_E_20260909_000200_A2MTY0MTU4.jpg",
+   "thumb_uri": "https://media.ceneau.test/station-media/ST215_QyMTU00QyM//thumbs/mailhac_E_20260909_000200_A2MTY0MTU4.jpg"
+  },
+  {
+   "date": "2026-09-08T12:03:04.000Z",
+   "uri": "https://media.ceneau.test/station-media/ST215_QyMTU00QyM/mailhac_E_20260908_120200_cyNDIzNDUz.jpg",
+   "thumb_uri": "https://media.ceneau.test/station-media/ST215_QyMTU00QyM//thumbs/mailhac_E_20260908_120200_cyNDIzNDUz.jpg"
+  }
+ ]
+}

@@ -1,0 +1,631 @@
+/* What it takes to read, and no more. The mockup's own palette comes with the map. */
+:root {
+  --ink: #1b2733;
+  --ink-2: #5b6b7c;
+  --paper: #f6f7f9;
+  --brand: #14496b;
+  /* The reading bar: the one over the lanes, and the one on a station's chart. */
+  --reading: #e8002a;
+  --rail: #f2f5f8;
+  /* The blue a rain gauge's bars are drawn in, taken from the map's own ramp. */
+  --rain: #2171b5;
+  /* The lane label column, which the reading bar has to clear to line up. */
+  --label-w: 11rem;
+  --night: #0b1218;
+  --display: 'Barlow Condensed', system-ui, sans-serif;
+  --body: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+/* The map wants the width a form's reading column is right to refuse. */
+main:has(.map) {
+  max-width: 82rem;
+}
+
+.map {
+  height: 26rem;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+}
+
+/*
+ * The bubble may leave the map, and nothing else may.
+ *
+ * MapLibre clips the map's box, which is what a marker at the edge wants. A
+ * bubble carrying a curve is taller than the room a source in the middle of a
+ * 26rem map leaves above or below it, and MapLibre picks a side without ever
+ * asking whether the bubble fits there: clipped, the curve is simply not
+ * shown. The clipping moves one box in, where the canvas and the markers are.
+ */
+.map.maplibregl-map {
+  overflow: visible;
+}
+
+.map .maplibregl-canvas-container {
+  overflow: hidden;
+}
+
+/*
+ * Under the map, never over it: the map opens on the extent of what it holds,
+ * so a panel laid over a corner would hide the outermost sources, and hide that
+ * it hides them.
+ */
+.layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0.6rem 0 0.5rem;
+  padding: 0.35rem 0.75rem 0.5rem;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.layers legend {
+  padding: 0 0.25rem;
+  font-family: var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+/* The form's own rules are written for text fields, and reach here otherwise. */
+.layers label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.layers input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--brand);
+}
+
+/* A mark of about the size the map draws it at, whatever shape it is. */
+.swatch {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  object-fit: contain;
+}
+
+/*
+ * The two families that are not one of the map's three shapes.
+ *
+ * Each drawn where the map draws it: the camera's swatch takes the frame of the
+ * marker itself, and the territory's takes the two washes `map/layers.ts` paints
+ * the perimeters with. A swatch given its own values drifts from what it shows.
+ */
+/*
+ * The frame of the marker, at the size of a swatch and in its proportions.
+ *
+ * Inside the panel, so that it wins over the frame's own size: the two rules
+ * carry the same weight, and the marker's is the one written last.
+ */
+.layers .swatch.webcam {
+  width: 16px;
+  height: 11px;
+}
+
+.swatch.territory {
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+/*
+ * The switch on the sources the replay holds nothing of, on a line of its own.
+ *
+ * Under the families and not among them, because it is not one: it thins every
+ * family at once, and a sixth box on that row would read as a sixth family.
+ */
+.mutes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  width: 100%;
+}
+
+.mutes .mutes-scope {
+  color: var(--ink-2);
+}
+
+/*
+ * The scale a rain gauge's blue is read on, under the families rather than
+ * beside them: it names one family's colour, where the row above it names a
+ * shape, and a sixth item on that row would read as a sixth family.
+ */
+.ramp {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  width: 100%;
+  color: var(--ink-2);
+}
+
+.ramp span {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.ramp .ramp-name {
+  color: var(--ink);
+}
+
+/* An edge, because the palest of the blues is all but the page's own white. */
+.ramp .swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
+}
+
+/* What the map does not show, under the map rather than over it. */
+.silences {
+  margin: 0 0 1rem;
+  padding-left: 1rem;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.silences li {
+  margin: 0.15rem 0;
+}
+
+.callout strong {
+  display: block;
+  font-family: var(--display);
+  color: var(--brand);
+}
+
+/* The last value measured, which is what the map's colour leaves unsaid. */
+.measured {
+  margin: 0.4rem 0 0;
+  font-family: var(--display);
+  font-size: 19px;
+  color: var(--brand);
+}
+
+.measured small {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* A station's curve, under its value. */
+.plot {
+  margin-top: 0.4rem;
+}
+
+/*
+ * Where the bar of the instant stands on a station's curve: its window is
+ * centred on the cursor, so the instant is the middle of the plotting area and
+ * the bar never has to move. A rain gauge's bars are scaled on the whole period
+ * instead, and their chart sets its own `left` over this one.
+ */
+.plot .instant {
+  left: 50%;
+}
+
+/* The room the curve will take, held while a station's measures are read. */
+.awaited {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * The colour is the bubble's rather than its paragraphs': written on every `p`,
+ * it would beat any rule for one line written with a single class, and a value
+ * or a refusal would lose its own.
+ */
+.callout {
+  color: var(--ink);
+}
+
+.callout p {
+  margin: 0.25rem 0 0;
+}
+
+/* A camera carries its picture, where every other source is a symbol. */
+.camera,
+.swatch.webcam {
+  /* It answers a click, and the drawn sources say so through the map's own. */
+  cursor: pointer;
+  /* Not `block` on the image, which would beat the browser's own rule for the
+     `hidden` attribute and keep a picture on the map after the cursor left it. */
+  display: flex;
+  width: 44px;
+  height: 30px;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  background: var(--night);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 40%);
+  overflow: hidden;
+}
+
+/* Cropped rather than distorted, as the views of the strip are. */
+.camera img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+h1 {
+  font-family: var(--display);
+  color: var(--brand);
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 34rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+label small {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+input {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #c7d0d9;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.period {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.lead,
+.note {
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.refusal {
+  border-left: 3px solid #b3261e;
+  padding-left: 0.75rem;
+  color: #b3261e;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  justify-self: start;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: 3px;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+
+button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.lanes,
+.journal {
+  list-style: none;
+  padding: 0;
+}
+
+.lanes li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #e3e8ed;
+}
+
+.lanes li[data-state='failed'] {
+  color: #b3261e;
+}
+
+.lanes li[data-state='done'] strong::after {
+  content: ' ✓';
+  color: #2e7d32;
+}
+
+.journal {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--ink-2);
+  max-height: 18rem;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+  margin: 0;
+}
+
+.journal li {
+  padding: 0.15rem 0.5rem;
+}
+
+.journal time {
+  color: #97a6b5;
+}
+
+details {
+  margin-top: 1rem;
+  background: #fff;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+}
+
+summary {
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  font-family: var(--display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #eef2f6;
+}
+
+summary .count {
+  font-family: ui-monospace, monospace;
+  font-weight: 400;
+  color: var(--ink-2);
+  text-transform: none;
+}
+
+/*
+ * The reading bar, laid over the column of lanes rather than inside each one.
+ *
+ * Its offset repeats a lane's own paddings instead of sharing its grid: the
+ * ruler sits directly here while the lanes sit inside the `details` that fold
+ * them, so no single column contains both. The figures were measured against
+ * the ruler and are accurate to the pixel; a lane's shape and this line change
+ * together.
+ */
+.tracks {
+  position: relative;
+}
+
+/*
+ * One bar, drawn in two places: over the lanes, and over a station's curve.
+ * They show the same instant, and the documentation of the interface says so —
+ * which they would stop doing the day one of them was made thicker alone.
+ */
+.playhead,
+.plot .instant {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--reading);
+  pointer-events: none;
+}
+
+.playhead {
+  left: calc(1rem + var(--label-w) + (100% - var(--label-w) - 1.5rem) * var(--frac));
+  z-index: 2;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--reading) 70%, transparent);
+}
+
+/* Playing, pausing, and the instant being read. */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.transport button {
+  padding: 0.35rem 0.7rem;
+}
+
+.transport .speed {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.transport .clock {
+  margin-left: auto;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand);
+}
+
+.lane {
+  display: grid;
+  grid-template-columns: var(--label-w) 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  min-height: 2rem;
+}
+
+.lane-label {
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lane-track {
+  position: relative;
+  height: 1.75rem;
+  background: var(--rail);
+  border-radius: 2px;
+}
+
+.mark,
+.frame {
+  position: absolute;
+  /* The border sits inside the width, or the next frame paints over it. */
+  box-sizing: border-box;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--brand);
+  overflow: hidden;
+}
+
+/*
+ * A rain gauge lane is a bar chart: one bar per measure, standing on the floor.
+ *
+ * Taller than a lane of segments, because a bar says a quantity by its height
+ * and twenty-eight pixels leave nothing to read. The floor of two pixels is what
+ * draws a measure of zero: the gauge looked and nothing had fallen, which no
+ * absent bar would say.
+ */
+.bars .lane-track {
+  height: 2.5rem;
+}
+
+.bars .mark {
+  top: auto;
+  bottom: 0;
+  /* A measure with no step to its name is an instant wide, and four pixels is
+     what it takes for that instant to read as a bar rather than a hairline. */
+  min-width: 4px;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--rain);
+  /* The seam between two steps, in the colour of the lane beneath them. */
+  border-right: 1px solid var(--rail);
+}
+
+/* A webcam lane is a strip: each view holds until the next one is taken. */
+.film {
+  min-height: 4rem;
+}
+
+.film .lane-track {
+  height: 3.5rem;
+}
+
+.frame {
+  border-radius: 0;
+  background: var(--night);
+  /* The seam between two views, in the colour of the lane beneath them. */
+  border-right: 1px solid var(--rail);
+}
+
+/*
+ * The image keeps its proportions and overflows rather than stretching: a view
+ * is then cropped by the span it covers, and the lane reads as a strip of film.
+ * The five Ceneau cameras do not all render the same shape — four in 4:3, one
+ * in 16:9 — and none of them has to be distorted.
+ */
+.frame img {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: none;
+}
+
+.empty {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.4rem;
+  font-size: 11px;
+  color: #9fb0bf;
+}
+
+.ruler .lane-track {
+  background: none;
+  height: 1.25rem;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--ink-2);
+  border-left: 1px solid #d7dee5;
+  padding-left: 3px;
+  height: 100%;
+}
+
+/* A crossing whose threshold nature was assumed rather than read. */
+.mark.assumed {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.55) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.assumed-note {
+  border-left: 3px solid #c99a1e;
+  padding-left: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/*
+ * The full image, on hovering a view. The element does not exist before the
+ * hover, so the browser does not go looking for it until then.
+ */
+.preview {
+  position: fixed;
+  z-index: 10;
+  margin: 0;
+  background: var(--night);
+  border-radius: 3px;
+  box-shadow: 0 6px 24px rgb(27 39 51 / 35%);
+  overflow: hidden;
+  /* It covers the views beside it, and would steal their hover without this. */
+  pointer-events: none;
+}
+
+/*
+ * The box holds its shape before the image loads, or the caption jumps the
+ * moment it does. In 4:3, the shape of four cameras of the five: the fifth, in
+ * 16:9, loses two thin bands where the other choice would cost the four wide ones.
+ */
+.preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+
+.preview figcaption {
+  padding: 0.3rem 0.6rem;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #cfdae4;
+}
