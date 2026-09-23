@@ -342,6 +342,45 @@ button[disabled] {
   cursor: default;
 }
 
+a.action {
+  display: inline-block;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 3px;
+  background: var(--brand);
+  color: #fff;
+  text-decoration: none;
+}
+
+.replays {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  max-width: 48rem;
+}
+
+.replays li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--brand);
+}
+
+.replays li[data-state='failed'] {
+  border-left-color: #b3261e;
+}
+
+.replays a {
+  font-weight: 600;
+}
+
+.replays small {
+  grid-column: 1 / -1;
+  color: var(--ink-2);
+}
+
 .lanes,
 .journal {
   list-style: none;
