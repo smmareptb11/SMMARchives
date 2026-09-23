@@ -1,13 +1,15 @@
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-import { describe, expect, it } from 'vitest'
+import type { Pool } from 'pg'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { withDatabase } from './support/database.ts'
+import { closeDatabase, freshDatabase, urlPinnedTo } from './support/database.ts'
 
 const CHECKOUT = fileURLToPath(new URL('../../..', import.meta.url))
 const RUNNER = fileURLToPath(new URL('../../../node_modules/.bin/tsx', import.meta.url))
 const SCRIPT = fileURLToPath(new URL('../src/scripts/build-replay.ts', import.meta.url))
+const SCHEMA = 'test_build_replay_cli'
 
 /**
  * Enough to open a database and not enough to collect anything: the build
@@ -19,7 +21,7 @@ const SCRIPT = fileURLToPath(new URL('../src/scripts/build-replay.ts', import.me
 function environment(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
     ...process.env,
-    DATABASE_URL: withDatabase(),
+    DATABASE_URL: urlPinnedTo(SCHEMA),
     MEDIA_PATH: '/tmp/smmarchives-cli-test',
     RADAR_RAINFALL_PATH: '',
     ACYCLIQ_API_URL: '',
@@ -47,6 +49,19 @@ function run(
   })
 }
 
+let pool: Pool
+
+beforeAll(async () => {
+  pool = await freshDatabase(SCHEMA)
+})
+
+afterAll(closeDatabase)
+
+async function replays(): Promise<number> {
+  const { rows } = await pool.query<{ count: number }>('select count(*) as count from replay')
+  return rows[0]?.count ?? 0
+}
+
 /**
  * The API spawns this command and waits a few seconds to hear whether it could
  * start at all. A build that lingers past that window is reported as running,
@@ -64,6 +79,16 @@ describe('the build command as the API spawns it', () => {
     // Well under the ten seconds an idle connection pool would have held it:
     // that pool is what this asserts the command closes.
     expect(took).toBeLessThan(8_000)
+  }, 30_000)
+
+  it('writes the replay it creates to its own schema, not to the application', async () => {
+    const before = await replays()
+
+    await run()
+
+    // The build creates its replay before it stops on the configuration it
+    // lacks, so one more row here is proof the child used this schema.
+    expect(await replays()).toBe(before + 1)
   }, 30_000)
 })
 
