@@ -29,7 +29,6 @@ const CATEGORIES: ReadonlyArray<[StationCategory, ReadonlyArray<number | [number
     ],
   ],
   ['structure', [[2, 8], 21, 34, [38, 41], 45, 59, 60, 80, 81, 82, 159]],
-  ['karst', [[24, 28]]],
 ]
 
 /**
@@ -64,7 +63,7 @@ const TYPING = new Map<number, StationCategory>(
   ),
 )
 
-/** The category the map falls back to, and the karst caveat below. */
+/** The category the map falls back to. */
 const DEFAULT_CATEGORY: StationCategory = 'watercourse'
 
 export type StationTyping = {
@@ -72,12 +71,7 @@ export type StationTyping = {
   fallback: Fallback | undefined
 }
 
-/**
- * Types a station, reporting rather than hiding the cases it cannot decide.
- *
- * The cartographic representation of karst stations is not settled; they are
- * returned as `karst` and the rendering decision belongs to the interface.
- */
+/** Types a station, reporting rather than hiding the cases it cannot decide. */
 export function typeStation(id: number): StationTyping {
   const category = TYPING.get(id)
   if (category !== undefined) return { category, fallback: undefined }
