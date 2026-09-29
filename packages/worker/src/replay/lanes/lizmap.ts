@@ -42,10 +42,9 @@ const IMAGES = z.array(frozenWebcamImageSchema)
 /**
  * Collects the reference layers, the exploitable cameras and their images.
  *
- * One lane for the three because they go through one host — and one client, so
- * one anonymous session: the OGC proxy answers `Forbidden` until a `PHPSESSID`
- * is obtained, and the Lizmap is a crisis tool in production whose calls stay
- * spaced. Splitting them would open a session per data set.
+ * One lane for the three because they go through one host and one client: the
+ * Lizmap is a crisis tool in production whose calls stay spaced, and splitting
+ * them would space each data set on its own.
  *
  * The images are the exception to that host: they sit with their own host, and
  * freezing them is what keeps a replay from emptying itself a month later.

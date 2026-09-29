@@ -41,7 +41,7 @@ export type DatasetName = z.infer<typeof datasetNameSchema>
  * produces.
  *
  * `aquasys` carries three because they come from one host and one referential,
- * and `lizmap` three because they come from one host and one session. `events`
+ * and `lizmap` three because they come from one host. `events`
  * and `media` read no source at all: they work on what the others returned, and
  * they are lanes so that a failure in one of them stays theirs. What must stay sequential is an access, not a subject.
  */
