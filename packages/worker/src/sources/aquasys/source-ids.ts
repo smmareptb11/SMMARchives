@@ -65,7 +65,7 @@ export type SourceSelection = {
  * and a few dozen.
  */
 export async function listSourceIds(selection: SourceSelection): Promise<number[]> {
-  if (selection.scope.kind === 'ids') return [...selection.scope.ids]
+  if (selection.scope.kind === 'ids') return inScope(selection.scope.ids, selection)
 
   const rows =
     selection.family === 'hydro'
@@ -84,4 +84,24 @@ export async function listSourceIds(selection: SourceSelection): Promise<number[
       ),
     )
     .map((row) => row.id)
+}
+
+/**
+ * An explicit list, less the stations a replay never holds.
+ *
+ * Only stations are out of scope: a rain gauge sharing one of their numbers is
+ * another source.
+ */
+function inScope(ids: readonly number[], selection: SourceSelection): number[] {
+  if (selection.family !== 'hydro') return [...ids]
+
+  return ids.filter((id) => {
+    if (!isOutOfScope(id)) return true
+    selection.collector.fellBackTo({
+      subject: `station ${id}`,
+      rule: 'requested explicitly, but out of scope',
+      applied: 'station dropped',
+    })
+    return false
+  })
 }
