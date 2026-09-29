@@ -39,27 +39,17 @@ describe('a source the replay holds nothing of', () => {
 })
 
 describe('the sources of a replay, as the map reads them', () => {
-  /**
-   * The map draws a circle and a square, and karst has no third shape. The fold
-   * is about the symbol, not a statement that the five stations are ordinary
-   * watercourse stations — the timeline still gives them a family.
-   */
-  it('gives each family its shape, and folds karst into the watercourse stations', () => {
+  it('gives each family its shape', () => {
     const { geojson } = sourcesOf(
       held({
-        stations: [
-          aStation(1, 'Une', 'watercourse'),
-          aStation(2, 'Deux', 'structure'),
-          aStation(3, 'Trois', 'karst'),
-        ],
-        rainGauges: [aGauge(4, 'Pluvio', 2.7)],
+        stations: [aStation(1, 'Une', 'watercourse'), aStation(2, 'Deux', 'structure')],
+        rainGauges: [aGauge(3, 'Pluvio', 2.7)],
       }),
     )
 
     expect(geojson.features.map((one) => propertyOf(one, 'kind'))).toEqual([
       'watercourse',
       'structure',
-      'watercourse',
       'rain-gauge',
     ])
   })

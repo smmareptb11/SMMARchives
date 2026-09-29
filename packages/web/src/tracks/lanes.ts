@@ -200,7 +200,6 @@ export function tiled(marks: Mark[], minGap: number): Mark[] {
 const STATION_FAMILIES = [
   { id: 'watercourse', label: "Stations cours d'eau" },
   { id: 'structure', label: 'Ouvrages' },
-  { id: 'karst', label: 'Karst' },
 ] as const
 
 /**

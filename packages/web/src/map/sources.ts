@@ -6,14 +6,7 @@ import type { StationCategory } from '@smmarchives/shared/contracts/station.ts'
 import { gaugesWithoutRain } from '../mutes.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 
-/**
- * The three symbols the map draws, and the only three.
- *
- * `karst` is not among them, for want of a symbol rather than for want of a
- * difference: its five stations carry presaturation thresholds of their own, and
- * the timeline gives them a family. They take the watercourse circle here, which
- * folds the shape without folding the family.
- */
+/** The three symbols the map draws, and the only three. */
 export const KINDS = ['watercourse', 'structure', 'rain-gauge'] as const
 
 export type Kind = (typeof KINDS)[number]
