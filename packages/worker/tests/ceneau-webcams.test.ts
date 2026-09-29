@@ -4,14 +4,12 @@ import { describe, expect, it } from 'vitest'
 import { fetchWebcamImages } from '../src/sources/ceneau/images.ts'
 import { fetchWebcamPositions } from '../src/sources/ceneau/webcams.ts'
 import { LizmapClient } from '../src/sources/lizmap/client.ts'
-import { fetchStub, fixture, type StubbedRoute } from './support/fixtures.ts'
+import { fetchStub, fixture, type StubbedResponse } from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://crise.test' }
 
-const SESSION = { text: '<html/>', headers: { 'Set-Cookie': 'PHPSESSID=abc; path=/' } }
-
-function client(routes: Record<string, StubbedRoute>) {
-  const fetch = fetchStub({ '/index.php/view/map': SESSION, ...routes })
+function client(routes: Record<string, StubbedResponse>) {
+  const fetch = fetchStub(routes)
   return {
     client: new LizmapClient({ config: CONFIG, fetch, minIntervalMs: 0 }),
     fetch,
@@ -71,7 +69,7 @@ describe('the images of a camera', () => {
   const OLDEST_FIRST = [...PICTURE_DATES].sort()
 
   const images = (
-    routes: Record<string, StubbedRoute> = {},
+    routes: Record<string, StubbedResponse> = {},
     window?: ReturnType<typeof windowOf>,
   ) => {
     const options = client({

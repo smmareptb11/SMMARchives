@@ -29,9 +29,6 @@ import { fetchStub, fixture, fixtureText } from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://crise.test' }
 
-/** The OGC proxy answers `Forbidden` until an anonymous session is opened. */
-const SESSION = { text: '<html/>', headers: { 'Set-Cookie': 'PHPSESSID=abc; path=/' } }
-
 /**
  * The fixture's three pictures span 2026-09-08 12:03 to 2026-09-09 12:03, so
  * this window holds all three and stays inside Ceneau's one-month retention.
@@ -52,7 +49,6 @@ const IMAGES = fixture('ceneau/images-215.json') as {
 const RASTER_EPOCH = 1788933600
 
 const ROUTES = {
-  '/index.php/view/map': SESSION,
   'TYPENAME=webcam': { json: fixture('lizmap/webcam.json') },
   'TYPENAME=ouvrage_hydraulique': { json: fixture('lizmap/ouvrage_hydraulique.json') },
   'TYPENAME=perimetre_smmar': { json: fixture('lizmap/ouvrage_hydraulique.json') },
@@ -217,16 +213,11 @@ describe('the Lizmap data sets of a replay', () => {
   })
 })
 
-/**
- * One client for the layers and the cameras, so one anonymous session: the OGC
- * proxy answers `Forbidden` until a `PHPSESSID` is obtained, and the Lizmap is a
- * crisis tool in production whose calls we space.
- */
 describe('the crisis Lizmap a replay reads', () => {
-  it('is opened once for the whole lane', async () => {
+  it('is read without opening the project view', async () => {
     const { calls } = await build()
 
-    expect(calls.filter((url) => url.includes('/index.php/view/map'))).toHaveLength(1)
+    expect(calls.some((url) => url.includes('/index.php/view/map'))).toBe(false)
   })
 })
 
@@ -386,7 +377,7 @@ describe('a period older than what Ceneau keeps', () => {
 describe('a Lizmap that cannot be reached', () => {
   it('costs its own data sets and leaves the other lane whole', async () => {
     const { manifest, exitCode } = await build({
-      routes: { '/index.php/view/map': { status: 503 } },
+      routes: { '/index.php/lizmap/service/': { status: 503 } },
       withRadar: true,
     })
 
@@ -397,7 +388,7 @@ describe('a Lizmap that cannot be reached', () => {
     expect(exitCode).toBe(ExitCode.partial)
   })
 
-  /** The session is a workaround; a layer that refuses is one layer, not the lane. */
+  /** A layer that refuses is one layer, not the lane. */
   it('keeps the layers that answered when one refuses', async () => {
     const { manifest } = await build({
       routes: {
