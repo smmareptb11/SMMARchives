@@ -125,9 +125,10 @@ Breaking one produces a wrong result, not merely slower work.
    parameter, surface the fallback, never guess.
 
 The map knows two symbols — a watercourse station is a circle, a hydraulic
-structure a square — and the five `karst` stations take the circle for want of
-a third. The charts follow the Acycliq Widget and never embed it: it is built
-for live data, where a replay is frozen.
+structure a square. The five `karst` stations are no longer part of a replay:
+the referential drops them as it is read, before any call is spent on them.
+The charts follow the Acycliq Widget and never embed it: it is built for live
+data, where a replay is frozen.
 
 ## Rules
 
