@@ -31,12 +31,13 @@ durée, même lorsque les systèmes sources n'exposent plus la période concern�
 - Récupération des images de webcams et des lames d'eau radar
 - Rejeu synchronisé carte et frise, piloté par une seule horloge
 - Graphiques par station et par pluviomètre
+- Liste des rejeux constitués, du plus récent au plus ancien
 
 ### Ce qui est prévu et n'est pas écrit
 
 La saisie manuelle d'événements et de témoignages géolocalisés, l'export
-d'images pour les supports de présentation, la liste des rejeux, et
-l'administration protégée par mot de passe.
+d'images pour les supports de présentation, et l'administration protégée par
+mot de passe.
 
 > [!WARNING]
 > **Rien n'est protégé aujourd'hui.** Aucune route ne demande de mot de passe,
@@ -76,9 +77,9 @@ npm run dev:api           # http://localhost:3000
 npm run dev:web           # http://localhost:5180, dans un second terminal
 ```
 
-`http://localhost:5180` ouvre l'écran de création ; un rejeu vit à
-`/rejeux/<identifiant>`. Constituer un rejeu demande en plus les adresses des
-sources, que `.env.sample` laisse vides.
+`http://localhost:5180` ouvre la liste des rejeux, la création vit à `/nouveau`
+et un rejeu à `/rejeux/<identifiant>`. Constituer un rejeu demande en plus les
+adresses des sources, que `.env.sample` laisse vides.
 
 La procédure complète, les prérequis et le tableau des variables sont dans
 [`installation.md`](docs/installation.md).

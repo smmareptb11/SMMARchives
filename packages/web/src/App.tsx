@@ -6,6 +6,7 @@ import { api } from './api.ts'
 import { BuildScreen } from './build/BuildScreen.tsx'
 import { EMPTY, followBuild, type BuildState } from './build/progress.ts'
 import { CreationForm } from './creation/CreationForm.tsx'
+import { HomeScreen } from './home/HomeScreen.tsx'
 import { describe } from './problems.ts'
 import { goToReplay, routeOf, type Route } from './routing.ts'
 import { ReplayScreen } from './ReplayScreen.tsx'
@@ -15,7 +16,9 @@ export function App() {
 
   return (
     <main>
-      {route.screen === 'creation' ? (
+      {route.screen === 'home' ? (
+        <HomeScreen />
+      ) : route.screen === 'creation' ? (
         <CreationForm onCreated={(manifest) => goToReplay(manifest.id)} />
       ) : (
         <Replay id={route.id} />

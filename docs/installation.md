@@ -166,11 +166,12 @@ vit l'API. Le reverse proxy a donc trois obligations, sur une seule origine :
 3. **rendre `index.html` pour tout chemin qui ne correspond à aucun fichier.**
 
 La troisième est celle qu'on oublie, et elle ne se voit pas tout de suite.
-L'interface tient deux adresses — `/` l'écran de création, `/rejeux/<identifiant>`
-un rejeu — et elle passe de l'une à l'autre sans demander la page au serveur.
-Le serveur ne voit `/rejeux/<identifiant>` qu'au rechargement et sur un lien
-partagé : sans ce repli, ce sont exactement ces deux cas qui rendent 404, alors
-que tout paraît fonctionner par ailleurs. Sous nginx :
+L'interface tient trois adresses — `/` la liste des rejeux, `/nouveau` la
+création, `/rejeux/<identifiant>` un rejeu — et elle passe de l'une à l'autre
+sans demander la page au serveur. Le serveur ne voit `/nouveau` et
+`/rejeux/<identifiant>` qu'au rechargement et sur un lien partagé : sans ce
+repli, ce sont exactement ces deux cas qui rendent 404, alors que tout paraît
+fonctionner par ailleurs. Sous nginx :
 
 ```nginx
 location /assets { }                      # un fichier absent rend 404

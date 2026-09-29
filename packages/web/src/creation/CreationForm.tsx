@@ -95,7 +95,7 @@ function HourField({ label, value, onChange }: HourFieldProps) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
-      {instant === undefined ? null : <small>{formatInstant(instant)}</small>}
+      <small>{instant === undefined ? null : formatInstant(instant)}</small>
     </label>
   )
 }
