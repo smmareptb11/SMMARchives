@@ -1,9 +1,0 @@
-# Commits that changed only the shape of the code, never its meaning.
-# `git blame` skips them once, per clone:
-#
-#     git config blame.ignoreRevsFile .git-blame-ignore-revs
-#
-# GitHub reads this file on its own, with no configuration.
-
-# style: reformat with Prettier, no behaviour change
-25a75f77030485f28bf3583c0aa2f02f1cd7c218
