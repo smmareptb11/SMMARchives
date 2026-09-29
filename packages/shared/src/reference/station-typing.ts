@@ -41,6 +41,19 @@ const CATEGORIES: ReadonlyArray<[StationCategory, ReadonlyArray<number | [number
  */
 const UNTYPED_IN_LIZMAP = new Set([152, 153, 154, 155, 156, 157, 158])
 
+/**
+ * The karst stations, which a replay no longer holds.
+ *
+ * Dropped from the referential as it is read, so that no detail, threshold or
+ * measure is requested for them, and listed rather than removed from the table:
+ * absent from it, they would be reported as new stations.
+ */
+const EXCLUDED_STATIONS = new Set(rangeOf(24, 28))
+
+export function isExcludedStation(id: number): boolean {
+  return EXCLUDED_STATIONS.has(id)
+}
+
 const TYPING = new Map<number, StationCategory>(
   CATEGORIES.flatMap(([category, ranges]) =>
     ranges.flatMap((range): Array<[number, StationCategory]> =>

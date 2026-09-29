@@ -1,6 +1,7 @@
 import {
   SOURCE_LABEL,
   contains,
+  isExcludedStation,
   type BoundingBox,
   type ReportCollector,
   type SourceFamily,
@@ -17,9 +18,13 @@ import { rawRainGaugeSchema, rawStationSchema, type RawRainGauge, type RawStatio
  * Always the full list: the identifier space is sparse — 94 stations spread
  * over 1 to 160, 229 rain gauges over 4 to 744 — so a range is never
  * enumerated, and `limit` returns a non-deterministic slice.
+ *
+ * Stations a replay no longer holds are dropped here, before any call is spent
+ * on them.
  */
 export async function listStations(client: AquasysClient): Promise<RawStation[]> {
-  return z.array(rawStationSchema).parse(await client.list('hydro'))
+  const rows = z.array(rawStationSchema).parse(await client.list('hydro'))
+  return rows.filter((row) => !isExcludedStation(row.id))
 }
 
 export async function listRainGauges(client: AquasysClient): Promise<RawRainGauge[]> {

@@ -24,7 +24,7 @@ describe('the hydrological station referential', () => {
     const options = collect({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
     const stations = await fetchStations(options)
 
-    expect(stations).toHaveLength(4)
+    expect(stations).toHaveLength(3)
     const berre = stations.find((station) => station.id === 84)
     expect(berre).toMatchObject({
       id: 84,
@@ -67,13 +67,28 @@ describe('the hydrological station referential', () => {
     expect(options.fetch.calls).toHaveLength(1)
   })
 
+  it('leaves out the karst stations before any detail call', async () => {
+    const options = collect(
+      {
+        '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
+        '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+        '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
+        '/hydrologicalStation/152': { json: { id: 152 } },
+      },
+      true,
+    )
+    const stations = await fetchStations(options)
+
+    expect(stations.map((station) => station.id)).toEqual([84, 2, 152])
+    expect(options.fetch.calls.some((call) => call.includes('/hydrologicalStation/24'))).toBe(false)
+  })
+
   it('reads what a station measures from its measurement points', async () => {
     const options = collect(
       {
         '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
         '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
         '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
-        '/hydrologicalStation/24': { json: { id: 24 } },
         '/hydrologicalStation/152': { json: { id: 152 } },
       },
       true,
@@ -90,14 +105,13 @@ describe('the hydrological station referential', () => {
         '/hydrologicalStation/84': { status: 500 },
         '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
         '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
-        '/hydrologicalStation/24': { json: { id: 24 } },
         '/hydrologicalStation/152': { json: { id: 152 } },
       },
       true,
     )
     const stations = await fetchStations(options)
 
-    expect(stations).toHaveLength(4)
+    expect(stations).toHaveLength(3)
     expect(options.collector.seal().failures).toMatchObject([
       { subject: 'station 84 detail', status: 500 },
     ])
@@ -216,7 +230,7 @@ describe('the scope a run works on', () => {
   })
 
   it('takes the whole family when neither is chosen', async () => {
-    await expect(select({ kind: 'whole-family' })).resolves.toEqual([84, 2, 24, 152])
+    await expect(select({ kind: 'whole-family' })).resolves.toEqual([84, 2, 152])
   })
 })
 
