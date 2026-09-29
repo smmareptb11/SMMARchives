@@ -97,9 +97,27 @@ export async function freshDatabase(
 }
 
 function pinnedTo(schema: string, url: string): Pool {
-  const pool = new Pool({ connectionString: url, options: `-c search_path=${schema},public` })
+  const pool = new Pool({ connectionString: url, options: searchPathOf(schema) })
   pools.set(schema, pool)
   return pool
+}
+
+/**
+ * The test database, pinned to a schema, for a child process.
+ *
+ * A child opens its own pool from `DATABASE_URL` and cannot be handed one, so
+ * the schema travels in the URL. Given the bare URL it would write to
+ * `public` — the application's own replays, wherever `DATABASE_URL_TEST` and
+ * `DATABASE_URL` name one database, as `.env.sample` has them do.
+ */
+export function urlPinnedTo(schema: string): string {
+  const url = new URL(withDatabase())
+  url.searchParams.set('options', searchPathOf(schema))
+  return url.toString()
+}
+
+function searchPathOf(schema: string): string {
+  return `-c search_path=${schema},public`
 }
 
 /** Closes every pool a suite opened, for an `afterAll`. */
