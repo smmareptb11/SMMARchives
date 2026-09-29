@@ -41,16 +41,14 @@ const CATEGORIES: ReadonlyArray<[StationCategory, ReadonlyArray<number | [number
 const UNTYPED_IN_LIZMAP = new Set([152, 153, 154, 155, 156, 157, 158])
 
 /**
- * The karst stations, which a replay no longer holds.
+ * Stations Aquasys holds that bear on no flood, and that a replay never holds.
  *
- * Dropped from the referential as it is read, so that no detail, threshold or
- * measure is requested for them, and listed rather than removed from the table:
- * absent from it, they would be reported as new stations.
+ * Aquasys states nothing that sets them apart, hence a list.
  */
-const EXCLUDED_STATIONS = new Set(rangeOf(24, 28))
+const OUT_OF_SCOPE = new Set(rangeOf(24, 28))
 
-export function isExcludedStation(id: number): boolean {
-  return EXCLUDED_STATIONS.has(id)
+export function isOutOfScope(id: number): boolean {
+  return OUT_OF_SCOPE.has(id)
 }
 
 const TYPING = new Map<number, StationCategory>(

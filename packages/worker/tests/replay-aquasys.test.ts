@@ -192,7 +192,7 @@ describe('the referential a replay rests on', () => {
   it('narrows on the extent before spending a call per source', async () => {
     const { calls } = await build()
 
-    // 84 is inside the extent; 2 and 152 are not, 24 is karst, and none costs anything.
+    // 84 is inside the extent; 2 and 152 are not, 24 is out of scope, and none costs anything.
     expect(calls.filter((url) => /\/hydrologicalStation\/\d+$/.test(url))).toHaveLength(1)
     expect(calls.some((url) => url.includes('/hydrologicalStation/152'))).toBe(false)
   })

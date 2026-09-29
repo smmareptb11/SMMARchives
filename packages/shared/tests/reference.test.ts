@@ -5,7 +5,7 @@ import {
   RAIN_GAUGE_DATA_TYPES,
   UNITS,
 } from '../src/reference/data-types.ts'
-import { isExcludedStation, typeStation } from '../src/reference/station-typing.ts'
+import { isOutOfScope, typeStation } from '../src/reference/station-typing.ts'
 
 describe('the two data type tables', () => {
   it('read the same typeId as two different things, or as nothing', () => {
@@ -39,9 +39,9 @@ describe('station typing', () => {
     expect(count('structure')).toBe(20)
   })
 
-  it('excludes the five karst stations, and only them', () => {
-    const excluded = Array.from({ length: 160 }, (_, index) => index + 1).filter(isExcludedStation)
-    expect(excluded).toEqual([24, 25, 26, 27, 28])
+  it('puts five stations out of scope, and only them', () => {
+    const outOfScope = Array.from({ length: 160 }, (_, index) => index + 1).filter(isOutOfScope)
+    expect(outOfScope).toEqual([24, 25, 26, 27, 28])
   })
 
   it('types a station read from the Lizmap without a fallback', () => {

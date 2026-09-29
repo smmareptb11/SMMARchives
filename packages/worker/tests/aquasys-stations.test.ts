@@ -67,7 +67,7 @@ describe('the hydrological station referential', () => {
     expect(options.fetch.calls).toHaveLength(1)
   })
 
-  it('leaves out the karst stations before any detail call', async () => {
+  it('leaves out an out-of-scope station before any detail call', async () => {
     const options = collect(
       {
         '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },

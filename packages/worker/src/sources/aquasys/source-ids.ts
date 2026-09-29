@@ -1,7 +1,7 @@
 import {
   SOURCE_LABEL,
   contains,
-  isExcludedStation,
+  isOutOfScope,
   type BoundingBox,
   type ReportCollector,
   type SourceFamily,
@@ -24,7 +24,7 @@ import { rawRainGaugeSchema, rawStationSchema, type RawRainGauge, type RawStatio
  */
 export async function listStations(client: AquasysClient): Promise<RawStation[]> {
   const rows = z.array(rawStationSchema).parse(await client.list('hydro'))
-  return rows.filter((row) => !isExcludedStation(row.id))
+  return rows.filter((row) => !isOutOfScope(row.id))
 }
 
 export async function listRainGauges(client: AquasysClient): Promise<RawRainGauge[]> {
