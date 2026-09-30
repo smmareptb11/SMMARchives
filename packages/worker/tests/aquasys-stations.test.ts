@@ -1,4 +1,4 @@
-import { ReportCollector, type BoundingBox } from '@smmarchives/shared'
+import { ReportCollector, type BoundingBox, type SourceFamily } from '@smmarchives/shared'
 import { describe, expect, it } from 'vitest'
 
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
@@ -24,7 +24,7 @@ describe('the hydrological station referential', () => {
     const options = collect({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
     const stations = await fetchStations(options)
 
-    expect(stations).toHaveLength(4)
+    expect(stations).toHaveLength(3)
     const berre = stations.find((station) => station.id === 84)
     expect(berre).toMatchObject({
       id: 84,
@@ -67,13 +67,28 @@ describe('the hydrological station referential', () => {
     expect(options.fetch.calls).toHaveLength(1)
   })
 
+  it('leaves out an out-of-scope station before any detail call', async () => {
+    const options = collect(
+      {
+        '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
+        '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+        '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
+        '/hydrologicalStation/152': { json: { id: 152 } },
+      },
+      true,
+    )
+    const stations = await fetchStations(options)
+
+    expect(stations.map((station) => station.id)).toEqual([84, 2, 152])
+    expect(options.fetch.calls.some((call) => call.includes('/hydrologicalStation/24'))).toBe(false)
+  })
+
   it('reads what a station measures from its measurement points', async () => {
     const options = collect(
       {
         '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
         '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
         '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
-        '/hydrologicalStation/24': { json: { id: 24 } },
         '/hydrologicalStation/152': { json: { id: 152 } },
       },
       true,
@@ -90,14 +105,13 @@ describe('the hydrological station referential', () => {
         '/hydrologicalStation/84': { status: 500 },
         '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
         '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
-        '/hydrologicalStation/24': { json: { id: 24 } },
         '/hydrologicalStation/152': { json: { id: 152 } },
       },
       true,
     )
     const stations = await fetchStations(options)
 
-    expect(stations).toHaveLength(4)
+    expect(stations).toHaveLength(3)
     expect(options.collector.seal().failures).toMatchObject([
       { subject: 'station 84 detail', status: 500 },
     ])
@@ -196,19 +210,37 @@ describe('the extent of a replay', () => {
 describe('the scope a run works on', () => {
   const CORBIERES: BoundingBox = { minLon: 2.75, minLat: 42.95, maxLon: 2.9, maxLat: 43.1 }
 
-  function select(scope: SourceScope) {
-    const collector = new ReportCollector('probe', {})
+  function select(
+    scope: SourceScope,
+    family: SourceFamily = 'hydro',
+    collector = new ReportCollector('probe', {}),
+  ) {
     const fetch = fetchStub({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
     return listSourceIds({
       client: new AquasysClient({ config: CONFIG, fetch }),
       collector,
-      family: 'hydro',
+      family,
       scope,
     })
   }
 
   it('takes the explicit list without reading the referential', async () => {
-    await expect(select({ kind: 'ids', ids: [152, 24] })).resolves.toEqual([152, 24])
+    await expect(select({ kind: 'ids', ids: [152, 84] })).resolves.toEqual([152, 84])
+  })
+
+  it('drops an out-of-scope station from the explicit list, and says so', async () => {
+    const collector = new ReportCollector('probe', {})
+
+    await expect(select({ kind: 'ids', ids: [152, 24] }, 'hydro', collector)).resolves.toEqual([
+      152,
+    ])
+    expect(collector.seal().fallbacks).toMatchObject([
+      { subject: 'station 24', applied: 'station dropped' },
+    ])
+  })
+
+  it('keeps a rain gauge that shares the number of an out-of-scope station', async () => {
+    await expect(select({ kind: 'ids', ids: [24] }, 'rain-gauge')).resolves.toEqual([24])
   })
 
   it('keeps what the extent holds', async () => {
@@ -216,7 +248,7 @@ describe('the scope a run works on', () => {
   })
 
   it('takes the whole family when neither is chosen', async () => {
-    await expect(select({ kind: 'whole-family' })).resolves.toEqual([84, 2, 24, 152])
+    await expect(select({ kind: 'whole-family' })).resolves.toEqual([84, 2, 152])
   })
 })
 

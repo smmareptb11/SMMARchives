@@ -13,13 +13,6 @@ describe('the families a replay holds', () => {
     expect(familiesOf(content)).toEqual(['watercourse', 'structure', 'rain-gauge'])
   })
 
-  /** Karst takes the circle of the watercourse stations, and claims no line. */
-  it('fold karst into the watercourse stations, as the map does', () => {
-    const content = held({ stations: [aStation(1, "L'Orbieu", 'karst')] })
-
-    expect(familiesOf(content)).toEqual(['watercourse'])
-  })
-
   it('hold no switch for a family the replay is empty of', () => {
     expect(familiesOf(held({ rainGauges: [aGauge(1, 'Pezens', 2.2)] }))).toEqual(['rain-gauge'])
     expect(familiesOf(held())).toEqual([])

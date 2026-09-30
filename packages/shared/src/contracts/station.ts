@@ -27,7 +27,7 @@ export const SOURCE_LABEL: Record<SourceFamily, string> = {
  * and `link_work` is empty everywhere. The typing comes from the SMMAR crisis
  * Lizmap and is frozen reference data.
  */
-export const stationCategorySchema = z.enum(['watercourse', 'structure', 'karst'])
+export const stationCategorySchema = z.enum(['watercourse', 'structure'])
 
 export type StationCategory = z.infer<typeof stationCategorySchema>
 
