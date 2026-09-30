@@ -34,7 +34,6 @@ function aReferential() {
         altitude: 62.5,
         position: { lon: 2.4433, lat: 43.21 },
         category: 'watercourse' as const,
-        categoryIsFallback: false,
         quantities: ['level' as const, 'flow' as const],
       },
     ],

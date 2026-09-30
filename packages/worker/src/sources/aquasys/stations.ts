@@ -71,7 +71,6 @@ export async function fetchStations(options: FetchReferentialOptions): Promise<S
   return inside.map(({ row, position }) => ({
     ...commonFields(row, position, details),
     category: row.category,
-    categoryIsFallback: false,
   }))
 }
 

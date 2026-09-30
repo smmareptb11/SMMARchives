@@ -23,7 +23,6 @@ function station(id: number, position: Position | null = BERRE): Station {
     altitude: null,
     position,
     category: 'watercourse',
-    categoryIsFallback: false,
     quantities: ['level'],
   }
 }

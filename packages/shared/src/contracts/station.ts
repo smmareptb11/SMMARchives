@@ -39,8 +39,6 @@ export const stationSchema = z.object({
   altitude: z.number().nullable(),
   position: positionSchema.nullable(),
   category: stationCategorySchema,
-  /** True when the category was not read from the frozen table but assumed. */
-  categoryIsFallback: z.boolean(),
   /**
    * Which of the collected quantities this source carries, read from its
    * measurement points, or `null` when details were not requested.

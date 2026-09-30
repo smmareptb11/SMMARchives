@@ -32,7 +32,6 @@ describe('the hydrological station referential', () => {
       id: 84,
       code: 'Y082401001',
       category: 'watercourse',
-      categoryIsFallback: false,
     })
     expect(stations.find((station) => station.id === 2)?.category).toBe('structure')
     expect(stations.find((station) => station.id === 152)?.category).toBe('watercourse')
