@@ -5,7 +5,6 @@ import {
   RAIN_GAUGE_DATA_TYPES,
   UNITS,
 } from '../src/reference/data-types.ts'
-import { isOutOfScope, typeStation } from '../src/reference/station-typing.ts'
 
 describe('the two data type tables', () => {
   it('read the same typeId as two different things, or as nothing', () => {
@@ -25,42 +24,6 @@ describe('the two data type tables', () => {
 
   it('has no rainfall on a hydrological station', () => {
     expect(HYDROLOGICAL_STATION_DATA_TYPES.byQuantity('rainfall')).toBeUndefined()
-  })
-})
-
-describe('station typing', () => {
-  const count = (category: string) =>
-    Array.from({ length: 160 }, (_, index) => index + 1).filter(
-      (id) => !typeStation(id).fallback && typeStation(id).category === category,
-    ).length
-
-  it('matches the fleet read from the Lizmap: 62 watercourse, 20 structure', () => {
-    expect(count('watercourse')).toBe(62)
-    expect(count('structure')).toBe(20)
-  })
-
-  it('puts five stations out of scope, and only them', () => {
-    const outOfScope = Array.from({ length: 160 }, (_, index) => index + 1).filter(isOutOfScope)
-    expect(outOfScope).toEqual([24, 25, 26, 27, 28])
-  })
-
-  it('types a station read from the Lizmap without a fallback', () => {
-    expect(typeStation(84)).toEqual({ category: 'watercourse', fallback: undefined })
-    expect(typeStation(2).category).toBe('structure')
-  })
-
-  it('signals rather than hides a station that appears in no Lizmap layer', () => {
-    const typing = typeStation(152)
-    expect(typing.category).toBe('watercourse')
-    expect(typing.fallback).toEqual({
-      subject: 'station 152',
-      rule: 'station appears in no Lizmap layer',
-      applied: 'watercourse',
-    })
-  })
-
-  it('tells a new station apart from a known untyped one', () => {
-    expect(typeStation(9999).fallback?.rule).toBe('station absent from the frozen typing table')
   })
 })
 

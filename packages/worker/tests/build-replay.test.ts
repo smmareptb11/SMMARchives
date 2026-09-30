@@ -31,7 +31,11 @@ function emptyFleet() {
   return {
     client: new AquasysClient({
       config: { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' },
-      fetch: fetchStub({ '/hydrologicalStation/': { json: [] }, '/pluviometer/': { json: [] } }),
+      fetch: fetchStub({
+        '/hydrologicalStation/': { json: [] },
+        '/referencial/network': { json: [] },
+        '/pluviometer/': { json: [] },
+      }),
     }),
   }
 }

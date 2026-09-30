@@ -6,7 +6,7 @@ import { AquasysClient } from '../src/sources/aquasys/client.ts'
 import { rawNetworkLinkSchema, rawNetworkSchema } from '../src/sources/aquasys/raw.ts'
 import { fetchRainGauges, fetchStations } from '../src/sources/aquasys/stations.ts'
 import { listSourceIds, type SourceScope } from '../src/sources/aquasys/source-ids.ts'
-import { fetchStub, fixture } from './support/fixtures.ts'
+import { fetchStub, fixture, stationReferentialRoutes } from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
 
@@ -23,7 +23,7 @@ function collect(
 
 describe('the hydrological station referential', () => {
   it('reprojects, types, and keeps no referential date', async () => {
-    const options = collect({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
+    const options = collect(stationReferentialRoutes())
     const stations = await fetchStations(options)
 
     expect(stations).toHaveLength(3)
@@ -34,6 +34,8 @@ describe('the hydrological station referential', () => {
       category: 'watercourse',
       categoryIsFallback: false,
     })
+    expect(stations.find((station) => station.id === 2)?.category).toBe('structure')
+    expect(stations.find((station) => station.id === 152)?.category).toBe('watercourse')
     expect(berre?.position?.lon).toBeCloseTo(2.83, 2)
     expect(berre?.position?.lat).toBeCloseTo(43.04, 2)
     expect(berre).not.toHaveProperty('creationDate')
@@ -41,39 +43,40 @@ describe('the hydrological station referential', () => {
   })
 
   it('never lets a nominative login through', async () => {
-    const options = collect({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
+    const options = collect(stationReferentialRoutes())
     const stations = await fetchStations(options)
 
     expect(JSON.stringify(stations)).not.toContain('agent-a')
     expect(JSON.stringify(stations)).not.toContain('updateLogin')
   })
 
-  it('signals the station it could not type', async () => {
-    const options = collect({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
-    await fetchStations(options)
+  it('reports a typing network the referential does not name', async () => {
+    const networks = (fixture('aquasys/networks.json') as Array<Record<string, unknown>>).filter(
+      (network) => network['name'] !== 'Ouvrage',
+    )
+    const options = collect({
+      ...stationReferentialRoutes(),
+      '/referencial/network': { json: networks },
+    })
+    const stations = await fetchStations(options)
 
-    expect(options.collector.seal().fallbacks).toEqual([
-      {
-        subject: 'station 152',
-        rule: 'station appears in no Lizmap layer',
-        applied: 'watercourse',
-      },
-    ])
+    expect(stations.map((station) => station.id)).toEqual([84, 152])
+    expect(options.collector.seal().fallbacks).toMatchObject([{ subject: 'network Ouvrage' }])
   })
 
   it('leaves quantities unknown rather than empty when details are skipped', async () => {
-    const options = collect({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
+    const options = collect(stationReferentialRoutes())
     const stations = await fetchStations(options)
 
     expect(stations.every((station) => station.quantities === null)).toBe(true)
-    expect(options.fetch.calls).toHaveLength(1)
+    expect(options.fetch.calls).toHaveLength(3)
   })
 
   it('leaves out an out-of-scope station before any detail call', async () => {
     const options = collect(
       {
         '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
-        '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+        ...stationReferentialRoutes(),
         '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
         '/hydrologicalStation/152': { json: { id: 152 } },
       },
@@ -89,7 +92,7 @@ describe('the hydrological station referential', () => {
     const options = collect(
       {
         '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
-        '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+        ...stationReferentialRoutes(),
         '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
         '/hydrologicalStation/152': { json: { id: 152 } },
       },
@@ -105,7 +108,7 @@ describe('the hydrological station referential', () => {
     const options = collect(
       {
         '/hydrologicalStation/84': { status: 500 },
-        '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+        ...stationReferentialRoutes(),
         '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
         '/hydrologicalStation/152': { json: { id: 152 } },
       },
@@ -195,11 +198,7 @@ describe('the extent of a replay', () => {
   const CORBIERES: BoundingBox = { minLon: 2.75, minLat: 42.95, maxLon: 2.9, maxLat: 43.1 }
 
   it('keeps only the sources inside it', async () => {
-    const options = collect(
-      { '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } },
-      false,
-      CORBIERES,
-    )
+    const options = collect(stationReferentialRoutes(), false, CORBIERES)
     const stations = await fetchStations(options)
 
     expect(stations.map((station) => station.id)).toEqual([84])
@@ -209,14 +208,14 @@ describe('the extent of a replay', () => {
     const options = collect(
       {
         '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
-        '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+        ...stationReferentialRoutes(),
       },
       true,
       CORBIERES,
     )
     await fetchStations(options)
 
-    expect(options.fetch.calls).toHaveLength(2)
+    expect(options.fetch.calls).toHaveLength(4)
   })
 
   it('keeps the whole fleet when none is given', async () => {
@@ -236,12 +235,15 @@ describe('the extent of a replay', () => {
 describe('the scope a run works on', () => {
   const CORBIERES: BoundingBox = { minLon: 2.75, minLat: 42.95, maxLon: 2.9, maxLat: 43.1 }
 
+  let calls: string[] = []
+
   function select(
     scope: SourceScope,
     family: SourceFamily = 'hydro',
     collector = new ReportCollector('probe', {}),
   ) {
-    const fetch = fetchStub({ '/hydrologicalStation/': { json: fixture('aquasys/stations.json') } })
+    const fetch = fetchStub(stationReferentialRoutes())
+    calls = fetch.calls
     return listSourceIds({
       client: new AquasysClient({ config: CONFIG, fetch }),
       collector,
@@ -250,8 +252,9 @@ describe('the scope a run works on', () => {
     })
   }
 
-  it('takes the explicit list without reading the referential', async () => {
+  it('takes the explicit list without reading the station list', async () => {
     await expect(select({ kind: 'ids', ids: [152, 84] })).resolves.toEqual([152, 84])
+    expect(calls.some((call) => call.endsWith('/hydrologicalStation/'))).toBe(false)
   })
 
   it('drops an out-of-scope station from the explicit list, and says so', async () => {
