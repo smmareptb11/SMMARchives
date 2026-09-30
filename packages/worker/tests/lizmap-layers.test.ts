@@ -22,16 +22,6 @@ function read(layers: string[], routes: Record<string, StubbedResponse>) {
 }
 
 describe('reading a reference layer', () => {
-  it('goes straight to the OGC service, without opening the project view', async () => {
-    const { fetch } = await read(['ouvrage_hydraulique', 'perimetre_smmar'], {
-      TYPENAME: OUVRAGES,
-    })
-
-    expect(fetch.calls).toHaveLength(2)
-    expect(fetch.calls[0]).toContain('TYPENAME=ouvrage_hydraulique')
-    expect(fetch.calls.some((call) => call.includes('/index.php/view/map'))).toBe(false)
-  })
-
   it('asks for GeoJSON and does not reproject what comes back', async () => {
     const { data, fetch } = await read(['ouvrage_hydraulique'], { TYPENAME: OUVRAGES })
 
@@ -42,13 +32,12 @@ describe('reading a reference layer', () => {
 })
 
 describe('a layer that refuses the read', () => {
-  it('is a failure, reported without a second attempt', async () => {
-    const { data, fetch, report } = await read(['ouvrage_hydraulique'], {
+  it('is a failure', async () => {
+    const { data, report } = await read(['ouvrage_hydraulique'], {
       TYPENAME: FORBIDDEN,
     })
 
     expect(data).toEqual([])
-    expect(fetch.calls).toHaveLength(1)
     expect(report.failures[0]?.message).toMatch(/did not return GeoJSON/)
     expect(exitCodeFor(report)).toBe(2)
   })

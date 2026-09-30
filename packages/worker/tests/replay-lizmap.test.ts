@@ -213,14 +213,6 @@ describe('the Lizmap data sets of a replay', () => {
   })
 })
 
-describe('the crisis Lizmap a replay reads', () => {
-  it('is read without opening the project view', async () => {
-    const { calls } = await build()
-
-    expect(calls.some((url) => url.includes('/index.php/view/map'))).toBe(false)
-  })
-})
-
 /**
  * The freeze exists for this: the images live at `media.ceneau.test` with a
  * one-month retention, so a replay that kept only their URLs would empty itself

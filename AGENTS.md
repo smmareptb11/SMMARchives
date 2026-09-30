@@ -57,7 +57,7 @@ npm run typecheck && npm run lint && npm run format:check && npm test
 | Source | Holds | Reached by |
 |---|---|---|
 | Aquasys | Levels, flows, rainfall totals, thresholds, the station referential | REST, authenticated by a token |
-| Lizmap | Reference layers, hydraulic structures, extents, camera positions | OGC services, anonymously |
+| Lizmap | Reference layers, hydraulic structures, extents, camera positions | OGC services |
 | Ceneau | Timestamped webcam images | One JSON file per camera, images on another host |
 | Radar rainfall | Rainfall accumulation rasters, by delivery | A directory indexed in place, no live history |
 
