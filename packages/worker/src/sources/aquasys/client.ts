@@ -35,9 +35,11 @@ type FamilyRoutes = {
 export class AquasysClient {
   readonly #http: HttpClient
   readonly #routes: Record<SourceFamily, FamilyRoutes>
+  readonly #base: string
 
   constructor(options: AquasysClientOptions) {
     const base = options.config.baseUrl
+    this.#base = base
     this.#http = new HttpClient({
       fetch: options.fetch,
       headers: { Authorization: `Bearer ${options.config.token}` },
@@ -68,6 +70,15 @@ export class AquasysClient {
 
   thresholds(family: SourceFamily, id: number): Promise<unknown> {
     return this.#http.json(this.#routes[family].thresholds(id))
+  }
+
+  /** Every station-to-network link of the fleet, in one call. */
+  networkLinks(): Promise<unknown> {
+    return this.#http.json(`${this.#base}/hydrologicalStation/networkLink`)
+  }
+
+  networks(): Promise<unknown> {
+    return this.#http.json(`${this.#base}/referencial/network`)
   }
 
   /**

@@ -1,7 +1,9 @@
 import { ReportCollector, type BoundingBox, type SourceFamily } from '@smmarchives/shared'
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
+import { rawNetworkLinkSchema, rawNetworkSchema } from '../src/sources/aquasys/raw.ts'
 import { fetchRainGauges, fetchStations } from '../src/sources/aquasys/stations.ts'
 import { listSourceIds, type SourceScope } from '../src/sources/aquasys/source-ids.ts'
 import { fetchStub, fixture } from './support/fixtures.ts'
@@ -152,6 +154,30 @@ describe('the rain gauge referential', () => {
     const gauges = await fetchRainGauges(options)
 
     expect(gauges.find((gauge) => gauge.id === 4)?.quantities).toEqual(['rainfall'])
+  })
+})
+
+describe('the networks a station belongs to', () => {
+  it('reads every link of the fleet in one call', async () => {
+    const fetch = fetchStub({
+      '/hydrologicalStation/networkLink': { json: fixture('aquasys/network-links.json') },
+    })
+    const client = new AquasysClient({ config: CONFIG, fetch })
+    const links = z.array(rawNetworkLinkSchema).parse(await client.networkLinks())
+
+    expect(links.filter((link) => link.idStation === 3).map((link) => link.idNetwork)).toEqual([
+      5, 4,
+    ])
+    expect(fetch.calls).toEqual(['https://api.test/api/hydrologicalStation/networkLink'])
+  })
+
+  it('names each network by the code a link refers to', async () => {
+    const fetch = fetchStub({ '/referencial/network': { json: fixture('aquasys/networks.json') } })
+    const client = new AquasysClient({ config: CONFIG, fetch })
+    const networks = z.array(rawNetworkSchema).parse(await client.networks())
+
+    expect(networks.find((network) => network.code === 4)?.name).toBe('Ouvrage')
+    expect(fetch.calls).toEqual(['https://api.test/api/referencial/network'])
   })
 })
 

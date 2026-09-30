@@ -1,0 +1,30 @@
+[
+ {
+  "idStation": 84,
+  "idNetwork": 1
+ },
+ {
+  "idStation": 24,
+  "idNetwork": 3
+ },
+ {
+  "idStation": 84,
+  "idNetwork": 2
+ },
+ {
+  "idStation": 2,
+  "idNetwork": 4
+ },
+ {
+  "idStation": 3,
+  "idNetwork": 5
+ },
+ {
+  "idStation": 3,
+  "idNetwork": 4
+ },
+ {
+  "idStation": 152,
+  "idNetwork": 1
+ }
+]

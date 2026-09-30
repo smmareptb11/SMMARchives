@@ -43,6 +43,21 @@ export const rawRainGaugeSchema = z.looseObject({
 
 export type RawRainGauge = z.infer<typeof rawRainGaugeSchema>
 
+export const rawNetworkLinkSchema = z.looseObject({
+  idStation: z.number().int(),
+  idNetwork: z.number().int(),
+})
+
+export type RawNetworkLink = z.infer<typeof rawNetworkLinkSchema>
+
+/** `code` is what a link's `idNetwork` refers to. */
+export const rawNetworkSchema = z.looseObject({
+  code: z.number().int(),
+  name: z.string(),
+})
+
+export type RawNetwork = z.infer<typeof rawNetworkSchema>
+
 /** Measurement points of a source, the reliable way to know what it carries. */
 const rawPointPrelSchema = z.looseObject({
   idStation: z.number().int(),
