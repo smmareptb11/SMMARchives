@@ -5,9 +5,9 @@ import type { Queryable } from '../../../db/tx.ts'
 /**
  * A reference layer, one row per feature rather than one document.
  *
- * It is what lets an extent be simplified when it is served rather than once
- * and for all at import: `perimetre_syndicats` alone carries 26 600 vertices,
- * and what a map needs of them depends on the zoom it is drawn at.
+ * It is what lets an outline be simplified when it is served rather than once
+ * and for all at import: what a map needs of it depends on the zoom it is
+ * drawn at.
  */
 export async function writeLayers(db: Queryable, replayId: string, data: unknown): Promise<void> {
   const layers = data as ReferenceLayer[]
@@ -47,10 +47,9 @@ export async function writeLayers(db: Queryable, replayId: string, data: unknown
  * How far a served outline may stray from the one that was collected, in degrees.
  *
  * Fifty metres, against a map that opens at a zoom where one pixel is about a
- * hundred and seventy. The perimeters of the syndicats are 26 600 vertices and
- * 698 Kb at the nine decimals PostGIS serialises by default — a tenth of a
- * millimetre of precision, for a fill drawn at six percent opacity. Topology
- * is preserved, so an outline never crosses itself on the way.
+ * hundred and seventy, where the nine decimals PostGIS serialises by default
+ * carry a tenth of a millimetre. Topology is preserved, so an outline never
+ * crosses itself on the way.
  */
 const SIMPLIFIED_TO = 0.0005
 
