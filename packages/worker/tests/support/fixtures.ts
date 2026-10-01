@@ -24,9 +24,6 @@ export type StubbedResponse =
   | { status: number; body?: string }
   | { throws: Error }
 
-/** A route may answer differently on each call, to model an expiring session. */
-export type StubbedRoute = StubbedResponse | StubbedResponse[]
-
 /**
  * A `fetch` that answers from a table, so no test reaches a live source.
  *
@@ -34,14 +31,8 @@ export type StubbedRoute = StubbedResponse | StubbedResponse[]
  * `/hydrologicalStation/84/threshold` from being caught by
  * `/hydrologicalStation/84`.
  */
-export function fetchStub(routes: Record<string, StubbedRoute>): Fetch & { calls: string[] } {
+export function fetchStub(routes: Record<string, StubbedResponse>): Fetch & { calls: string[] } {
   const patterns = Object.keys(routes).sort((a, b) => b.length - a.length)
-  const remaining = new Map<string, StubbedResponse[]>(
-    Object.entries(routes).map(([pattern, route]) => [
-      pattern,
-      Array.isArray(route) ? [...route] : [],
-    ]),
-  )
   const calls: string[] = []
 
   const stub = (async (input: Parameters<Fetch>[0]) => {
@@ -53,12 +44,7 @@ export function fetchStub(routes: Record<string, StubbedRoute>): Fetch & { calls
     const pattern = patterns.find((candidate) => url.includes(candidate))
     if (pattern === undefined) throw new Error(`No stubbed route for ${url}`)
 
-    const route = routes[pattern]!
-    if (!Array.isArray(route)) return toResponse(route)
-
-    const answer = remaining.get(pattern)!.shift()
-    if (answer === undefined) throw new Error(`Stubbed sequence for ${pattern} is exhausted`)
-    return toResponse(answer)
+    return toResponse(routes[pattern]!)
   }) as Fetch & { calls: string[] }
 
   stub.calls = calls

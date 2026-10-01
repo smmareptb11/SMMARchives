@@ -94,8 +94,8 @@ export class HttpClient {
 
 /**
  * Spreading a `HeadersInit` silently yields `{}` unless it is a plain object,
- * and what would go missing is the Lizmap session cookie or the Aquasys
- * content type — a request that then fails for the wrong reason.
+ * and what would go missing is the Aquasys content type — a request that then
+ * fails for the wrong reason.
  */
 function merge(base: Record<string, string>, extra: RequestInit['headers']): Headers {
   const headers = new Headers(base)

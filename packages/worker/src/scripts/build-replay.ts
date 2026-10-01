@@ -105,7 +105,7 @@ async function build(
           lizmap: {
             client: new LizmapClient({ config: lizmapConfig() }),
             // The images sit on another host, reached without the Lizmap's
-            // session or its spacing.
+            // spacing.
             fetch: globalThis.fetch,
           },
         }
