@@ -69,8 +69,8 @@ Toute la configuration passe par l'environnement. **Aucun secret n'est
 versionné.** `.env.sample` en tient la version commentée ; les commandes `npm run`
 la lisent par `--env-file-if-exists=.env`, à la racine du dépôt.
 
-Une variable présente mais vide vaut une variable absente : elle est refusée de
-la même façon.
+Une variable présente mais vide vaut une variable absente : obligatoire, elle
+est refusée de la même façon.
 
 | Variable | Statut | Défaut | Lue par |
 |---|---|---|---|

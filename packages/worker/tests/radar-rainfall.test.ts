@@ -21,6 +21,7 @@ let root: string
 const COMPLETE = 'complete'
 const EMPTY = 'empty'
 const UNREADABLE = 'unreadable'
+const SEVERAL = 'several'
 
 const FIVE_MINUTE_FRAMES = [1593102683, 1593103282, 1593103583, 1593103881]
 const HOURLY_FRAMES = [1593102683, 1593106283, 1593109883]
@@ -45,6 +46,11 @@ beforeAll(async () => {
   await writeFile(join(root, UNREADABLE, '20040', 'pluvio5mn', '1593102683.png'), '')
   await mkdir(join(root, UNREADABLE, '20040', 'pluvio1h'), { recursive: true })
   await chmod(join(root, UNREADABLE, '20040', 'pluvio1h'), 0o000)
+
+  for (const delivery of ['20044', '20045']) {
+    await mkdir(join(root, SEVERAL, delivery, 'pluvio5mn'), { recursive: true })
+    await writeFile(join(root, SEVERAL, delivery, 'pluvio5mn', '1593102683.png'), '')
+  }
 })
 
 afterAll(async () => {
@@ -108,6 +114,14 @@ describe('what a delivery contains', () => {
 
     expect(fiveMinute?.frames.at(0)?.at).toBe('2020-06-25T16:31:23.000Z')
     expect(fiveMinute?.frames.at(-1)?.at).toBe('2020-06-25T16:51:21.000Z')
+  })
+})
+
+describe('a root holding several deliveries', () => {
+  it('indexes every delivery it holds, with nothing to select them', async () => {
+    const { series } = await index(SEVERAL)
+
+    expect(series.map((one) => one.delivery).sort()).toEqual(['20044', '20045'])
   })
 })
 
