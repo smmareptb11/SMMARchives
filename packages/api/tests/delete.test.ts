@@ -35,7 +35,7 @@ const PERIOD = { from: '2019-10-22T00:00:00Z', to: '2019-10-23T00:00:00Z' }
 describe('deleting a replay', () => {
   it('removes everything it held, rows and bytes alike', async () => {
     const api = await anApi()
-    const manifest = aManifest({ datasets: { measures: aDataset('measures', 1) } })
+    const manifest = aManifest({ datasets: { measures: aDataset(1) } })
     await writeReplay(api, manifest, {
       datasets: {
         measures: [{ sourceId: 1, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1 }],

@@ -56,7 +56,7 @@ afterAll(async () => {
 const THE_DAY = windowOf('2020-06-25T00:00:00Z', '2020-06-26T00:00:00Z')
 
 function index(tree: string, overrides: Partial<Parameters<typeof indexDeliveries>[0]> = {}) {
-  const collector = new ReportCollector('index:radar-rainfall', {})
+  const collector = new ReportCollector({})
   return indexDeliveries({
     root: join(root, tree),
     extent: DEFAULT_RADAR_RAINFALL_EXTENT,

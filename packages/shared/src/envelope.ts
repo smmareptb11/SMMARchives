@@ -40,7 +40,6 @@ export type Failure = z.infer<typeof failureSchema>
  * the density obtained per source, whether a period predates a retention.
  */
 export const reportSchema = z.looseObject({
-  script: z.string(),
   ranAt: instantSchema,
   request: z.record(z.string(), z.unknown()),
   /** Sources asked and answering nothing. An empty `data` cannot say which. */
@@ -136,19 +135,13 @@ export type ReportCollectorOptions = {
  * route connector progress into a job log instead of onto stderr.
  */
 export class ReportCollector {
-  readonly #script: string
   readonly #request: Record<string, unknown>
   readonly #onProgress: (message: string) => void
   readonly #sourcesWithoutData: Array<string | number> = []
   readonly #fallbacks: Fallback[] = []
   readonly #failures: Failure[] = []
 
-  constructor(
-    script: string,
-    request: Record<string, unknown>,
-    options: ReportCollectorOptions = {},
-  ) {
-    this.#script = script
+  constructor(request: Record<string, unknown>, options: ReportCollectorOptions = {}) {
     this.#request = request
     this.#onProgress = options.onProgress ?? (() => {})
   }
@@ -184,7 +177,6 @@ export class ReportCollector {
 
   seal(extra: Record<string, unknown> = {}): Report {
     return {
-      script: this.#script,
       ranAt: new Date().toISOString(),
       request: this.#request,
       sourcesWithoutData: this.#sourcesWithoutData,

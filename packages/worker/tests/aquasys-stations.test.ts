@@ -23,7 +23,7 @@ function collect(
   routes: Parameters<typeof fetchStub>[0],
   extent: BoundingBox | undefined = undefined,
 ) {
-  const collector = new ReportCollector('fetch:aquasys:stations', {})
+  const collector = new ReportCollector({})
   const fetch = fetchStub({ ...DETAILS, ...routes })
   const client = new AquasysClient({ config: CONFIG, fetch })
   return { client, collector, fetch, extent }

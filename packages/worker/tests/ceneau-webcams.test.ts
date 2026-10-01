@@ -13,7 +13,7 @@ function client(routes: Record<string, StubbedResponse>) {
   return {
     client: new LizmapClient({ config: CONFIG, fetch, minIntervalMs: 0 }),
     fetch,
-    collector: new ReportCollector('fetch:webcams', {}),
+    collector: new ReportCollector({}),
   }
 }
 

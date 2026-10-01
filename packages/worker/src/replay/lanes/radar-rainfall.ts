@@ -33,7 +33,7 @@ export async function collectRadarRainfall(
   period: TimeWindow,
 ): Promise<RadarRainfallSeries[] | undefined> {
   return build.runLane('radar-rainfall', async () => {
-    const collector = build.collectorFor('radar-rainfall', 'index:radar-rainfall', {
+    const collector = build.collectorFor('radar-rainfall', {
       root: source.root,
       from: period.from,
       to: period.to,

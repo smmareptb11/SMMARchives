@@ -107,8 +107,8 @@ export class ReplayBuild {
   }
 
   /** A collector for one data set, whose progress reaches the lane's journal. */
-  collectorFor(lane: LaneName, script: string, request: Record<string, unknown>): ReportCollector {
-    return new ReportCollector(script, request, {
+  collectorFor(lane: LaneName, request: Record<string, unknown>): ReportCollector {
+    return new ReportCollector(request, {
       onProgress: this.#journal.progressOf(lane, this.#echo),
     })
   }

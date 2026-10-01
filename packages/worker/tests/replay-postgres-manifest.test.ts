@@ -12,7 +12,6 @@ afterAll(closeDatabase)
 
 function aReport(extra: Record<string, unknown> = {}): Report {
   return {
-    script: 'replay:measures',
     ranAt: '2026-09-11T08:05:00.000Z',
     request: {},
     sourcesWithoutData: [],

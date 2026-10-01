@@ -51,7 +51,7 @@ export async function collectAquasys(
   /* eslint-disable-next-line max-statements, max-lines-per-function -- three data sets off one
      referential, in the order they rest on each other; loading it once is why the lane exists */
   return build.runLane('aquasys', async () => {
-    const referential = build.collectorFor('aquasys', 'fetch:aquasys:stations', {
+    const referential = build.collectorFor('aquasys', {
       families: ['hydro', 'rain-gauge'],
       extent: identity.extent,
     })
@@ -71,7 +71,7 @@ export async function collectAquasys(
     const stationIds = stations.map((one) => one.id)
     const gaugeIds = rainGauges.map((one) => one.id)
 
-    const ladders = build.collectorFor('aquasys', 'fetch:aquasys:thresholds', {
+    const ladders = build.collectorFor('aquasys', {
       family: 'hydro',
       sources: stationIds.length,
     })
@@ -87,7 +87,7 @@ export async function collectAquasys(
       thresholds.length,
     )
 
-    const readings = build.collectorFor('aquasys', 'fetch:aquasys:measures', {
+    const readings = build.collectorFor('aquasys', {
       from: identity.period.from,
       to: identity.period.to,
       families: ['hydro', 'rain-gauge'],

@@ -100,11 +100,10 @@ export async function writeReplay(
 }
 
 /** What a build records about a data set once it has stored it. */
-export function aDataset(name: DatasetName, count: number): DatasetStatus {
+export function aDataset(count: number): DatasetStatus {
   return {
     count,
     report: {
-      script: `replay:${name}`,
       ranAt: '2026-09-10T06:05:00.000Z',
       request: {},
       sourcesWithoutData: [],

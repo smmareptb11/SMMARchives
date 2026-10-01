@@ -12,7 +12,7 @@ import { ExitCode, SourceError } from '../src/errors.ts'
 
 describe('the exit code of a run', () => {
   it('is a success when nothing was found', () => {
-    const collector = new ReportCollector('fetch:aquasys:thresholds', {})
+    const collector = new ReportCollector({})
     for (let id = 1; id <= 40; id += 1) collector.withoutData(id)
 
     const report = collector.seal()
@@ -21,7 +21,7 @@ describe('the exit code of a run', () => {
   })
 
   it('is partial as soon as one call out of 94 failed', () => {
-    const collector = new ReportCollector('fetch:aquasys:measures', {})
+    const collector = new ReportCollector({})
     collector.failed('station 12', new SourceError('HTTP 500', { url: 'https://x/y', status: 500 }))
 
     expect(exitCodeFor(collector.seal())).toBe(ExitCode.partial)
@@ -30,7 +30,7 @@ describe('the exit code of a run', () => {
 
 describe('what a report carries', () => {
   it('keeps the status and redacted url of a source failure', () => {
-    const collector = new ReportCollector('fetch:aquasys:measures', {})
+    const collector = new ReportCollector({})
     collector.failed(
       'station 12',
       new SourceError('HTTP 500', { url: 'https://x/y?token=secret', status: 500 }),
@@ -45,7 +45,7 @@ describe('what a report carries', () => {
   })
 
   it('accepts the measurements a script adds to it', () => {
-    const collector = new ReportCollector('index:radar-rainfall', { delivery: '20044' })
+    const collector = new ReportCollector({ delivery: '20044' })
     const report = collector.seal({ products: ['pluvio5mn'], medianStepMinutes: 5 })
 
     expect(reportSchema.parse(report)).toMatchObject({ products: ['pluvio5mn'] })
@@ -60,7 +60,7 @@ describe('what a report carries', () => {
  */
 describe('data that its own contract refuses', () => {
   const POSITIONS = z.array(z.object({ lon: z.number().min(-180).max(180) }))
-  const envelopeOf = (data: unknown) => ({ data, report: new ReportCollector('probe', {}).seal() })
+  const envelopeOf = (data: unknown) => ({ data, report: new ReportCollector({}).seal() })
 
   it('is stopped before it is stored', () => {
     expect(() => checkEnvelope(POSITIONS, envelopeOf([{ lon: 1000 }]))).toThrow(ContractError)

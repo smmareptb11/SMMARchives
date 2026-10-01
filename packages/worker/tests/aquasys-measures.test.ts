@@ -16,7 +16,7 @@ async function collect(
   window = WHOLE,
   routes: Record<string, StubbedResponse> = { '/chronic/measures': { json: LEVELS } },
 ) {
-  const collector = new ReportCollector('fetch:aquasys:measures', {})
+  const collector = new ReportCollector({})
   const fetch = fetchStub(routes)
   const client = new AquasysClient({ config: CONFIG, fetch })
   const result = await fetchMeasures({
@@ -93,7 +93,7 @@ describe('decoding the positional response', () => {
  */
 describe('the rain gauge path', () => {
   it('reads rain through its own table, and its own endpoint', async () => {
-    const collector = new ReportCollector('fetch:aquasys:measures', {})
+    const collector = new ReportCollector({})
     const fetch = fetchStub({
       '/pluviometer/chartMeasures': { json: [[4, 1, 1539561900000, 12.5, 12.5]] },
     })
@@ -115,7 +115,7 @@ describe('the rain gauge path', () => {
   })
 
   it('refuses a quantity the family does not carry rather than reading another', async () => {
-    const collector = new ReportCollector('fetch:aquasys:measures', {})
+    const collector = new ReportCollector({})
     const fetch = fetchStub({ '/pluviometer/chartMeasures': { json: [] } })
     const client = new AquasysClient({ config: CONFIG, fetch })
 
@@ -172,7 +172,7 @@ describe('the density a replay actually obtained', () => {
    * median over the two interleaved would read as a zero-minute step.
    */
   it('keeps one quantity from flattening another', async () => {
-    const collector = new ReportCollector('fetch:aquasys:measures', {})
+    const collector = new ReportCollector({})
     const client = new AquasysClient({
       config: CONFIG,
       fetch: fetchStub({ '/chronic/measures': { json: LEVELS } }),

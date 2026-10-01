@@ -71,7 +71,7 @@ function derive(
   thresholds: readonly Threshold[] = LADDER,
   stations: readonly Station[] = [station(84)],
 ) {
-  const collector = new ReportCollector('replay:crossings', {})
+  const collector = new ReportCollector({})
   const result = deriveCrossings({ measures, thresholds, stations, collector })
   return { ...result, report: collector.seal() }
 }

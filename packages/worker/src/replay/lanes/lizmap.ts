@@ -53,7 +53,7 @@ export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
   const { build, source, identity } = options
 
   await build.runLane('lizmap', async () => {
-    const layers = build.collectorFor('lizmap', 'fetch:lizmap:layers', {
+    const layers = build.collectorFor('lizmap', {
       layers: [...REFERENCE_LAYERS],
     })
     const collected = await fetchReferenceLayers({
@@ -70,7 +70,7 @@ export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
       collected.length,
     )
 
-    const positions = build.collectorFor('lizmap', 'fetch:webcams:positions', {
+    const positions = build.collectorFor('lizmap', {
       extent: identity.extent,
     })
     const webcams = await fetchWebcamPositions({
@@ -102,7 +102,7 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
   const { build, source, identity } = options
   const codes = webcams.map((one) => one.code)
 
-  const listing = build.collectorFor('lizmap', 'fetch:webcams:images', {
+  const listing = build.collectorFor('lizmap', {
     from: identity.period.from,
     to: identity.period.to,
     codes,
@@ -116,11 +116,9 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
     window: identity.period,
   })
 
-  // Its own collector, and its own report name: the failures of a download must
-  // not be attributed to a script that downloads nothing.
-  const media = options.copyMedia
-    ? build.collectorFor('lizmap', 'replay:media', { prefix: 'webcams' })
-    : undefined
+  // Its own collector: the failures of a download must not be attributed to the
+  // listing, which downloads nothing.
+  const media = options.copyMedia ? build.collectorFor('lizmap', { prefix: 'webcams' }) : undefined
   const frozen =
     media === undefined
       ? undefined

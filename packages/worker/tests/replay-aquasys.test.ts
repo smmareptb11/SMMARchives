@@ -148,12 +148,12 @@ describe('the Aquasys datasets of a replay', () => {
     expect(referential.rainGauges.map((one: { id: number }) => one.id)).toEqual([4])
   })
 
-  it('carry the report of each collection, unchanged', async () => {
+  it('carry the report of the collection that produced each, unchanged', async () => {
     const { manifest } = await build()
 
-    expect(manifest.datasets['stations']?.report.script).toBe('fetch:aquasys:stations')
-    expect(manifest.datasets['thresholds']?.report.script).toBe('fetch:aquasys:thresholds')
-    expect(manifest.datasets['measures']?.report.script).toBe('fetch:aquasys:measures')
+    expect(manifest.datasets['stations']?.report.request).toHaveProperty('extent')
+    expect(manifest.datasets['thresholds']?.report.request).toHaveProperty('sources')
+    expect(manifest.datasets['measures']?.report.request).toHaveProperty('from')
   })
 })
 
