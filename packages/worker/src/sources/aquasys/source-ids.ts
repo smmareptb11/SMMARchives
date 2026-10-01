@@ -87,9 +87,9 @@ export type SourceSelection = {
  * The identifiers a run should work on.
  *
  * The referential buys the extent filter — one request, and one more that types
- * the stations — and the filter is what makes the rest cheap: thresholds and measures cost one request per source, so narrowing the
- * fleet here rather than downstream is the difference between hundreds of calls
- * and a few dozen.
+ * the stations — and the filter is what makes the rest cheap: thresholds and
+ * measures cost one request per source, so narrowing the fleet here rather than
+ * downstream is the difference between hundreds of calls and a few dozen.
  */
 export async function listSourceIds(selection: SourceSelection): Promise<number[]> {
   if (selection.scope.kind === 'ids') return inScope(selection.scope.ids, selection)
