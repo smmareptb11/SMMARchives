@@ -1,4 +1,4 @@
-import type { StationCategory } from '@smmarchives/shared'
+import type { Fallback, StationCategory } from '@smmarchives/shared'
 
 import type { RawNetworkLink } from './raw.ts'
 
@@ -15,14 +15,41 @@ export const NETWORK_CATEGORIES: ReadonlyMap<number, StationCategory> = new Map(
   [5, 'structure'], // Déversoir
 ])
 
-/** The category of each typed station; a station absent from it is untyped. */
-export function typeStations(
-  links: readonly RawNetworkLink[],
-): ReadonlyMap<number, StationCategory> {
-  const categories = new Map<number, StationCategory>()
+export type StationTyping = {
+  /** The category of each typed station; a station absent from it is untyped. */
+  categories: ReadonlyMap<number, StationCategory>
+  fallbacks: Fallback[]
+}
+
+/**
+ * Types the fleet from its network links.
+ *
+ * A station its networks type both ways is left untyped rather than given
+ * either category: a wrong symbol on the map looks plausible, a missing
+ * station does not, and the report names it for correction in Aquasys.
+ */
+export function typeStations(links: readonly RawNetworkLink[]): StationTyping {
+  const candidates = new Map<number, Set<StationCategory>>()
   for (const link of links) {
     const category = NETWORK_CATEGORIES.get(link.idNetwork)
-    if (category !== undefined) categories.set(link.idStation, category)
+    if (category === undefined) continue
+    const found = candidates.get(link.idStation) ?? new Set()
+    candidates.set(link.idStation, found.add(category))
   }
-  return categories
+
+  const categories = new Map<number, StationCategory>()
+  const fallbacks: Fallback[] = []
+  for (const [idStation, found] of candidates) {
+    if (found.size === 1) {
+      categories.set(idStation, [...found][0]!)
+    } else {
+      fallbacks.push({
+        subject: `station ${idStation}`,
+        rule: 'on both structure and watercourse networks',
+        applied: 'station dropped',
+      })
+    }
+  }
+
+  return { categories, fallbacks }
 }

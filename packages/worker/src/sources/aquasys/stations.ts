@@ -47,7 +47,7 @@ type Placed<T> = { row: T; position: Position | null }
  * the measures actually returned, never from metadata.
  */
 export async function fetchStations(options: FetchReferentialOptions): Promise<Station[]> {
-  const rows = await listStations(options.client)
+  const rows = await listStations(options.client, options.collector)
 
   const inside = retain(
     rows.map((row) => ({

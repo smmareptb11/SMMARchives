@@ -8,7 +8,7 @@ import { fixture } from './support/fixtures.ts'
 const LINKS = z.array(rawNetworkLinkSchema).parse(fixture('aquasys/network-links.json'))
 
 describe('the category of a station', () => {
-  const categories = typeStations(LINKS)
+  const { categories, fallbacks } = typeStations(LINKS)
 
   it('is a structure on the structure network', () => {
     expect(categories.get(2)).toBe('structure')
@@ -29,12 +29,45 @@ describe('the category of a station', () => {
   it('is absent on a network that types nothing', () => {
     expect(categories.has(24)).toBe(false)
   })
+
+  it('is read from the recorded links without a fallback', () => {
+    expect(fallbacks).toEqual([])
+  })
 })
 
 describe('a weir on no other network', () => {
   it('is a structure', () => {
     const weir = LINKS.filter((link) => link.idStation === 3 && link.idNetwork === 5)
 
-    expect(typeStations(weir).get(3)).toBe('structure')
+    expect(typeStations(weir).categories.get(3)).toBe('structure')
+  })
+})
+
+describe('a station its networks type both ways', () => {
+  const contradicting = [...LINKS, { idStation: 84, idNetwork: 4 }]
+
+  it('is left untyped', () => {
+    expect(typeStations(contradicting).categories.has(84)).toBe(false)
+  })
+
+  it('is reported', () => {
+    expect(typeStations(contradicting).fallbacks).toEqual([
+      {
+        subject: 'station 84',
+        rule: 'on both structure and watercourse networks',
+        applied: 'station dropped',
+      },
+    ])
+  })
+
+  it('is judged the same whatever the order of its links', () => {
+    expect(typeStations([...contradicting].reverse())).toEqual(typeStations(contradicting))
+  })
+
+  it('leaves the other stations typed', () => {
+    const { categories } = typeStations(contradicting)
+
+    expect(categories.get(2)).toBe('structure')
+    expect(categories.get(152)).toBe('watercourse')
   })
 })

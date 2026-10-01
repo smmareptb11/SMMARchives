@@ -49,6 +49,27 @@ describe('the hydrological station referential', () => {
     expect(JSON.stringify(stations)).not.toContain('updateLogin')
   })
 
+  it('leaves out a station its networks type both ways, and says so', async () => {
+    const links = [
+      ...(fixture('aquasys/network-links.json') as unknown[]),
+      { idStation: 84, idNetwork: 4 },
+    ]
+    const options = collect({
+      ...stationReferentialRoutes(),
+      '/hydrologicalStation/networkLink': { json: links },
+    })
+    const stations = await fetchStations(options)
+
+    expect(stations.map((station) => station.id)).toEqual([2, 152])
+    expect(options.collector.seal().fallbacks).toEqual([
+      {
+        subject: 'station 84',
+        rule: 'on both structure and watercourse networks',
+        applied: 'station dropped',
+      },
+    ])
+  })
+
   it('leaves quantities unknown rather than empty when details are skipped', async () => {
     const options = collect(stationReferentialRoutes())
     const stations = await fetchStations(options)

@@ -31,9 +31,12 @@ export type TypedStation = RawStation & { category: StationCategory }
  * A station no network types is out of scope, and dropped here, before any
  * call is spent on it.
  */
-export async function listStations(client: AquasysClient): Promise<TypedStation[]> {
+export async function listStations(
+  client: AquasysClient,
+  collector: ReportCollector,
+): Promise<TypedStation[]> {
   const rows = z.array(rawStationSchema).parse(await client.list('hydro'))
-  const categories = await stationCategories(client)
+  const categories = await stationCategories(client, collector)
   return rows.flatMap((row) => {
     const category = categories.get(row.id)
     return category === undefined ? [] : [{ ...row, category }]
@@ -47,8 +50,12 @@ export async function listRainGauges(client: AquasysClient): Promise<RawRainGaug
 /** One call for the whole fleet, whatever its size. */
 async function stationCategories(
   client: AquasysClient,
+  collector: ReportCollector,
 ): Promise<ReadonlyMap<number, StationCategory>> {
-  return typeStations(z.array(rawNetworkLinkSchema).parse(await client.networkLinks()))
+  const links = z.array(rawNetworkLinkSchema).parse(await client.networkLinks())
+  const typing = typeStations(links)
+  for (const fallback of typing.fallbacks) collector.fellBackTo(fallback)
+  return typing.categories
 }
 
 function sandreCodeOf(row: RawStation | RawRainGauge): number | undefined {
@@ -89,7 +96,7 @@ export async function listSourceIds(selection: SourceSelection): Promise<number[
 
   const rows =
     selection.family === 'hydro'
-      ? await listStations(selection.client)
+      ? await listStations(selection.client, selection.collector)
       : await listRainGauges(selection.client)
 
   if (selection.scope.kind === 'whole-family') return rows.map((row) => row.id)
@@ -115,7 +122,7 @@ export async function listSourceIds(selection: SourceSelection): Promise<number[
 async function inScope(ids: readonly number[], selection: SourceSelection): Promise<number[]> {
   if (selection.family !== 'hydro') return [...ids]
 
-  const categories = await stationCategories(selection.client)
+  const categories = await stationCategories(selection.client, selection.collector)
   return ids.filter((id) => {
     if (categories.has(id)) return true
     selection.collector.fellBackTo({
