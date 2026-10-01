@@ -30,12 +30,11 @@ const REFERENTIAL = z.object({
 /**
  * Collects the Aquasys data sets off one referential, and derives the events.
  *
- * This is the whole reason a lane exists rather than three calls to the three
- * scripts: each script resolves its own identifiers by loading a family
- * referential whole, because Aquasys has no spatial filter. Run separately they
- * load it three times, and nothing makes the three agree on the fleet — a
- * station could be in `stations.json` and absent from `measures.json` for no
- * reason a reader could see.
+ * One lane rather than three collections, because Aquasys has no spatial
+ * filter: each would resolve its own identifiers by loading a family
+ * referential whole. Run separately they load it three times, and nothing makes
+ * the three agree on the fleet — a station could be in the stations and absent
+ * from the measures for no reason a reader could see.
  *
  * Loaded once here, the extent is applied once, and everything the lane stores
  * rests on the same fleet by construction.
@@ -73,8 +72,7 @@ export async function collectAquasys(
     const stationIds = stations.map((one) => one.id)
     const gaugeIds = rainGauges.map((one) => one.id)
 
-    // Hydro only, like the script, whose `--family` defaults to hydro: no rain
-    // gauge of the fleet carries a threshold worth freezing.
+    // Hydro only: no rain gauge of the fleet carries a threshold worth freezing.
     const ladders = build.collectorFor('aquasys', 'fetch:aquasys:thresholds', {
       family: 'hydro',
       sources: stationIds.length,

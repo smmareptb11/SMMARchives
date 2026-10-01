@@ -77,8 +77,8 @@ export const mediaTallySchema = z.object({
 export type MediaTally = z.infer<typeof mediaTallySchema>
 
 /**
- * An empty replay is a success and a truncated one is not — the same rule the
- * collection scripts follow with their exit codes.
+ * An empty replay is a success and a truncated one is not — the same rule a
+ * report follows with the exit code it implies.
  */
 export const replayStateSchema = z.enum(['running', 'complete', 'partial', 'failed'])
 

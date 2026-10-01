@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 
-import { ReportCollector, exitCodeFor, reportSchema } from '../src/envelope.ts'
+import {
+  ContractError,
+  ReportCollector,
+  checkEnvelope,
+  exitCodeFor,
+  reportSchema,
+} from '../src/envelope.ts'
 import { ExitCode, SourceError } from '../src/errors.ts'
 
 describe('the exit code of a run', () => {
@@ -42,5 +49,31 @@ describe('what a report carries', () => {
     const report = collector.seal({ products: ['pluvio5mn'], medianStepMinutes: 5 })
 
     expect(reportSchema.parse(report)).toMatchObject({ products: ['pluvio5mn'] })
+  })
+})
+
+/**
+ * The contracts of `contracts/` were inert — sixteen schemas, eleven never
+ * parsed, declaring bounds and formats nothing enforced. One of those inert
+ * bounds was on coordinates, and the longitude of 1000 the review found would
+ * have been impossible had it run.
+ */
+describe('data that its own contract refuses', () => {
+  const POSITIONS = z.array(z.object({ lon: z.number().min(-180).max(180) }))
+  const envelopeOf = (data: unknown) => ({ data, report: new ReportCollector('probe', {}).seal() })
+
+  it('is stopped before it is stored', () => {
+    expect(() => checkEnvelope(POSITIONS, envelopeOf([{ lon: 1000 }]))).toThrow(ContractError)
+  })
+
+  it('says where the value is, and not to widen the schema', () => {
+    expect(() => checkEnvelope(POSITIONS, envelopeOf([{ lon: 1000 }]))).toThrow(/data\.0\.lon/)
+    expect(() => checkEnvelope(POSITIONS, envelopeOf([{ lon: 1000 }]))).toThrow(
+      /Do NOT widen the schema/,
+    )
+  })
+
+  it('lets conforming data through untouched', () => {
+    expect(() => checkEnvelope(POSITIONS, envelopeOf([{ lon: 2.83 }]))).not.toThrow()
   })
 })

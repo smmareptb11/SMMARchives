@@ -10,12 +10,21 @@ import {
   type ReportCollector,
   type SourceFamily,
   type Station,
+  type StationCategory,
 } from '@smmarchives/shared'
+import { z } from 'zod'
 
 import type { AquasysClient } from './client.ts'
 import { positionOf } from './position.ts'
-import { rawDetailSchema, type RawRainGauge, type RawStation } from './raw.ts'
-import { listRainGauges, listStations } from './source-ids.ts'
+import {
+  rawDetailSchema,
+  rawNetworkLinkSchema,
+  rawRainGaugeSchema,
+  rawStationSchema,
+  type RawRainGauge,
+  type RawStation,
+} from './raw.ts'
+import { typeStations } from './station-typing.ts'
 
 export type FetchReferentialOptions = {
   client: AquasysClient
@@ -177,4 +186,43 @@ async function fetchQuantities(options: FetchQuantitiesOptions): Promise<Quantit
   }
 
   return quantities
+}
+
+type TypedStation = RawStation & { category: StationCategory }
+
+/**
+ * Reads a whole family referential.
+ *
+ * Always the full list: the identifier space is sparse — 94 stations spread
+ * over 1 to 160, 229 rain gauges over 4 to 744 — so a range is never
+ * enumerated, and `limit` returns a non-deterministic slice.
+ *
+ * A station no network types is out of scope, and dropped here, before any
+ * call is spent on it.
+ */
+async function listStations(
+  client: AquasysClient,
+  collector: ReportCollector,
+): Promise<TypedStation[]> {
+  const rows = z.array(rawStationSchema).parse(await client.list('hydro'))
+  const categories = await stationCategories(client, collector)
+  return rows.flatMap((row) => {
+    const category = categories.get(row.id)
+    return category === undefined ? [] : [{ ...row, category }]
+  })
+}
+
+async function listRainGauges(client: AquasysClient): Promise<RawRainGauge[]> {
+  return z.array(rawRainGaugeSchema).parse(await client.list('rain-gauge'))
+}
+
+/** One call for the whole fleet, whatever its size. */
+async function stationCategories(
+  client: AquasysClient,
+  collector: ReportCollector,
+): Promise<ReadonlyMap<number, StationCategory>> {
+  const links = z.array(rawNetworkLinkSchema).parse(await client.networkLinks())
+  const typing = typeStations(links)
+  for (const fallback of typing.fallbacks) collector.fellBackTo(fallback)
+  return typing.categories
 }

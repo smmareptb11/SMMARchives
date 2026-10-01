@@ -36,7 +36,7 @@ export type Failure = z.infer<typeof failureSchema>
  * reached the output, and the parameters actually used. A count of what is in
  * `data` is not a finding — the caller holds `data`.
  *
- * Open on purpose, because each script has its own non-derivable measurements:
+ * Open on purpose, because each collection has its own non-derivable measurements:
  * the density obtained per source, whether a period predates a retention.
  */
 export const reportSchema = z.looseObject({
@@ -75,7 +75,7 @@ export class ContractError extends Error {
 }
 
 /**
- * Checks an envelope against the contract its script declares.
+ * Checks an envelope against the contract its data set is stored under.
  *
  * The contracts of `contracts/` used to be inert — sixteen schemas, eleven of
  * them never parsed, declaring bounds and formats that nothing enforced. One
@@ -97,8 +97,8 @@ export function checkEnvelope<T>(schema: z.ZodType, envelope: Envelope<T>): void
       'A collector produced a value its own contract refuses. The source answered;',
       'the mapping between what it returned and the contract is what broke.',
       '',
-      'Expected: every value in `data` satisfies the schema the script declares in',
-      'its runScript() call, so the main process can store it without re-checking.',
+      'Expected: every value in `data` satisfies the schema its data set is stored',
+      'under, so the API and the interface can serve it without re-checking.',
       '',
       'Fix the mapper in sources/, or the decoding rule that produced this value.',
       '',
@@ -106,7 +106,7 @@ export function checkEnvelope<T>(schema: z.ZodType, envelope: Envelope<T>): void
       'what the API and the interface will import, and a bound that never runs is how',
       'a longitude of 1000 reached production once already.',
       '',
-      'See docs/utilisation.md and packages/shared/src/contracts/.',
+      'See packages/shared/src/contracts/.',
     ].join('\n'),
   )
 }
@@ -128,7 +128,7 @@ export type ReportCollectorOptions = {
 }
 
 /**
- * Accumulates a {@link Report} while a script runs, and carries the run's
+ * Accumulates a {@link Report} while a collection runs, and carries the run's
  * progress channel.
  *
  * Collectors note as they go and the caller seals once. The progress sink lives

@@ -221,7 +221,7 @@ describe('the fleet of a replay', () => {
 })
 
 /**
- * The two families number their sources independently: `source-ids.ts` records
+ * The two families number their sources independently: the referential records
  * 94 stations spread over 1 to 160 and 229 rain gauges over 4 to 744, so an
  * identifier in that range names one of each. A station and a rain gauge are
  * two sources, whatever they are numbered.

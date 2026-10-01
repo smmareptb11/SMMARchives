@@ -28,7 +28,7 @@ export type WebcamImage = z.infer<typeof webcamImageSchema>
  * An image once a replay holds its own copy.
  *
  * Separate from {@link webcamImageSchema} rather than a field on it, because
- * where a copy lives is not a property of the observation: a collection script
+ * where a copy lives is not a property of the observation: the source reader
  * would have to carry a slot it can only ever leave empty, and a consumer of
  * the raw image would inherit a field meaningless outside a replay. The radar
  * frames make the same distinction the other way round — their `path` is the

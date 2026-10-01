@@ -66,8 +66,8 @@ Deux pièges, et le second coûte une demi-heure à qui l'ignore.
 ## Les variables d'environnement
 
 Toute la configuration passe par l'environnement. **Aucun secret n'est
-versionné.** `.env.sample` en tient la version commentée ; les scripts la lisent
-par `--env-file-if-exists=.env`, à la racine du dépôt.
+versionné.** `.env.sample` en tient la version commentée ; les commandes `npm run`
+la lisent par `--env-file-if-exists=.env`, à la racine du dépôt.
 
 Une variable présente mais vide vaut une variable absente : elle est refusée de
 la même façon.
@@ -76,11 +76,11 @@ la même façon.
 |---|---|---|---|
 | `DATABASE_URL` | obligatoire | — | API, migrations, `build:replay` |
 | `MEDIA_PATH` | obligatoire | — | API, `build:replay` — même avec `--no-media` |
-| `ACYCLIQ_API_URL` | obligatoire pour lire Aquasys | — | Scripts Aquasys, `build:replay` |
+| `ACYCLIQ_API_URL` | obligatoire pour lire Aquasys | — | `build:replay` |
 | `ACYCLIQ_TOKEN` | obligatoire pour lire Aquasys | — | idem |
 | `AQUASYS_TIME_ZONE` | optionnelle | `UTC` | idem |
-| `LIZMAP_BASE_URL` | obligatoire pour lire le Lizmap | — | Scripts Lizmap et webcams |
-| `RADAR_RAINFALL_PATH` | obligatoire pour qui demande les lames d'eau par leur nom, sauf si `--dir` est donné ; optionnelle sinon | — | `index:radar-rainfall`, `build:replay`, et donc l'API |
+| `LIZMAP_BASE_URL` | obligatoire pour lire le Lizmap | — | `build:replay` |
+| `RADAR_RAINFALL_PATH` | obligatoire pour qui demande les lames d'eau par leur nom, sauf si `--dir` est donné ; optionnelle sinon | — | `build:replay`, et donc l'API |
 | `RADAR_RAINFALL_BBOX` | optionnelle | une emprise fixée dans le code | idem |
 | `API_PORT` | optionnelle | `3000` | API, et le serveur de développement pour savoir où relayer |
 | `WEB_PORT` | optionnelle | `5180` | Serveur de développement |
@@ -98,10 +98,10 @@ Trois précisions que le tableau ne peut pas porter.
   `API_PORT` qui n'est pas un entier de 1 à 65535 arrête l'API à son démarrage,
   en se nommant : un port coercé en `NaN` donnerait une API qui écoute ailleurs
   et ne dit pas pourquoi. Un `AQUASYS_TIME_ZONE` qui n'est pas un fuseau IANA et
-  un `RADAR_RAINFALL_BBOX` malformé arrêtent de même le script ou la
-  construction qui les lit — mais **pas** le démarrage de l'API, qui ne les lit
-  pas : l'erreur se voit alors au premier rejeu lancé, sous la forme d'une
-  construction qui n'a pas pu démarrer.
+  un `RADAR_RAINFALL_BBOX` malformé arrêtent de même la construction qui les
+  lit — mais **pas** le démarrage de l'API, qui ne les lit pas : l'erreur se
+  voit alors au premier rejeu lancé, sous la forme d'une construction qui n'a
+  pas pu démarrer.
 - **Les adresses des sources ne sont pas versionnées.** `ACYCLIQ_API_URL` et
   `LIZMAP_BASE_URL` se renseignent auprès de l'exploitant des services
   concernés. Le jeton Aquasys est un secret : ni versionné, ni journalisé, ni
