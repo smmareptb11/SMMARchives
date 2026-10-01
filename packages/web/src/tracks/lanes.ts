@@ -1,7 +1,6 @@
 import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
 import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 import type { RadarRainfallSeries } from '@smmarchives/shared/contracts/radar-rainfall.ts'
-import type { ReferenceLayer } from '@smmarchives/shared/contracts/reference-layer.ts'
 import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.ts'
 import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
 import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
@@ -35,8 +34,6 @@ export type ReplayContent = {
   webcams: Webcam[]
   images: FrozenWebcamImage[]
   series: RadarRainfallSeries[]
-  /** The map's ground. No lane reads them: they are places, not observations. */
-  layers: ReferenceLayer[]
 }
 
 /** Where something sits on the ruler, in percent of the period. */

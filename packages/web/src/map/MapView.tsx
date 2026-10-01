@@ -89,7 +89,7 @@ function useMountedMap(
 /** Everything a replay puts on the map, once there is a style to put it on. */
 function drawEverything(map: MapLibreMap, content: ReplayContent): void {
   addShapes(map)
-  drawTerritory(map, content)
+  drawTerritory(map)
   drawSources(map, content)
 
   const bounds = boundsOf(content)

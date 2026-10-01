@@ -1,7 +1,6 @@
 import type { ReplayEvent, ThresholdCrossing } from '@smmarchives/shared/contracts/event.ts'
 import type { Measure } from '@smmarchives/shared/contracts/measure.ts'
 import type { RadarRainfallSeries } from '@smmarchives/shared/contracts/radar-rainfall.ts'
-import type { ReferenceLayer } from '@smmarchives/shared/contracts/reference-layer.ts'
 import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.ts'
 import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
 import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
@@ -31,7 +30,6 @@ export function held(content: Partial<ReplayContent> = {}): ReplayContent {
     webcams: [],
     images: [],
     series: [],
-    layers: [],
     ...content,
   }
 }
@@ -151,11 +149,6 @@ export function aCamera(code = '215', commune = 'Mailhac'): Webcam {
     operational: true,
     position: { lon: 2.82, lat: 43.3 },
   }
-}
-
-/** A reference layer of the Lizmap, as a replay copied it. */
-export function aLayer(name: string): ReferenceLayer {
-  return { name, featureCount: 0, geojson: { type: 'FeatureCollection', features: [] } }
 }
 
 /** A radar rainfall series, of a delivery the replay indexed. */

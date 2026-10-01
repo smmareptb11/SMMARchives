@@ -1,5 +1,3 @@
-import type { ReferenceLayer } from '@smmarchives/shared/contracts/reference-layer.ts'
-
 import { MUTED } from '../palette.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { KINDS, kindOf } from './sources.ts'
@@ -40,16 +38,9 @@ export function swatchColourOf(family: Family): string {
   return family === 'rain-gauge' ? MUTED : NEUTRAL
 }
 
-/** The layer of the Lizmap the map draws as the replay's ground. */
-export const PERIMETERS = 'perimetre_syndicats'
-
-/** The ground the replay copied, when it copied it. */
-export function territoryOf(content: ReplayContent): ReferenceLayer | undefined {
-  return content.layers.find((one) => one.name === PERIMETERS)
-}
-
 /**
- * The families this replay holds, and no others.
+ * The families this replay holds, and no others, with the territory the
+ * application carries for every replay.
  *
  * A switch for a family the replay does not hold answers nothing when it is
  * cut: no layer to hide, no marker to take off. A switch that does nothing
@@ -61,7 +52,7 @@ export function familiesOf(content: ReplayContent): Family[] {
   return FAMILIES.filter((family) => {
     if (family === 'rain-gauge') return content.rainGauges.length > 0
     if (family === 'webcam') return content.webcams.length > 0
-    if (family === 'territory') return territoryOf(content) !== undefined
+    if (family === 'territory') return true
     return drawn.has(family)
   })
 }
