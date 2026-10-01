@@ -9,7 +9,6 @@ import {
   replayIdSchema,
   windowOf,
   type BoundingBox,
-  type LaneName,
   type TimeWindow,
 } from '@smmarchives/shared'
 
@@ -73,43 +72,6 @@ export function toReplayId(value: string): string {
     throw new UsageError(`--id ${parsed.error.issues[0]?.message ?? 'is not a usable identifier'}`)
   }
   return parsed.data
-}
-
-/**
- * The lanes `--only` can select.
- *
- * Not derived from `laneNameSchema` on purpose, though it is a subset of it:
- * what makes a lane selectable is that this CLI knows how to build its source,
- * which is a fact about this file. Derived, a lane added to the schema would
- * become selectable here before anything could give it a source, and `--only`
- * would then build an empty replay in silence — worse than refusing a name it
- * does not know yet. `satisfies` keeps the two from drifting apart on a typo.
- */
-const COLLECTING_LANES = [
-  'aquasys',
-  'lizmap',
-  'radar-rainfall',
-] as const satisfies readonly LaneName[]
-
-export type CollectingLane = (typeof COLLECTING_LANES)[number]
-
-/**
- * Which lanes to collect from, all of them by default.
- *
- * An unknown name is refused, naming what is accepted; a name given twice is
- * the same request twice and reduces to one. The order of the constant decides
- * nothing but the wording of that refusal — which lane runs first is
- * `buildReplay`'s business.
- */
-export function toLanes(values: readonly string[] | undefined): Set<CollectingLane> {
-  if (values === undefined) return new Set(COLLECTING_LANES)
-
-  for (const value of values) {
-    if (!COLLECTING_LANES.includes(value as CollectingLane)) {
-      throw new UsageError(`--only must be one of ${COLLECTING_LANES.join(', ')}`)
-    }
-  }
-  return new Set(values as readonly CollectingLane[])
 }
 
 export function toWindow(from: string | undefined, to: string | undefined): TimeWindow {

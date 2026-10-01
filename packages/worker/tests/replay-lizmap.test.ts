@@ -112,7 +112,6 @@ async function build({
           radarRainfall: {
             root: deliveries,
             rasterExtent: DEFAULT_RADAR_RAINFALL_EXTENT,
-            deliveries: undefined,
           },
         }
       : {}),

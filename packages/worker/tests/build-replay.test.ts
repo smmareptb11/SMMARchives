@@ -89,7 +89,6 @@ async function build(overrides: Overrides = {}) {
     radarRainfall: {
       root: deliveries,
       rasterExtent: DEFAULT_RADAR_RAINFALL_EXTENT,
-      deliveries: undefined,
       ...overrides.radarRainfall,
     },
   })
@@ -121,7 +120,8 @@ describe('a replay that builds', () => {
   })
 
   it('keeps the collection report, which the data set cannot show', async () => {
-    const { manifest } = await build({ radarRainfall: { deliveries: ['20044', '20036'] } })
+    await mkdir(join(deliveries, '20036'))
+    const { manifest } = await build()
 
     expect(manifest.datasets['radar-rainfall']?.report.sourcesWithoutData).toEqual(['20036'])
   })

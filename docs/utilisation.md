@@ -16,27 +16,18 @@ npm run build:replay -- --from 2019-10-22T00:00Z --to 2019-10-24T00:00Z --label 
 | `--label` | Le libellé du rejeu |
 | `--bbox` | L'emprise. Omise, tout le parc |
 | `--id` | Construit **dans un rejeu existant**. Sans elle, la base frappe un identifiant neuf. Un identifiant qui ne désigne rien est refusé |
-| `--only` | Les voies collectées, parmi `aquasys`, `lizmap`, `radar-rainfall`, répétable. Toutes si omise ; un nom inconnu est refusé |
-| `--dir` | Racine des livraisons radar, l'emporte sur la variable |
-| `--delivery` | Les livraisons radar retenues, répétable |
-| `--no-media` | Ne copie pas les médias |
 
 **Un rejeu est nommé par ce qui le stocke.** C'est la base qui frappe
 l'identifiant : aucun appelant n'en choisit un, donc aucun n'entre en collision
 et aucun n'a à être refusé.
 
-`--only` est ce qui permet de constituer un rejeu **sans réseau du tout** : un
-rejeu des seules lames d'eau livrées n'exige aucun jeton Aquasys.
-
-**Une voie n'exige sa configuration que si elle est demandée.** Les lames d'eau
-vont plus loin : demandées par leur nom — `--only radar-rainfall`, ou un `--dir`
-— elles refusent une racine manquante en nommant `RADAR_RAINFALL_PATH` ; prises
-par défaut avec les autres, une racine manquante ne fait que les écarter, et la
-construction le dit sur sa sortie d'erreur. C'est ce qui rend un rejeu
-constituable avant la première livraison Predict.
-
-`DATABASE_URL` et `MEDIA_PATH` sont exigées dans tous les cas, `--no-media`
-compris.
+**Un rejeu collecte toutes les sources et copie tous ses médias.** Où les
+trouver vient de l'environnement — voir
+[`installation.md`](installation.md#les-variables-denvironnement). Les lames
+d'eau sont la seule source facultative : sans `RADAR_RAINFALL_PATH`, la
+construction les écarte et le dit sur sa sortie d'erreur, ce qui rend un rejeu
+constituable avant la première livraison Predict. La variable renseignée,
+toutes les livraisons du répertoire sont indexées.
 
 ### Ce que la construction collecte
 

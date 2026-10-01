@@ -75,12 +75,12 @@ la même façon.
 | Variable | Statut | Défaut | Lue par |
 |---|---|---|---|
 | `DATABASE_URL` | obligatoire | — | API, migrations, `build:replay` |
-| `MEDIA_PATH` | obligatoire | — | API, `build:replay` — même avec `--no-media` |
-| `ACYCLIQ_API_URL` | obligatoire pour lire Aquasys | — | `build:replay` |
-| `ACYCLIQ_TOKEN` | obligatoire pour lire Aquasys | — | idem |
+| `MEDIA_PATH` | obligatoire | — | API, `build:replay` |
+| `ACYCLIQ_API_URL` | obligatoire | — | `build:replay` |
+| `ACYCLIQ_TOKEN` | obligatoire | — | idem |
 | `AQUASYS_TIME_ZONE` | optionnelle | `UTC` | idem |
-| `LIZMAP_BASE_URL` | obligatoire pour lire le Lizmap | — | `build:replay` |
-| `RADAR_RAINFALL_PATH` | obligatoire pour qui demande les lames d'eau par leur nom, sauf si `--dir` est donné ; optionnelle sinon | — | `build:replay`, et donc l'API |
+| `LIZMAP_BASE_URL` | obligatoire | — | `build:replay` |
+| `RADAR_RAINFALL_PATH` | optionnelle : vide, un rejeu se construit sans les lames d'eau | — | `build:replay`, et donc l'API |
 | `RADAR_RAINFALL_BBOX` | optionnelle | une emprise fixée dans le code | idem |
 | `API_PORT` | optionnelle | `3000` | API, et le serveur de développement pour savoir où relayer |
 | `WEB_PORT` | optionnelle | `5180` | Serveur de développement |

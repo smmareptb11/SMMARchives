@@ -68,7 +68,7 @@ type Overrides = {
   /** Wraps the real store, for the tests that need one of its writes to fail. */
   store?: (real: ReplayStore) => ReplayStore
   copyMedia?: boolean
-  /** Omitted to build with one source only, which is what `--only` produces. */
+  /** Narrowed to build with one source only, so a suite reads one lane at a time. */
   sources?: 'aquasys' | 'radar-rainfall' | 'both'
 }
 
@@ -97,7 +97,6 @@ async function build({
           radarRainfall: {
             root: deliveries,
             rasterExtent: DEFAULT_RADAR_RAINFALL_EXTENT,
-            deliveries: undefined,
           },
         }),
     copyMedia,

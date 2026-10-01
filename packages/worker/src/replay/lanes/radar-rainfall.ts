@@ -17,7 +17,6 @@ export type RadarRainfallSource = {
    * one shifts the whole layer without anything on screen saying so.
    */
   rasterExtent: BoundingBox
-  deliveries: readonly string[] | undefined
 }
 
 /**
@@ -36,7 +35,6 @@ export async function collectRadarRainfall(
   return build.runLane('radar-rainfall', async () => {
     const collector = build.collectorFor('radar-rainfall', 'index:radar-rainfall', {
       root: source.root,
-      deliveries: source.deliveries ?? null,
       from: period.from,
       to: period.to,
     })
@@ -45,7 +43,7 @@ export async function collectRadarRainfall(
       root: source.root,
       extent: source.rasterExtent,
       collector,
-      deliveries: source.deliveries,
+      deliveries: undefined,
       window: period,
     })
 

@@ -1,7 +1,7 @@
 import { ConfigurationError, ExitCode, SourceError } from '@smmarchives/shared'
 import { describe, expect, it, vi } from 'vitest'
 
-import { UsageError, runProcess, toExtent, toLanes, toReplayId } from '../src/cli.ts'
+import { UsageError, runProcess, toExtent, toReplayId } from '../src/cli.ts'
 
 /**
  * What every command of the worker rests on, exercised through `runProcess`
@@ -135,31 +135,5 @@ describe('the identifier of a replay', () => {
 
   it('accepts the slug an operator would actually write', () => {
     expect(toReplayId('aude-2018-10')).toBe('aude-2018-10')
-  })
-})
-
-/**
- * Which lanes a build collects from. This flag decides whether an Aquasys token
- * is required at all, so what it refuses is what keeps a build with no network
- * at all possible.
- */
-describe('the lanes a build is restricted to', () => {
-  it('is every collecting lane when the flag is absent', () => {
-    expect([...toLanes(undefined)].sort()).toEqual(['aquasys', 'lizmap', 'radar-rainfall'])
-  })
-
-  it('refuses a name that is not a lane, saying what is accepted', () => {
-    expect(() => toLanes(['webcams'])).toThrow(UsageError)
-    expect(() => toLanes(['webcams'])).toThrow(
-      '--only must be one of aquasys, lizmap, radar-rainfall',
-    )
-  })
-
-  it('refuses the lane that reads no source of its own', () => {
-    expect(() => toLanes(['media'])).toThrow(UsageError)
-  })
-
-  it('reduces a name given twice to one request', () => {
-    expect([...toLanes(['aquasys', 'aquasys'])]).toEqual(['aquasys'])
   })
 })
