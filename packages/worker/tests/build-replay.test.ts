@@ -88,7 +88,7 @@ async function build(overrides: Overrides = {}) {
     },
     radarRainfall: {
       root: deliveries,
-      rasterExtent: DEFAULT_RADAR_RAINFALL_EXTENT,
+      extent: DEFAULT_RADAR_RAINFALL_EXTENT,
       ...overrides.radarRainfall,
     },
   })

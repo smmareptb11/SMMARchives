@@ -71,6 +71,7 @@ export async function collectAquasys(
     const stationIds = stations.map((one) => one.id)
     const gaugeIds = rainGauges.map((one) => one.id)
 
+    // Hydro only: no rain gauge of the fleet carries a threshold worth freezing.
     const ladders = build.collectorFor('aquasys', {
       family: 'hydro',
       sources: stationIds.length,
@@ -78,6 +79,7 @@ export async function collectAquasys(
     const thresholds = await fetchThresholds({
       client: source.client,
       collector: ladders,
+      family: 'hydro',
       sourceIds: stationIds,
     })
     await build.stored(

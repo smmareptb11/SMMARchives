@@ -96,7 +96,7 @@ async function build({
       : {
           radarRainfall: {
             root: deliveries,
-            rasterExtent: DEFAULT_RADAR_RAINFALL_EXTENT,
+            extent: DEFAULT_RADAR_RAINFALL_EXTENT,
           },
         }),
     copyMedia,
@@ -151,16 +151,26 @@ describe('the Aquasys datasets of a replay', () => {
   it('carry the report of the collection that produced each, unchanged', async () => {
     const { manifest } = await build()
 
-    expect(manifest.datasets['stations']?.report.request).toHaveProperty('extent')
-    expect(manifest.datasets['thresholds']?.report.request).toHaveProperty('sources')
-    expect(manifest.datasets['measures']?.report.request).toHaveProperty('from')
+    expect(manifest.datasets['stations']?.report.request).toEqual({
+      families: ['hydro', 'rain-gauge'],
+      extent: NARBONNAIS,
+    })
+    expect(manifest.datasets['thresholds']?.report.request).toEqual({
+      family: 'hydro',
+      sources: (await heldReferential()).stations.length,
+    })
+    expect(manifest.datasets['measures']?.report.request).toEqual({
+      from: '2018-10-15T00:00:00.000Z',
+      to: '2018-10-17T00:00:00.000Z',
+      families: ['hydro', 'rain-gauge'],
+    })
   })
 })
 
 /**
- * The reason the lane exists rather than three calls to the scripts: each script
- * loads a whole family referential to resolve its own identifiers, so running
- * three of them loads it three times — and nothing guarantees the three agree
+ * The reason the lane is one rather than three collections: each would load a
+ * whole family referential to resolve its own identifiers, so running three of
+ * them would load it three times — and nothing would guarantee the three agree
  * on the fleet.
  */
 describe('the referential a replay rests on', () => {

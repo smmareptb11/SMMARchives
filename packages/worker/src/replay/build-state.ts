@@ -106,8 +106,13 @@ export class ReplayBuild {
     await this.publish()
   }
 
-  /** A collector for one data set, whose progress reaches the lane's journal. */
-  collectorFor(lane: LaneName, request: Record<string, unknown>): ReportCollector {
+  /**
+   * A collector for one data set, whose progress reaches the lane's journal.
+   *
+   * No request for one that only gathers failures for {@link noteFailures},
+   * which keeps nothing else of its report.
+   */
+  collectorFor(lane: LaneName, request: Record<string, unknown> = {}): ReportCollector {
     return new ReportCollector(request, {
       onProgress: this.#journal.progressOf(lane, this.#echo),
     })

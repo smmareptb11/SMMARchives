@@ -3,7 +3,6 @@ import {
   contains,
   dataTypesFor,
   type BoundingBox,
-  type DataTypeTable,
   type Position,
   type Quantity,
   type RainGauge,
@@ -141,38 +140,21 @@ function commonFields(
  * The only reliable way to know: `/chronic/stats` takes up to 5.5 s on a single
  * station with a long history.
  */
-function quantitiesOf(
+async function quantitiesOf(
   options: FetchReferentialOptions,
   family: SourceFamily,
   ids: readonly number[],
 ): Promise<Quantities> {
-  return fetchQuantities({
-    client: options.client,
-    collector: options.collector,
-    family,
-    table: dataTypesFor(family),
-    ids,
-  })
-}
-
-type FetchQuantitiesOptions = {
-  client: AquasysClient
-  collector: ReportCollector
-  family: SourceFamily
-  table: DataTypeTable
-  ids: readonly number[]
-}
-
-async function fetchQuantities(options: FetchQuantitiesOptions): Promise<Quantities> {
   const quantities: Quantities = new Map()
-  const label = SOURCE_LABEL[options.family]
-  const tick = options.collector.progressEvery(options.ids.length, `${label} details`)
+  const table = dataTypesFor(family)
+  const label = SOURCE_LABEL[family]
+  const tick = options.collector.progressEvery(ids.length, `${label} details`)
 
-  for (const id of options.ids) {
+  for (const id of ids) {
     try {
-      const detail = rawDetailSchema.parse(await options.client.detail(options.family, id))
+      const detail = rawDetailSchema.parse(await options.client.detail(family, id))
       const found = (detail.link_pointPrels ?? []).flatMap((point) => {
-        const dataType = options.table.byTypeId(point.typeId)
+        const dataType = table.byTypeId(point.typeId)
         return dataType === undefined ? [] : [dataType.quantity]
       })
       quantities.set(id, [...new Set(found)])

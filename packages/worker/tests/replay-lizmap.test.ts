@@ -25,6 +25,7 @@ import {
   type StoredReplay,
 } from './support/replay-store.ts'
 import { LizmapClient } from '../src/sources/lizmap/client.ts'
+import { REFERENCE_LAYERS } from '../src/sources/lizmap/layers.ts'
 import { fetchStub, fixture, fixtureText } from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://crise.test' }
@@ -111,7 +112,7 @@ async function build({
       ? {
           radarRainfall: {
             root: deliveries,
-            rasterExtent: DEFAULT_RADAR_RAINFALL_EXTENT,
+            extent: DEFAULT_RADAR_RAINFALL_EXTENT,
           },
         }
       : {}),
@@ -201,9 +202,15 @@ describe('the Lizmap data sets of a replay', () => {
     const [first] = IMAGES.pictures
     const { manifest } = await build({ routes: { ...ROUTES, [first!.uri]: { status: 404 } } })
 
-    expect(manifest.datasets['reference-layers']?.report.request).toHaveProperty('layers')
-    expect(manifest.datasets['webcams']?.report.request).toHaveProperty('extent')
-    expect(manifest.datasets['webcam-images']?.report.request).toHaveProperty('codes')
+    expect(manifest.datasets['reference-layers']?.report.request).toEqual({
+      layers: [...REFERENCE_LAYERS],
+    })
+    expect(manifest.datasets['webcams']?.report.request).toEqual({ extent: MAILHAC })
+    expect(manifest.datasets['webcam-images']?.report.request).toEqual({
+      from: RECENT.from,
+      to: RECENT.to,
+      codes: ['215'],
+    })
 
     // A download failure belongs to the copy of the media, not to the listing,
     // which downloads nothing: attributing it there would send a reader to the

@@ -118,7 +118,7 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
 
   // Its own collector: the failures of a download must not be attributed to the
   // listing, which downloads nothing.
-  const media = options.copyMedia ? build.collectorFor('lizmap', { prefix: 'webcams' }) : undefined
+  const media = options.copyMedia ? build.collectorFor('lizmap') : undefined
   const frozen =
     media === undefined
       ? undefined

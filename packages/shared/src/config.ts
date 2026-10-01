@@ -68,6 +68,10 @@ export function lizmapConfig(env: Environment = process.env): LizmapConfig {
 
 export type RadarRainfallConfig = {
   root: string
+  /**
+   * The extent shared by every raster, reported with the data because a wrong
+   * one shifts the whole layer without anything on screen saying so.
+   */
   extent: BoundingBox
 }
 

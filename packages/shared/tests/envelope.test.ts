@@ -44,7 +44,7 @@ describe('what a report carries', () => {
     })
   })
 
-  it('accepts the measurements a script adds to it', () => {
+  it('accepts the measurements a collection adds to it', () => {
     const collector = new ReportCollector({ delivery: '20044' })
     const report = collector.seal({ products: ['pluvio5mn'], medianStepMinutes: 5 })
 

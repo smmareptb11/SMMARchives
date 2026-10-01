@@ -113,11 +113,8 @@ async function openOrCreate(
  */
 function radarSource() {
   const config = radarRainfallConfig()
-  if (config === undefined) {
-    progress('  radar-rainfall: no delivery root configured, lane not run')
-    return undefined
-  }
-  return { root: config.root, rasterExtent: config.extent }
+  if (config === undefined) progress('  radar-rainfall: no delivery root configured, lane not run')
+  return config
 }
 
 /** What the run produced, before the exit code says only whether it is whole. */

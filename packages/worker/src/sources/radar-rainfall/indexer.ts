@@ -97,7 +97,7 @@ async function scanProduct(
   const directory = join(options.root, delivery, product)
 
   // One unreadable product is a partial failure, like one station out of 94:
-  // what is already indexed is kept and the envelope still comes out.
+  // what is already indexed is kept and the series are still returned.
   let entries
   try {
     entries = await readdir(directory, { withFileTypes: true })
