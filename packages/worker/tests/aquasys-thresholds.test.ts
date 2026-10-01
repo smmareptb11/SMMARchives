@@ -10,7 +10,7 @@ const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC
 async function classify(sourceIds: number[], routes: Record<string, StubbedResponse>) {
   const collector = new ReportCollector('fetch:aquasys:thresholds', {})
   const client = new AquasysClient({ config: CONFIG, fetch: fetchStub(routes) })
-  const thresholds = await fetchThresholds({ client, collector, family: 'hydro', sourceIds })
+  const thresholds = await fetchThresholds({ client, collector, sourceIds })
   return { thresholds, report: collector.seal() }
 }
 

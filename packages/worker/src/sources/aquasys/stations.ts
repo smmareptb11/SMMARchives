@@ -36,13 +36,6 @@ export type FetchReferentialOptions = {
    * one request — but everything after the filter costs one request per source.
    */
   extent: BoundingBox | undefined
-  /**
-   * Read `link_pointPrels` on each retained source to learn what it measures.
-   *
-   * The only reliable way to know: `/chronic/stats` takes up to 5.5 s on a
-   * single station with a long history.
-   */
-  withDetails: boolean
 }
 
 type Quantities = Map<number, Quantity[]>
@@ -128,7 +121,7 @@ function retain<T>(placed: readonly Placed<T>[], extent: BoundingBox | undefined
 function commonFields(
   row: RawStation | RawRainGauge,
   position: Position | null,
-  details: Quantities | undefined,
+  details: Quantities,
 ) {
   return {
     id: row.id,
@@ -138,17 +131,21 @@ function commonFields(
     townCode: row.townCode ?? null,
     altitude: row.altitude ?? null,
     position,
-    quantities: details?.get(row.id) ?? null,
+    quantities: details.get(row.id) ?? null,
   }
 }
 
+/**
+ * Reads `link_pointPrels` on each retained source to learn what it measures.
+ *
+ * The only reliable way to know: `/chronic/stats` takes up to 5.5 s on a single
+ * station with a long history.
+ */
 function quantitiesOf(
   options: FetchReferentialOptions,
   family: SourceFamily,
   ids: readonly number[],
-): Promise<Quantities> | undefined {
-  if (!options.withDetails) return undefined
-
+): Promise<Quantities> {
   return fetchQuantities({
     client: options.client,
     collector: options.collector,

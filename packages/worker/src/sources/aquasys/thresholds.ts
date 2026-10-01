@@ -2,7 +2,6 @@ import {
   dataTypesFor,
   type Fallback,
   type ReportCollector,
-  type SourceFamily,
   type Threshold,
   type ThresholdNature,
 } from '@smmarchives/shared'
@@ -14,14 +13,14 @@ import { rawThresholdSchema, type RawThreshold } from './raw.ts'
 export type FetchThresholdsOptions = {
   client: AquasysClient
   collector: ReportCollector
-  family: SourceFamily
+  /** Stations only: no rain gauge of the fleet carries a threshold worth freezing. */
   sourceIds: readonly number[]
 }
 
 const FLOOD_MARK_LABEL = /^\s*crue\s+du\b/i
 
 /**
- * Reads the thresholds of a set of sources and classifies each one.
+ * Reads the thresholds of a set of stations and classifies each one.
  *
  * Thresholds carry no date: they are copied into a replay at generation time,
  * because reading today's thresholds to reconstruct a past event produces a
@@ -36,12 +35,12 @@ export async function fetchThresholds(options: FetchThresholdsOptions): Promise<
     try {
       const rows = z
         .array(rawThresholdSchema)
-        .parse(await options.client.thresholds(options.family, sourceId))
+        .parse(await options.client.stationThresholds(sourceId))
 
       if (rows.length === 0) {
         options.collector.withoutData(sourceId)
       } else {
-        thresholds.push(...classify(rows, sourceId, options.family, options.collector))
+        thresholds.push(...classify(rows, sourceId, options.collector))
       }
     } catch (error) {
       options.collector.failed(`source ${sourceId} thresholds`, error)
@@ -63,10 +62,9 @@ export async function fetchThresholds(options: FetchThresholdsOptions): Promise<
 function classify(
   rows: readonly RawThreshold[],
   sourceId: number,
-  family: SourceFamily,
   collector: ReportCollector,
 ): Threshold[] {
-  const table = dataTypesFor(family)
+  const table = dataTypesFor('hydro')
   const droughtDataTypes = new Set(
     rows.filter(isDeclaredDrought).map((row) => String(row.dataType)),
   )
@@ -78,7 +76,7 @@ function classify(
     if (quantity === undefined) {
       collector.fellBackTo({
         subject: `source ${sourceId}, threshold ${row.id} "${row.name}"`,
-        rule: `dataType ${row.dataType} is in no ${family} data type table`,
+        rule: `dataType ${row.dataType} is in no hydro data type table`,
         applied: 'threshold dropped',
       })
       continue

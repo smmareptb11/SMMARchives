@@ -54,10 +54,9 @@ export async function collectAquasys(
     const referential = build.collectorFor('aquasys', 'fetch:aquasys:stations', {
       families: ['hydro', 'rain-gauge'],
       extent: identity.extent,
-      withDetails: true,
     })
     referential.progress('hydrological stations…')
-    const options = { client: source.client, collector: referential, extent, withDetails: true }
+    const options = { client: source.client, collector: referential, extent }
     const stations = await fetchStations(options)
     referential.progress('rain gauges…')
     const rainGauges = await fetchRainGauges(options)
@@ -72,7 +71,6 @@ export async function collectAquasys(
     const stationIds = stations.map((one) => one.id)
     const gaugeIds = rainGauges.map((one) => one.id)
 
-    // Hydro only: no rain gauge of the fleet carries a threshold worth freezing.
     const ladders = build.collectorFor('aquasys', 'fetch:aquasys:thresholds', {
       family: 'hydro',
       sources: stationIds.length,
@@ -80,7 +78,6 @@ export async function collectAquasys(
     const thresholds = await fetchThresholds({
       client: source.client,
       collector: ladders,
-      family: 'hydro',
       sourceIds: stationIds,
     })
     await build.stored(

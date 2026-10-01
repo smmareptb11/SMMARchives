@@ -16,7 +16,7 @@ import type { LizmapClient } from '../lizmap/client.ts'
  * feeds — web pages or embedded players — with no image history. Filter on
  * `source`, and on nothing else.
  */
-export const EXPLOITABLE_SOURCE = 'ceneau'
+const EXPLOITABLE_SOURCE = 'ceneau'
 
 /** No declared CRS on this layer, so WGS84 — Lizmap reprojects on output. */
 const pointSchema = z.object({

@@ -43,7 +43,6 @@ export async function collectRadarRainfall(
       root: source.root,
       extent: source.rasterExtent,
       collector,
-      deliveries: undefined,
       window: period,
     })
 

@@ -18,7 +18,6 @@ export type MeasureRequest = {
 type FamilyRoutes = {
   list: string
   detail: (id: number) => string
-  thresholds: (id: number) => string
   measures: string
 }
 
@@ -48,13 +47,11 @@ export class AquasysClient {
       hydro: {
         list: `${base}/hydrologicalStation/`,
         detail: (id) => `${base}/hydrologicalStation/${id}`,
-        thresholds: (id) => `${base}/hydrologicalStation/${id}/threshold`,
         measures: `${base}/hydrologicalStation/chronic/measures`,
       },
       'rain-gauge': {
         list: `${base}/pluviometer/`,
         detail: (id) => `${base}/pluviometer/${id}`,
-        thresholds: (id) => `${base}/pluviometer/${id}/threshold`,
         measures: `${base}/pluviometer/chartMeasures`,
       },
     }
@@ -68,8 +65,9 @@ export class AquasysClient {
     return this.#http.json(this.#routes[family].detail(id))
   }
 
-  thresholds(family: SourceFamily, id: number): Promise<unknown> {
-    return this.#http.json(this.#routes[family].thresholds(id))
+  /** Stations only: the build freezes no rain gauge threshold. */
+  stationThresholds(id: number): Promise<unknown> {
+    return this.#http.json(`${this.#base}/hydrologicalStation/${id}/threshold`)
   }
 
   /** Every station-to-network link of the fleet, in one call. */

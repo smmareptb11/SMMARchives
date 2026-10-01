@@ -3,7 +3,6 @@ import {
   parseInstant,
   toEpochMilliseconds,
   webcamImageSchema,
-  type BoundingBox,
   type ReportCollector,
   type TimeWindow,
   type WebcamImage,
@@ -11,7 +10,6 @@ import {
 import { z } from 'zod'
 
 import type { LizmapClient } from '../lizmap/client.ts'
-import { fetchWebcamPositions } from './webcams.ts'
 
 /**
  * How long Ceneau keeps an image.
@@ -20,7 +18,7 @@ import { fetchWebcamPositions } from './webcams.ts'
  * replay older than this has no webcam images at all, and the interface must be
  * told so rather than shown an empty layer.
  */
-export const RETENTION_DAYS = 30
+const RETENTION_DAYS = 30
 
 const pictureSchema = z.looseObject({
   date: z.string(),
@@ -35,15 +33,9 @@ const imageListSchema = z.looseObject({
 export type FetchImagesOptions = {
   client: LizmapClient
   collector: ReportCollector
-  /**
-   * Which cameras to read. Defaults to the exploitable ones from the positions
-   * layer — the join lives here because only the connector knows that 19 of the
-   * 24 cameras have no archive.
-   */
-  codes: readonly string[] | undefined
-  /** Narrows the default camera list; ignored when `codes` is given. */
-  extent?: BoundingBox | undefined
-  window: TimeWindow | undefined
+  /** The cameras to read, the exploitable ones from the positions layer. */
+  codes: readonly string[]
+  window: TimeWindow
   /** Injected so the retention check is testable without freezing the clock. */
   now?: Date
 }
@@ -64,10 +56,9 @@ export async function fetchWebcamImages(options: FetchImagesOptions): Promise<Im
     })
   }
 
-  const codes = options.codes ?? (await fetchWebcamPositions(options)).map((one) => one.code)
   const images: WebcamImage[] = []
 
-  for (const code of codes) {
+  for (const code of options.codes) {
     options.collector.progress(`  webcam ${code}…`)
     try {
       const list = imageListSchema.parse(
@@ -109,9 +100,7 @@ function decode(
   }
   if (unusable > 0) sayTheReductionsHaveNoAddress(options, code, unusable)
 
-  return options.window === undefined
-    ? decoded
-    : cropToWindow(decoded, options.window, (image) => image.at)
+  return cropToWindow(decoded, options.window, (image) => image.at)
 }
 
 /**
@@ -160,7 +149,6 @@ function sayTheReductionsHaveNoAddress(
 }
 
 /** Only the past end matters: a window reaching into the future is not expired. */
-function isBeyondRetention(window: TimeWindow | undefined, now: Date): boolean {
-  if (window === undefined) return false
+function isBeyondRetention(window: TimeWindow, now: Date): boolean {
   return toEpochMilliseconds(window.to) < now.getTime() - RETENTION_DAYS * 86_400_000
 }

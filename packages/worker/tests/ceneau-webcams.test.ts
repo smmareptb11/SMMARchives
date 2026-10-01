@@ -70,7 +70,7 @@ describe('the images of a camera', () => {
 
   const images = (
     routes: Record<string, StubbedResponse> = {},
-    window?: ReturnType<typeof windowOf>,
+    window = windowOf(OLDEST_FIRST[0]!, OLDEST_FIRST.at(-1)!),
   ) => {
     const options = client({
       getMedia: { json: fixture('ceneau/images-215.json') },
