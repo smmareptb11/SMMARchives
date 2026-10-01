@@ -12,7 +12,6 @@ import type { AquasysClient } from './client.ts'
 import { positionOf } from './position.ts'
 import {
   rawNetworkLinkSchema,
-  rawNetworkSchema,
   rawRainGaugeSchema,
   rawStationSchema,
   type RawRainGauge,
@@ -32,12 +31,9 @@ export type TypedStation = RawStation & { category: StationCategory }
  * A station no network types is out of scope, and dropped here, before any
  * call is spent on it.
  */
-export async function listStations(
-  client: AquasysClient,
-  collector: ReportCollector,
-): Promise<TypedStation[]> {
+export async function listStations(client: AquasysClient): Promise<TypedStation[]> {
   const rows = z.array(rawStationSchema).parse(await client.list('hydro'))
-  const categories = await stationCategories(client, collector)
+  const categories = await stationCategories(client)
   return rows.flatMap((row) => {
     const category = categories.get(row.id)
     return category === undefined ? [] : [{ ...row, category }]
@@ -48,16 +44,11 @@ export async function listRainGauges(client: AquasysClient): Promise<RawRainGaug
   return z.array(rawRainGaugeSchema).parse(await client.list('rain-gauge'))
 }
 
-/** Two calls for the whole fleet, whatever its size. */
+/** One call for the whole fleet, whatever its size. */
 async function stationCategories(
   client: AquasysClient,
-  collector: ReportCollector,
 ): Promise<ReadonlyMap<number, StationCategory>> {
-  const links = z.array(rawNetworkLinkSchema).parse(await client.networkLinks())
-  const networks = z.array(rawNetworkSchema).parse(await client.networks())
-  const typing = typeStations(links, networks)
-  for (const fallback of typing.fallbacks) collector.fellBackTo(fallback)
-  return typing.categories
+  return typeStations(z.array(rawNetworkLinkSchema).parse(await client.networkLinks()))
 }
 
 function sandreCodeOf(row: RawStation | RawRainGauge): number | undefined {
@@ -88,7 +79,7 @@ export type SourceSelection = {
 /**
  * The identifiers a run should work on.
  *
- * The referential buys the extent filter — one request, and two more that type
+ * The referential buys the extent filter — one request, and one more that types
  * the stations — and the filter is what makes the rest cheap: thresholds and measures cost one request per source, so narrowing the
  * fleet here rather than downstream is the difference between hundreds of calls
  * and a few dozen.
@@ -98,7 +89,7 @@ export async function listSourceIds(selection: SourceSelection): Promise<number[
 
   const rows =
     selection.family === 'hydro'
-      ? await listStations(selection.client, selection.collector)
+      ? await listStations(selection.client)
       : await listRainGauges(selection.client)
 
   if (selection.scope.kind === 'whole-family') return rows.map((row) => row.id)
@@ -124,7 +115,7 @@ export async function listSourceIds(selection: SourceSelection): Promise<number[
 async function inScope(ids: readonly number[], selection: SourceSelection): Promise<number[]> {
   if (selection.family !== 'hydro') return [...ids]
 
-  const categories = await stationCategories(selection.client, selection.collector)
+  const categories = await stationCategories(selection.client)
   return ids.filter((id) => {
     if (categories.has(id)) return true
     selection.collector.fellBackTo({

@@ -77,10 +77,6 @@ export class AquasysClient {
     return this.#http.json(`${this.#base}/hydrologicalStation/networkLink`)
   }
 
-  networks(): Promise<unknown> {
-    return this.#http.json(`${this.#base}/referencial/network`)
-  }
-
   /**
    * `groupFunc` is deliberately never sent: only `MAX` in capitals aggregates,
    * every other value returns the raw series in HTTP 200 without a warning.

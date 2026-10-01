@@ -50,14 +50,6 @@ export const rawNetworkLinkSchema = z.looseObject({
 
 export type RawNetworkLink = z.infer<typeof rawNetworkLinkSchema>
 
-/** `code` is what a link's `idNetwork` refers to. */
-export const rawNetworkSchema = z.looseObject({
-  code: z.number().int(),
-  name: z.string(),
-})
-
-export type RawNetwork = z.infer<typeof rawNetworkSchema>
-
 /** Measurement points of a source, the reliable way to know what it carries. */
 const rawPointPrelSchema = z.looseObject({
   idStation: z.number().int(),

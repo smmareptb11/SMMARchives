@@ -20,13 +20,12 @@ export function fixtureText(name: string): string {
 
 /**
  * The routes the station referential is read from: the list, and the network
- * links and names that type it.
+ * links that type it.
  */
 export function stationReferentialRoutes(): Record<string, StubbedRoute> {
   return {
     '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
     '/hydrologicalStation/networkLink': { json: fixture('aquasys/network-links.json') },
-    '/referencial/network': { json: fixture('aquasys/networks.json') },
   }
 }
 
