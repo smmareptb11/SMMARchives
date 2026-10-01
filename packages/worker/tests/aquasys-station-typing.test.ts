@@ -64,6 +64,15 @@ describe('a station its networks type both ways', () => {
     expect(typeStations([...contradicting].reverse())).toEqual(typeStations(contradicting))
   })
 
+  it('is reported in station order alongside another, whatever the order of their links', () => {
+    const both = [...contradicting, { idStation: 2, idNetwork: 2 }]
+    const subjects = (links: typeof both) =>
+      typeStations(links).fallbacks.map((fallback) => fallback.subject)
+
+    expect(subjects(both)).toEqual(['station 2', 'station 84'])
+    expect(subjects([...both].reverse())).toEqual(['station 2', 'station 84'])
+  })
+
   it('leaves the other stations typed', () => {
     const { categories } = typeStations(contradicting)
 

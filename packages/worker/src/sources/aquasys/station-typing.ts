@@ -39,7 +39,8 @@ export function typeStations(links: readonly RawNetworkLink[]): StationTyping {
 
   const categories = new Map<number, StationCategory>()
   const fallbacks: Fallback[] = []
-  for (const [idStation, found] of candidates) {
+  const byStation = [...candidates].sort(([one], [other]) => one - other)
+  for (const [idStation, found] of byStation) {
     if (found.size === 1) {
       categories.set(idStation, [...found][0]!)
     } else {
