@@ -51,7 +51,6 @@ export function aStation(
     altitude: null,
     position,
     category,
-    categoryIsFallback: false,
     quantities: null,
   }
 }

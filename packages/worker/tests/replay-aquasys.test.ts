@@ -20,7 +20,7 @@ import { buildReplay } from '../src/replay/build.ts'
 import type { ReplayStore } from '../src/replay/store.ts'
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
 import { closeDatabase } from './support/database.ts'
-import { fetchStub, fixture } from './support/fixtures.ts'
+import { fetchStub, fixture, stationReferentialRoutes } from './support/fixtures.ts'
 import { aStoredReplay, cleanMedia } from './support/replay-store.ts'
 
 const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
@@ -34,7 +34,7 @@ const NARBONNAIS: BoundingBox = { minLon: 2.25, minLat: 43.03, maxLon: 2.9, maxL
 
 /** Every route the lane can reach, so an unexpected call fails loudly. */
 const ROUTES = {
-  '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+  ...stationReferentialRoutes(),
   '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
   '/hydrologicalStation/84/threshold': { json: fixture('aquasys/thresholds-84.json') },
   '/hydrologicalStation/chronic/measures': { json: fixture('aquasys/measures-84-level.json') },
@@ -192,7 +192,7 @@ describe('the referential a replay rests on', () => {
   it('narrows on the extent before spending a call per source', async () => {
     const { calls } = await build()
 
-    // 84 is inside the extent; 2 and 152 are not, 24 is out of scope, and none costs anything.
+    // 84 is inside the extent; 2 and 152 are not, no network types 24, and none costs anything.
     expect(calls.filter((url) => /\/hydrologicalStation\/\d+$/.test(url))).toHaveLength(1)
     expect(calls.some((url) => url.includes('/hydrologicalStation/152'))).toBe(false)
   })
@@ -233,11 +233,15 @@ describe('a station and a rain gauge sharing an identifier', () => {
     const stations = (fixture('aquasys/stations.json') as Array<Record<string, unknown>>).map(
       (row) => (row['id'] === 84 ? { ...row, id: 4 } : row),
     )
+    const links = (fixture('aquasys/network-links.json') as Array<Record<string, unknown>>).map(
+      (link) => (link['idStation'] === 84 ? { ...link, idStation: 4 } : link),
+    )
 
     const { manifest } = await build({
       routes: {
         ...ROUTES,
         '/hydrologicalStation/': { json: stations },
+        '/hydrologicalStation/networkLink': { json: links },
         '/hydrologicalStation/4': { json: fixture('aquasys/station-84-detail.json') },
         '/hydrologicalStation/4/threshold': { json: fixture('aquasys/thresholds-84.json') },
       },

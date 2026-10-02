@@ -247,7 +247,6 @@ describe('the bytes on the wire', () => {
       altitude: null,
       position: null,
       category: 'watercourse' as const,
-      categoryIsFallback: false,
       quantities: null,
     })),
     rainGauges: [],

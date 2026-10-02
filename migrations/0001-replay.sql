@@ -75,8 +75,6 @@ create table source (
   comment              text,
   town_code            text,
   category             text,
-  -- True when the category was assumed rather than read from the frozen table.
-  category_is_fallback boolean,
   altitude             double precision,
   position             geometry(Point, 4326),
   quantities           jsonb,

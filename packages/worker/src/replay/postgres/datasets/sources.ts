@@ -14,15 +14,15 @@ const AQUASYS = ['hydro', 'rain-gauge']
 
 const INSERT = `
   insert into source (replay_id, family, external_id, code, name, comment, town_code,
-                      category, category_is_fallback, altitude, position, quantities, extra)
-  values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-          case when $11::double precision is null then null
-               else ST_SetSRID(ST_MakePoint($11, $12), 4326) end,
-          $13::jsonb, $14::jsonb)`
+                      category, altitude, position, quantities, extra)
+  values ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+          case when $10::double precision is null then null
+               else ST_SetSRID(ST_MakePoint($10, $11), 4326) end,
+          $12::jsonb, $13::jsonb)`
 
 const SELECT = `
-  select family, external_id, code, name, comment, town_code, category, category_is_fallback,
-         altitude, ST_X(position) as lon, ST_Y(position) as lat, quantities, extra
+  select family, external_id, code, name, comment, town_code, category, altitude,
+         ST_X(position) as lon, ST_Y(position) as lat, quantities, extra
     from source where replay_id = $1 and family = any($2::text[])`
 
 type SourceRow = {
@@ -33,7 +33,6 @@ type SourceRow = {
   comment: string | null
   town_code: string | null
   category: string | null
-  category_is_fallback: boolean | null
   altitude: number | null
   lon: number | null
   lat: number | null
@@ -72,7 +71,6 @@ export async function writeReferential(
       station.comment,
       station.townCode,
       station.category,
-      station.categoryIsFallback,
       station.altitude,
       station.position?.lon ?? null,
       station.position?.lat ?? null,
@@ -89,7 +87,6 @@ export async function writeReferential(
       gauge.name,
       gauge.comment,
       gauge.townCode,
-      null,
       null,
       gauge.altitude,
       gauge.position?.lon ?? null,
@@ -109,13 +106,7 @@ export async function readReferential(
   return {
     stations: rows
       .filter((row) => row.family === 'hydro')
-      .map((row) =>
-        stationSchema.parse({
-          ...common(row),
-          category: row.category,
-          categoryIsFallback: row.category_is_fallback,
-        }),
-      )
+      .map((row) => stationSchema.parse({ ...common(row), category: row.category }))
       .sort((one, other) => one.id - other.id),
     rainGauges: rows
       .filter((row) => row.family === 'rain-gauge')
@@ -150,7 +141,6 @@ export async function writeWebcams(db: Queryable, replayId: string, data: unknow
       webcam.code,
       // A webcam has no name of its own: what names it is its commune, which
       // goes where the other family-specific fields go.
-      null,
       null,
       null,
       null,

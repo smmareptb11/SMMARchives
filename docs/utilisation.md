@@ -61,8 +61,16 @@ positionnel est refusé**, jamais ignoré.
 
 **Un script prend l'emprise et la période, et restreint avant les appels par
 source.** Aquasys n'a pas de filtre spatial : son référentiel est chargé en
-entier — deux requêtes — puis filtré en mémoire ; tout ce qui suit coûte une
-requête par source.
+entier — trois requêtes au plus — puis filtré en mémoire ; tout ce qui suit
+coûte une requête par source.
+
+Ce sont la liste de chaque famille et, pour les stations, leurs rattachements
+aux réseaux. Le code du réseau donne le type d'une station : 4 (`Ouvrage`) ou
+5 (`Déversoir`) en fait un ouvrage, 1 (`Étiage`) ou 2 (`Inondation`) un cours
+d'eau. **Une station qu'aucun de ces quatre réseaux ne rattache n'est pas
+collectée** ; désignée par `--station`, elle est retirée et le rapport le dit.
+Une station rattachée à la fois à un réseau d'ouvrage et à un réseau de cours
+d'eau n'est pas collectée non plus, et le rapport le dit.
 
 ## Les sept scripts
 

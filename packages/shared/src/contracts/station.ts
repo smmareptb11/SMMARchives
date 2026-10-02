@@ -23,9 +23,8 @@ export const SOURCE_LABEL: Record<SourceFamily, string> = {
 /**
  * How a station is rendered on the map.
  *
- * Aquasys cannot tell these apart — `stationType` is `1` for all 94 stations
- * and `link_work` is empty everywhere. The typing comes from the SMMAR crisis
- * Lizmap and is frozen reference data.
+ * Read from the networks a station belongs to in Aquasys, since no field of the
+ * station states it: `stationType` is `1` for the whole fleet.
  */
 export const stationCategorySchema = z.enum(['watercourse', 'structure'])
 
@@ -40,8 +39,6 @@ export const stationSchema = z.object({
   altitude: z.number().nullable(),
   position: positionSchema.nullable(),
   category: stationCategorySchema,
-  /** True when the category was not read from the frozen table but assumed. */
-  categoryIsFallback: z.boolean(),
   /**
    * Which of the collected quantities this source carries, read from its
    * measurement points, or `null` when details were not requested.

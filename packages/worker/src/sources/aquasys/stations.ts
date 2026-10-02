@@ -2,7 +2,6 @@ import {
   SOURCE_LABEL,
   contains,
   dataTypesFor,
-  typeStation,
   type BoundingBox,
   type DataTypeTable,
   type Position,
@@ -48,7 +47,7 @@ type Placed<T> = { row: T; position: Position | null }
  * the measures actually returned, never from metadata.
  */
 export async function fetchStations(options: FetchReferentialOptions): Promise<Station[]> {
-  const rows = await listStations(options.client)
+  const rows = await listStations(options.client, options.collector)
 
   const inside = retain(
     rows.map((row) => ({
@@ -69,16 +68,10 @@ export async function fetchStations(options: FetchReferentialOptions): Promise<S
     inside.map(({ row }) => row.id),
   )
 
-  return inside.map(({ row, position }) => {
-    const typing = typeStation(row.id)
-    if (typing.fallback !== undefined) options.collector.fellBackTo(typing.fallback)
-
-    return {
-      ...commonFields(row, position, details),
-      category: typing.category,
-      categoryIsFallback: typing.fallback !== undefined,
-    }
-  })
+  return inside.map(({ row, position }) => ({
+    ...commonFields(row, position, details),
+    category: row.category,
+  }))
 }
 
 /**

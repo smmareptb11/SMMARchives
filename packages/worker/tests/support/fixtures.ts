@@ -18,6 +18,17 @@ export function fixtureText(name: string): string {
   return readFileSync(fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url)), 'utf8')
 }
 
+/**
+ * The routes the station referential is read from: the list, and the network
+ * links that type it.
+ */
+export function stationReferentialRoutes(): Record<string, StubbedRoute> {
+  return {
+    '/hydrologicalStation/': { json: fixture('aquasys/stations.json') },
+    '/hydrologicalStation/networkLink': { json: fixture('aquasys/network-links.json') },
+  }
+}
+
 export type StubbedResponse =
   | { json: unknown; headers?: Record<string, string> }
   | { text: string; headers?: Record<string, string> }
