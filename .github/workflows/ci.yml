@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        # The image docker-compose.yml runs, so the suites see the same PostGIS.
+        image: imresamu/postgis:17-3.5-alpine
+        env:
+          POSTGRES_USER: smmarchives
+          POSTGRES_PASSWORD: smmarchives
+          POSTGRES_DB: smmarchives
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U smmarchives"
+          --health-interval 5s
+          --health-retries 10
+    env:
+      DATABASE_URL_TEST: postgres://smmarchives:smmarchives@localhost:5432/smmarchives
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
