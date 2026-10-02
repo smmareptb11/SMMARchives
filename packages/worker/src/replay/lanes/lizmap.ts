@@ -61,8 +61,7 @@ export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
       collector: layers,
       layers: REFERENCE_LAYERS,
     })
-    // No extent here: these layers *are* the extent referential — the user
-    // traces theirs from them — and intersecting polygons is PostGIS's job.
+    // No extent here: intersecting a layer with the extent is PostGIS's job.
     await build.stored(
       'reference-layers',
       z.array(referenceLayerSchema),

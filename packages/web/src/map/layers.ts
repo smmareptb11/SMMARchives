@@ -1,9 +1,11 @@
 import type { FeatureCollection } from 'geojson'
 import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
 
+import { UNION_OUTLINES } from '@smmarchives/shared/reference/perimeters.ts'
+
 import { BRAND } from '../palette.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
-import { territoryOf, type Shown } from './families.ts'
+import type { Shown } from './families.ts'
 import { KINDS, sourcesOf, type Kind } from './sources.ts'
 import { NEUTRAL, paintingOf } from './state.ts'
 import { imageOf, widthOf } from './symbols.ts'
@@ -39,15 +41,11 @@ const RING = 1.5
  * Light on purpose: they say where the territory ends, and anything more
  * insistent would compete with the sources drawn over them.
  */
-export function drawTerritory(map: MapLibreMap, content: ReplayContent): void {
-  const layer = territoryOf(content)
-  if (layer === undefined) return
-
+export function drawTerritory(map: MapLibreMap): void {
   // The shared contract keeps a feature's geometry opaque: a collector only
   // checks and walks it, and typing it whole would make every source declare a
-  // geometry it never reads. What the Lizmap serves is GeoJSON in WGS84, and
-  // the recorded responses under `tests/fixtures/` are what attest it.
-  map.addSource('territory', { type: 'geojson', data: layer.geojson as FeatureCollection })
+  // geometry it never reads. The frozen outlines are GeoJSON in WGS84.
+  map.addSource('territory', { type: 'geojson', data: UNION_OUTLINES as FeatureCollection })
   map.addLayer({
     id: TERRITORY_LAYER,
     type: 'fill',

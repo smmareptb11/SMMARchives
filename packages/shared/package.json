@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./clock.ts": "./src/clock.ts",
-    "./contracts/*.ts": "./src/contracts/*.ts"
+    "./contracts/*.ts": "./src/contracts/*.ts",
+    "./reference/*.ts": "./src/reference/*.ts"
   },
   "dependencies": {
     "proj4": "^2.19.10",
