@@ -33,12 +33,11 @@ function environment(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
 
 function run(
   extra: NodeJS.ProcessEnv = {},
-  flags: readonly string[] = [],
 ): Promise<{ code: number | null; took: number; stderr: string }> {
   const started = Date.now()
   const child = spawn(
     RUNNER,
-    [SCRIPT, '--from=2019-10-22T00:00:00Z', '--to=2019-10-23T00:00:00Z', ...flags],
+    [SCRIPT, '--from=2019-10-22T00:00:00Z', '--to=2019-10-23T00:00:00Z'],
     { cwd: CHECKOUT, env: environment(extra), stdio: ['ignore', 'ignore', 'pipe'] },
   )
 
@@ -72,8 +71,8 @@ describe('the build command as the API spawns it', () => {
     const { code, took, stderr } = await run()
 
     // Which variable it names depends on the order the lanes are configured;
-    // that it stopped on one of them is the point. Not the radar root, which no
-    // longer stops anything it was not asked for by name.
+    // that it stopped on one of them is the point. Not the radar root, which
+    // stops nothing.
     expect(stderr).toMatch(/ConfigurationError/)
     expect(code).toBe(1)
     // Well under the ten seconds an idle connection pool would have held it:
@@ -94,8 +93,7 @@ describe('the build command as the API spawns it', () => {
 
 /**
  * The delivery directory arrives in batches, long after an installation, so a
- * replay has to be buildable before the first one lands — and `POST /replays`,
- * which passes no `--only`, has no other way of saying so.
+ * replay has to be buildable before the first one lands.
  *
  * The hosts are under `.test`, which resolves nowhere: the lanes fail on their
  * sources, which is the point. What must not happen is stopping on a variable
@@ -112,12 +110,5 @@ describe('a build with no radar delivery root', () => {
     expect(stderr).not.toMatch(/ConfigurationError/)
     expect(stderr).toMatch(/radar-rainfall: no delivery root configured/)
     expect(code).not.toBe(1)
-  }, 30_000)
-
-  it('still refuses when that lane is the one asked for', async () => {
-    const { code, stderr } = await run({}, ['--only=radar-rainfall'])
-
-    expect(stderr).toMatch(/RADAR_RAINFALL_PATH/)
-    expect(code).toBe(1)
   }, 30_000)
 })

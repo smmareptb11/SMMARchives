@@ -41,7 +41,7 @@ export const stationSchema = z.object({
   category: stationCategorySchema,
   /**
    * Which of the collected quantities this source carries, read from its
-   * measurement points, or `null` when details were not requested.
+   * measurement points, or `null` when its detail could not be read.
    */
   quantities: z.array(quantitySchema).nullable(),
 })

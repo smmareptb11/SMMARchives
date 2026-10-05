@@ -11,7 +11,7 @@ const OUVRAGES = { json: fixture('lizmap/ouvrage_hydraulique.json') }
 const FORBIDDEN = { text: fixtureText('lizmap/forbidden.xml') }
 
 function read(layers: string[], routes: Record<string, StubbedResponse>) {
-  const collector = new ReportCollector('fetch:lizmap:layers', {})
+  const collector = new ReportCollector({})
   const fetch = fetchStub(routes)
   const client = new LizmapClient({ config: CONFIG, fetch, minIntervalMs: 0 })
   return fetchReferenceLayers({ client, collector, layers }).then((data) => ({

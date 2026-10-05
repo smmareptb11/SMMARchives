@@ -5,7 +5,6 @@ import {
   databaseConfig,
   lizmapConfig,
   mediaConfig,
-  optionalRadarRainfallConfig,
   radarRainfallConfig,
   type ExitCode,
   type ReplayIdentity,
@@ -18,10 +17,8 @@ import {
   progress,
   runProcess,
   toExtent,
-  toLanes,
   toReplayId,
   toWindow,
-  type CollectingLane,
 } from '../cli.ts'
 import { openPool } from '../db/pool.ts'
 import { buildReplay } from '../replay/build.ts'
@@ -36,10 +33,6 @@ await runProcess(async () => {
     from: { type: 'string' },
     to: { type: 'string' },
     bbox: { type: 'string' },
-    dir: { type: 'string' },
-    delivery: { type: 'string', multiple: true },
-    only: { type: 'string', multiple: true },
-    'no-media': { type: 'boolean', default: false },
   })
 
   const asked = {
@@ -48,10 +41,9 @@ await runProcess(async () => {
     period: toWindow(args.from, args.to),
   }
 
-  const only = toLanes(args.only)
   const pool = openPool(databaseConfig().url)
   try {
-    return await build(pool, args, asked, only)
+    return await build(pool, args.id, asked)
   } finally {
     // Closed whatever happened: an open pool holds the process alive until its
     // connections time out, and the API — which waits a few seconds to hear
@@ -61,20 +53,10 @@ await runProcess(async () => {
   }
 })
 
-type BuildArgs = {
-  id?: string | undefined
-  dir?: string | undefined
-  delivery?: string[] | undefined
-  /** The raw flag, beside the lanes derived from it: absent means by default. */
-  only?: string[] | undefined
-  'no-media': boolean
-}
-
 async function build(
   pool: Pool,
-  args: BuildArgs,
+  askedId: string | undefined,
   asked: Omit<ReplayIdentity, 'id'>,
-  only: Set<CollectingLane>,
 ): Promise<ExitCode> {
   const catalog = openPostgresCatalog({
     pool,
@@ -85,33 +67,22 @@ async function build(
   // Without `--id` the database mints one, which is the ordinary way to build.
   // With it, the build goes into a replay that already exists: a re-run repairs
   // a lane without costing the others.
-  const { id, store } = await openOrCreate(catalog, args.id, asked)
+  const { id, store } = await openOrCreate(catalog, askedId, asked)
   const identity: ReplayIdentity = { id, ...asked }
 
   progress(`replay ${identity.id}, ${identity.period.from} → ${identity.period.to}…`)
-  const radarRainfall = only.has('radar-rainfall')
-    ? radarSource(args.dir, args.delivery, args.only !== undefined)
-    : undefined
+  const radarRainfall = radarSource()
   const { manifest, exitCode } = await buildReplay({
     identity,
     store,
-    // Read the configuration of a source only when its lane is asked for: a
-    // replay of the delivered rasters must not require an Aquasys token.
-    ...(only.has('aquasys')
-      ? { aquasys: { client: new AquasysClient({ config: aquasysConfig() }) } }
-      : {}),
-    ...(only.has('lizmap')
-      ? {
-          lizmap: {
-            client: new LizmapClient({ config: lizmapConfig() }),
-            // The images sit on another host, reached without the Lizmap's
-            // spacing.
-            fetch: globalThis.fetch,
-          },
-        }
-      : {}),
+    aquasys: { client: new AquasysClient({ config: aquasysConfig() }) },
+    lizmap: {
+      client: new LizmapClient({ config: lizmapConfig() }),
+      // The images sit on another host, reached without the Lizmap's spacing.
+      fetch: globalThis.fetch,
+    },
     ...(radarRainfall === undefined ? {} : { radarRainfall }),
-    copyMedia: !args['no-media'],
+    copyMedia: true,
     onProgress: progress,
   })
 
@@ -136,22 +107,14 @@ async function openOrCreate(
 /**
  * The delivered rasters, or nothing when none are configured.
  *
- * Named — by `--only radar-rainfall` or by a `--dir` — an unconfigured root is
- * an error: what was asked for is refused, not quietly dropped. Taken with the
- * other lanes by default it is not, because the delivery directory exists only
- * once Predict has delivered, and a site waiting for its first delivery still
- * has a replay to build. A root that is set but unreadable stays a lane that
- * fails, whichever way it got here.
+ * The delivery directory exists only once Predict has delivered, and a site
+ * waiting for its first delivery still has a replay to build. A root that is
+ * set but unreadable is a lane that fails.
  */
-function radarSource(dir: string | undefined, deliveries: string[] | undefined, named: boolean) {
-  const config = named
-    ? radarRainfallConfig(process.env, { root: dir })
-    : optionalRadarRainfallConfig(process.env, { root: dir })
-  if (config === undefined) {
-    progress('  radar-rainfall: no delivery root configured, lane not run')
-    return undefined
-  }
-  return { root: config.root, rasterExtent: config.extent, deliveries }
+function radarSource() {
+  const config = radarRainfallConfig()
+  if (config === undefined) progress('  radar-rainfall: no delivery root configured, lane not run')
+  return config
 }
 
 /** What the run produced, before the exit code says only whether it is whole. */

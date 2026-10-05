@@ -37,7 +37,7 @@ const measures = [
 /** A replay holding one data set, and what a reader will be served for it. */
 async function aReplayWith(name: DatasetName, rows: unknown) {
   const api = await anApi()
-  const manifest = aManifest({ datasets: { [name]: aDataset(name, countOf(rows)) } })
+  const manifest = aManifest({ datasets: { [name]: aDataset(countOf(rows)) } })
   await writeReplay(api, manifest, { datasets: { [name]: rows } })
 
   const store = openPostgresStore({
@@ -108,7 +108,7 @@ describe('serving a data set', () => {
       await before.text()
 
       // A re-run replaces the rows whole, which is what the version follows.
-      await writeReplay(api, aManifest({ id, datasets: { measures: aDataset('measures', 1) } }), {
+      await writeReplay(api, aManifest({ id, datasets: { measures: aDataset(1) } }), {
         datasets: {
           measures: [{ sourceId: 2, quantity: 'level', at: '2019-10-22T07:00:00.000Z', value: 9 }],
         },
@@ -290,7 +290,7 @@ describe('when the bytes stop coming', () => {
     return aCatalog({
       open: async () =>
         aStore({
-          getManifest: async () => aManifest({ datasets: { measures: aDataset('measures', 1) } }),
+          getManifest: async () => aManifest({ datasets: { measures: aDataset(1) } }),
           openDataset: async () => blob,
         }),
     })

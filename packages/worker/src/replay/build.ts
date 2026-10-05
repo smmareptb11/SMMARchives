@@ -93,7 +93,7 @@ async function freezeRadarFrames(
   series: readonly RadarRainfallSeries[],
 ): Promise<void> {
   await build.runLane('media', async () => {
-    const collector = build.collectorFor('media', 'replay:media', { root })
+    const collector = build.collectorFor('media')
     const tally = await copyLocalMedia({
       store,
       collector,

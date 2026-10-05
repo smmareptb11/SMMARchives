@@ -104,7 +104,7 @@ plus étroite, qui se dit comme telle.
 | Document | Quand l'ouvrir |
 |---|---|
 | [`installation.md`](docs/installation.md) | Installer, configurer, lancer, déployer |
-| [`utilisation.md`](docs/utilisation.md) | Collecter des données et constituer un rejeu en ligne de commande |
+| [`utilisation.md`](docs/utilisation.md) | Constituer un rejeu en ligne de commande |
 | [`api.md`](docs/api.md) | Consommer un rejeu par HTTP : routes, filtres, codes, forme des erreurs |
 
 ## Licence

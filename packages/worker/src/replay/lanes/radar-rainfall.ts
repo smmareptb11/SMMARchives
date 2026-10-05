@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import {
   radarRainfallSeriesSchema,
-  type BoundingBox,
+  type RadarRainfallConfig,
   type RadarRainfallSeries,
   type TimeWindow,
 } from '@smmarchives/shared'
@@ -10,15 +10,7 @@ import {
 import { indexDeliveries } from '../../sources/radar-rainfall/indexer.ts'
 import type { ReplayBuild } from '../build-state.ts'
 
-export type RadarRainfallSource = {
-  root: string
-  /**
-   * The extent shared by every raster, reported with the data because a wrong
-   * one shifts the whole layer without anything on screen saying so.
-   */
-  rasterExtent: BoundingBox
-  deliveries: readonly string[] | undefined
-}
+export type RadarRainfallSource = RadarRainfallConfig
 
 /**
  * Indexes the delivered radar rainfall over the replay's period.
@@ -34,18 +26,16 @@ export async function collectRadarRainfall(
   period: TimeWindow,
 ): Promise<RadarRainfallSeries[] | undefined> {
   return build.runLane('radar-rainfall', async () => {
-    const collector = build.collectorFor('radar-rainfall', 'index:radar-rainfall', {
+    const collector = build.collectorFor('radar-rainfall', {
       root: source.root,
-      deliveries: source.deliveries ?? null,
       from: period.from,
       to: period.to,
     })
 
     const { series, skipped } = await indexDeliveries({
       root: source.root,
-      extent: source.rasterExtent,
+      extent: source.extent,
       collector,
-      deliveries: source.deliveries,
       window: period,
     })
 
@@ -57,7 +47,7 @@ export async function collectRadarRainfall(
         // Both belong to the run rather than to any series, and the extent
         // travels with the data because it is not confirmed: a wrong one shifts
         // the whole layer invisibly.
-        report: collector.seal({ extent: source.rasterExtent, entriesSkipped: skipped }),
+        report: collector.seal({ extent: source.extent, entriesSkipped: skipped }),
       },
       series.length,
     )

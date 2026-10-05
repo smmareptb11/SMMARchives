@@ -25,6 +25,7 @@ import {
   type StoredReplay,
 } from './support/replay-store.ts'
 import { LizmapClient } from '../src/sources/lizmap/client.ts'
+import { REFERENCE_LAYERS } from '../src/sources/lizmap/layers.ts'
 import { fetchStub, fixture, fixtureText } from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://crise.test' }
@@ -111,8 +112,7 @@ async function build({
       ? {
           radarRainfall: {
             root: deliveries,
-            rasterExtent: DEFAULT_RADAR_RAINFALL_EXTENT,
-            deliveries: undefined,
+            extent: DEFAULT_RADAR_RAINFALL_EXTENT,
           },
         }
       : {}),
@@ -198,17 +198,23 @@ describe('the Lizmap data sets of a replay', () => {
     expect(calls.some((url) => url.includes('Ceneau_img_649'))).toBe(false)
   })
 
-  it('carry the report of the script that produced them, and nothing else', async () => {
+  it('carry the report of the collection that produced them, and nothing else', async () => {
     const [first] = IMAGES.pictures
     const { manifest } = await build({ routes: { ...ROUTES, [first!.uri]: { status: 404 } } })
 
-    expect(manifest.datasets['reference-layers']?.report.script).toBe('fetch:lizmap:layers')
-    expect(manifest.datasets['webcams']?.report.script).toBe('fetch:webcams:positions')
-    expect(manifest.datasets['webcam-images']?.report.script).toBe('fetch:webcams:images')
+    expect(manifest.datasets['reference-layers']?.report.request).toEqual({
+      layers: [...REFERENCE_LAYERS],
+    })
+    expect(manifest.datasets['webcams']?.report.request).toEqual({ extent: MAILHAC })
+    expect(manifest.datasets['webcam-images']?.report.request).toEqual({
+      from: RECENT.from,
+      to: RECENT.to,
+      codes: ['215'],
+    })
 
-    // A download failure is not the script's: `fetch:webcams:images` downloads
-    // nothing, so attributing it there would send a reader to a command that
-    // cannot reproduce it.
+    // A download failure belongs to the copy of the media, not to the listing,
+    // which downloads nothing: attributing it there would send a reader to the
+    // wrong place.
     expect(manifest.datasets['webcam-images']?.report.failures).toEqual([])
   })
 })

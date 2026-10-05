@@ -5,7 +5,6 @@ import {
   apiConfig,
   aquasysConfig,
   mediaConfig,
-  optionalRadarRainfallConfig,
   radarRainfallConfig,
 } from '../src/config.ts'
 import { ConfigurationError } from '../src/errors.ts'
@@ -44,34 +43,26 @@ describe('a missing variable', () => {
     expect(() => aquasysConfig({ ACYCLIQ_TOKEN: 'x' })).toThrow(ConfigurationError)
     expect(() => aquasysConfig({ ACYCLIQ_TOKEN: 'x' })).toThrow(/ACYCLIQ_API_URL/)
   })
-
-  it('treats an empty value as missing', () => {
-    expect(() => radarRainfallConfig({ RADAR_RAINFALL_PATH: '   ' })).toThrow(/RADAR_RAINFALL_PATH/)
-  })
 })
 
 /**
  * The delivery directory is the one source that arrives in batches rather than
- * over the wire: it does not exist until Predict has delivered. A caller that
- * did not name this source gets nothing back and carries on without the lane.
+ * over the wire: it does not exist until Predict has delivered. A build gets
+ * nothing back and carries on without the lane.
  */
-describe('a radar root nobody asked for by name', () => {
+describe('a radar root that is not set', () => {
   it('is nothing to read, rather than a configuration error', () => {
-    expect(optionalRadarRainfallConfig({})).toBeUndefined()
-    expect(optionalRadarRainfallConfig({ RADAR_RAINFALL_PATH: '   ' })).toBeUndefined()
+    expect(radarRainfallConfig({})).toBeUndefined()
+    expect(radarRainfallConfig({ RADAR_RAINFALL_PATH: '   ' })).toBeUndefined()
   })
 
   it('reads as usual once the variable holds a root', () => {
-    expect(optionalRadarRainfallConfig({ RADAR_RAINFALL_PATH: '/data' })?.root).toBe('/data')
-  })
-
-  it('takes an overriding root even with the variable unset', () => {
-    expect(optionalRadarRainfallConfig({}, { root: '/livraisons' })?.root).toBe('/livraisons')
+    expect(radarRainfallConfig({ RADAR_RAINFALL_PATH: '/data' })?.root).toBe('/data')
   })
 
   it('still refuses an extent it cannot read, which no absence excuses', () => {
     expect(() =>
-      optionalRadarRainfallConfig({ RADAR_RAINFALL_PATH: '/data', RADAR_RAINFALL_BBOX: '1,2,3' }),
+      radarRainfallConfig({ RADAR_RAINFALL_PATH: '/data', RADAR_RAINFALL_BBOX: '1,2,3' }),
     ).toThrow(/RADAR_RAINFALL_BBOX/)
   })
 })
@@ -100,7 +91,7 @@ describe('the Aquasys time reference', () => {
 
 describe('the radar rainfall extent', () => {
   it('falls back on the documented extent when unset', () => {
-    expect(radarRainfallConfig({ RADAR_RAINFALL_PATH: '/data' }).extent).toEqual(
+    expect(radarRainfallConfig({ RADAR_RAINFALL_PATH: '/data' })?.extent).toEqual(
       DEFAULT_RADAR_RAINFALL_EXTENT,
     )
   })
@@ -110,7 +101,7 @@ describe('the radar rainfall extent', () => {
       RADAR_RAINFALL_PATH: '/data',
       RADAR_RAINFALL_BBOX: '1.5, 42.4, 3.3, 43.5',
     })
-    expect(config.extent).toEqual({ minLon: 1.5, minLat: 42.4, maxLon: 3.3, maxLat: 43.5 })
+    expect(config?.extent).toEqual({ minLon: 1.5, minLat: 42.4, maxLon: 3.3, maxLat: 43.5 })
   })
 
   it('refuses a malformed extent rather than cropping the wrong area', () => {

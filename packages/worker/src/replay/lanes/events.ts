@@ -26,7 +26,7 @@ export type Derivable = {
  */
 export async function deriveEvents(build: ReplayBuild, data: Derivable): Promise<void> {
   await build.runLane('events', async () => {
-    const collector = build.collectorFor('events', 'replay:crossings', {
+    const collector = build.collectorFor('events', {
       thresholds: data.thresholds.length,
       stations: data.stations.length,
     })

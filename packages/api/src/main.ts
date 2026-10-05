@@ -20,7 +20,7 @@ try {
   })
 } catch (error) {
   // A misconfiguration names itself and stops, rather than printing a stack an
-  // operator has to read through — the bargain the collection scripts make.
+  // operator has to read through — the bargain the worker's commands make.
   log(error instanceof Error && error.name !== 'Error' ? error.message : describe(error))
   process.exit(1)
 }

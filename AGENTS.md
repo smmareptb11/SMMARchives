@@ -11,8 +11,8 @@ period, for the SMMAR (EPTB Aude). Four parts, npm workspaces under `packages/`.
 
 | Part | Where | Role |
 |---|---|---|
-| Collection scripts | `worker/src/scripts/` | Read the external sources and return what they read; they never store |
-| Build and storage | `worker/src/replay/` | Freeze what a replay holds, one file per lane, behind a storage port over PostgreSQL |
+| Source readers | `worker/src/sources/` | Read the external sources and return what they read; they never store |
+| Build and storage | `worker/src/replay/`, `worker/src/scripts/` | Freeze what a replay holds, one file per lane, behind a storage port over PostgreSQL; `build:replay` and `migrate` are the commands |
 | API | `api/` | Express routes that start a build and serve what it stored, through that port and never SQL of its own |
 | Interface | `web/` | React, MapLibre and uPlot: a map and a timeline on one clock, talking to the API and to nothing else |
 
@@ -25,7 +25,7 @@ transaction each. **What decides lives in a pure module**, which is what
 
 - [`README.md`](README.md) — what the tool is, its sources, how to start it
 - [`docs/installation.md`](docs/installation.md) — prerequisites, environment, database, deployment
-- [`docs/utilisation.md`](docs/utilisation.md) — the collection scripts and the build, their options and exit codes
+- [`docs/utilisation.md`](docs/utilisation.md) — the build, its options and exit codes
 - [`docs/api.md`](docs/api.md) — the HTTP routes, their codes, the shape of an error
 - [`packages/api/AGENTS.md`](packages/api/AGENTS.md), [`packages/web/AGENTS.md`](packages/web/AGENTS.md) — what each package adds
 
@@ -67,14 +67,15 @@ npm run typecheck && npm run lint && npm run format:check && npm test
 - **What a source returns beats what its editor documents.** The Aquasys
   OpenAPI specification describes an object response where the API returns
   positional arrays. The recorded responses under `tests/fixtures/` settle it.
-- **A script narrows before the per-source calls.** Aquasys has no spatial
+- **The build narrows before the per-source calls.** Aquasys has no spatial
   filter, so its referential is loaded whole and filtered in process. Space the
   requests: these are production services.
-- **One envelope**, defined in `shared/src/envelope.ts`: `stdout` carries
-  `{ data, report }` and nothing else, progress goes to `stderr`. Exit **0** on
-  success with `data` possibly empty, **1** when the script could not run, **2**
-  when some calls failed. A rule that could not be applied as written goes to
-  `report.fallbacks`, never applied in silence.
+- **One envelope**, defined in `shared/src/envelope.ts`: each data set is
+  stored as `{ data, report }`, checked against its contract first. The build
+  exits **0** when the replay is complete, **2** when it is partial or failed,
+  **1** when it could not run, and writes nothing on `stdout`. A rule that could
+  not be applied as written goes to `report.fallbacks`, never applied in
+  silence.
 
 ## The data
 

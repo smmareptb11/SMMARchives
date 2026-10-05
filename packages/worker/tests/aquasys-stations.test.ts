@@ -1,24 +1,32 @@
-import { ReportCollector, type BoundingBox, type SourceFamily } from '@smmarchives/shared'
+import { ReportCollector, type BoundingBox } from '@smmarchives/shared'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
 import { rawNetworkLinkSchema } from '../src/sources/aquasys/raw.ts'
 import { fetchRainGauges, fetchStations } from '../src/sources/aquasys/stations.ts'
-import { listSourceIds, type SourceScope } from '../src/sources/aquasys/source-ids.ts'
 import { fetchStub, fixture, stationReferentialRoutes } from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
 
+/** The detail of every source the fixtures list, which a referential always reads. */
+const DETAILS = {
+  '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
+  '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
+  '/hydrologicalStation/152': { json: { id: 152 } },
+  '/pluviometer/4': { json: fixture('aquasys/rain-gauge-4-detail.json') },
+  '/pluviometer/737': { json: { id: 737 } },
+  '/pluviometer/744': { json: { id: 744 } },
+}
+
 function collect(
   routes: Parameters<typeof fetchStub>[0],
-  withDetails = false,
   extent: BoundingBox | undefined = undefined,
 ) {
-  const collector = new ReportCollector('fetch:aquasys:stations', {})
-  const fetch = fetchStub(routes)
+  const collector = new ReportCollector({})
+  const fetch = fetchStub({ ...DETAILS, ...routes })
   const client = new AquasysClient({ config: CONFIG, fetch })
-  return { client, collector, fetch, withDetails, extent }
+  return { client, collector, fetch, extent }
 }
 
 describe('the hydrological station referential', () => {
@@ -70,24 +78,8 @@ describe('the hydrological station referential', () => {
     ])
   })
 
-  it('leaves quantities unknown rather than empty when details are skipped', async () => {
-    const options = collect(stationReferentialRoutes())
-    const stations = await fetchStations(options)
-
-    expect(stations.every((station) => station.quantities === null)).toBe(true)
-    expect(options.fetch.calls).toHaveLength(2)
-  })
-
   it('leaves out an out-of-scope station before any detail call', async () => {
-    const options = collect(
-      {
-        '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
-        ...stationReferentialRoutes(),
-        '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
-        '/hydrologicalStation/152': { json: { id: 152 } },
-      },
-      true,
-    )
+    const options = collect(stationReferentialRoutes())
     const stations = await fetchStations(options)
 
     expect(stations.map((station) => station.id)).toEqual([84, 2, 152])
@@ -95,15 +87,7 @@ describe('the hydrological station referential', () => {
   })
 
   it('reads what a station measures from its measurement points', async () => {
-    const options = collect(
-      {
-        '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
-        ...stationReferentialRoutes(),
-        '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
-        '/hydrologicalStation/152': { json: { id: 152 } },
-      },
-      true,
-    )
+    const options = collect(stationReferentialRoutes())
     const stations = await fetchStations(options)
 
     expect(stations.find((station) => station.id === 84)?.quantities).toEqual(['level', 'flow'])
@@ -111,18 +95,15 @@ describe('the hydrological station referential', () => {
   })
 
   it('records a detail that failed and keeps the other stations', async () => {
-    const options = collect(
-      {
-        '/hydrologicalStation/84': { status: 500 },
-        ...stationReferentialRoutes(),
-        '/hydrologicalStation/2': { json: { id: 2, link_pointPrels: [] } },
-        '/hydrologicalStation/152': { json: { id: 152 } },
-      },
-      true,
-    )
+    const options = collect({
+      ...stationReferentialRoutes(),
+      '/hydrologicalStation/84': { status: 500 },
+    })
     const stations = await fetchStations(options)
 
     expect(stations).toHaveLength(3)
+    // Unknown rather than empty: nothing says the station measures nothing.
+    expect(stations.find((station) => station.id === 84)?.quantities).toBeNull()
     expect(options.collector.seal().failures).toMatchObject([
       { subject: 'station 84 detail', status: 500 },
     ])
@@ -151,15 +132,7 @@ describe('the rain gauge referential', () => {
   })
 
   it('reads rain, not the temperature the same typeId means elsewhere', async () => {
-    const options = collect(
-      {
-        '/pluviometer/4': { json: fixture('aquasys/rain-gauge-4-detail.json') },
-        '/pluviometer/': { json: fixture('aquasys/rain-gauges.json') },
-        '/pluviometer/737': { json: { id: 737 } },
-        '/pluviometer/744': { json: { id: 744 } },
-      },
-      true,
-    )
+    const options = collect({ '/pluviometer/': { json: fixture('aquasys/rain-gauges.json') } })
     const gauges = await fetchRainGauges(options)
 
     expect(gauges.find((gauge) => gauge.id === 4)?.quantities).toEqual(['rainfall'])
@@ -195,21 +168,14 @@ describe('the extent of a replay', () => {
   const CORBIERES: BoundingBox = { minLon: 2.75, minLat: 42.95, maxLon: 2.9, maxLat: 43.1 }
 
   it('keeps only the sources inside it', async () => {
-    const options = collect(stationReferentialRoutes(), false, CORBIERES)
+    const options = collect(stationReferentialRoutes(), CORBIERES)
     const stations = await fetchStations(options)
 
     expect(stations.map((station) => station.id)).toEqual([84])
   })
 
   it('spares the detail call for every source it excludes', async () => {
-    const options = collect(
-      {
-        '/hydrologicalStation/84': { json: fixture('aquasys/station-84-detail.json') },
-        ...stationReferentialRoutes(),
-      },
-      true,
-      CORBIERES,
-    )
+    const options = collect(stationReferentialRoutes(), CORBIERES)
     await fetchStations(options)
 
     expect(options.fetch.calls).toHaveLength(3)
@@ -220,61 +186,6 @@ describe('the extent of a replay', () => {
     const gauges = await fetchRainGauges(options)
 
     expect(gauges).toHaveLength(3)
-  })
-})
-
-/**
- * A scope is one choice, not two flags that could disagree. The shape that let
- * them disagree once produced a run returning a station 60 km outside the
- * extent its own report announced; the contradiction is now unrepresentable,
- * and refused at the boundary instead — see `script-contract.test.ts`.
- */
-describe('the scope a run works on', () => {
-  const CORBIERES: BoundingBox = { minLon: 2.75, minLat: 42.95, maxLon: 2.9, maxLat: 43.1 }
-
-  let calls: string[] = []
-
-  function select(
-    scope: SourceScope,
-    family: SourceFamily = 'hydro',
-    collector = new ReportCollector('probe', {}),
-  ) {
-    const fetch = fetchStub(stationReferentialRoutes())
-    calls = fetch.calls
-    return listSourceIds({
-      client: new AquasysClient({ config: CONFIG, fetch }),
-      collector,
-      family,
-      scope,
-    })
-  }
-
-  it('takes the explicit list without reading the station list', async () => {
-    await expect(select({ kind: 'ids', ids: [152, 84] })).resolves.toEqual([152, 84])
-    expect(calls.some((call) => call.endsWith('/hydrologicalStation/'))).toBe(false)
-  })
-
-  it('drops an out-of-scope station from the explicit list, and says so', async () => {
-    const collector = new ReportCollector('probe', {})
-
-    await expect(select({ kind: 'ids', ids: [152, 24] }, 'hydro', collector)).resolves.toEqual([
-      152,
-    ])
-    expect(collector.seal().fallbacks).toMatchObject([
-      { subject: 'station 24', applied: 'station dropped' },
-    ])
-  })
-
-  it('keeps a rain gauge that shares the number of an out-of-scope station', async () => {
-    await expect(select({ kind: 'ids', ids: [24] }, 'rain-gauge')).resolves.toEqual([24])
-  })
-
-  it('keeps what the extent holds', async () => {
-    await expect(select({ kind: 'extent', extent: CORBIERES })).resolves.toEqual([84])
-  })
-
-  it('takes the whole family when neither is chosen', async () => {
-    await expect(select({ kind: 'whole-family' })).resolves.toEqual([84, 2, 152])
   })
 })
 
@@ -296,7 +207,6 @@ describe('a source that cannot be placed', () => {
   it('says it was dropped when an extent decides the fleet', async () => {
     const options = collect(
       { '/pluviometer/': { json: fixture('aquasys/rain-gauges.json') } },
-      false,
       {
         minLon: -180,
         minLat: -90,

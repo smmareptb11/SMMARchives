@@ -68,33 +68,25 @@ export function lizmapConfig(env: Environment = process.env): LizmapConfig {
 
 export type RadarRainfallConfig = {
   root: string
+  /**
+   * The extent shared by every raster, reported with the data because a wrong
+   * one shifts the whole layer without anything on screen saying so.
+   */
   extent: BoundingBox
 }
 
+/**
+ * The delivered radar rainfall, or nothing when no root is set.
+ *
+ * The delivery directory exists only once Predict has delivered, so a build has
+ * to be able to carry on without it.
+ */
 export function radarRainfallConfig(
   env: Environment = process.env,
-  /** A `--dir` flag overriding the variable, without faking an environment. */
-  override: { root?: string | undefined } = {},
-): RadarRainfallConfig {
-  return {
-    root: override.root ?? requireEnv('RADAR_RAINFALL_PATH', env),
-    extent: parseExtent(optionalEnv('RADAR_RAINFALL_BBOX', '', env)),
-  }
-}
-
-/**
- * The same configuration, or nothing when no root is set anywhere.
- *
- * The delivery directory exists only once Predict has delivered, so a caller
- * that did not name this source has to be able to carry on without it. One that
- * did name it calls `radarRainfallConfig`, which refuses.
- */
-export function optionalRadarRainfallConfig(
-  env: Environment = process.env,
-  override: { root?: string | undefined } = {},
 ): RadarRainfallConfig | undefined {
-  const unset = override.root === undefined && optionalEnv('RADAR_RAINFALL_PATH', '', env) === ''
-  return unset ? undefined : radarRainfallConfig(env, override)
+  const root = optionalEnv('RADAR_RAINFALL_PATH', '', env)
+  if (root === '') return undefined
+  return { root, extent: parseExtent(optionalEnv('RADAR_RAINFALL_BBOX', '', env)) }
 }
 
 export type DatabaseConfig = {

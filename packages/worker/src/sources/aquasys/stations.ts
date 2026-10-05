@@ -3,19 +3,27 @@ import {
   contains,
   dataTypesFor,
   type BoundingBox,
-  type DataTypeTable,
   type Position,
   type Quantity,
   type RainGauge,
   type ReportCollector,
   type SourceFamily,
   type Station,
+  type StationCategory,
 } from '@smmarchives/shared'
+import { z } from 'zod'
 
 import type { AquasysClient } from './client.ts'
 import { positionOf } from './position.ts'
-import { rawDetailSchema, type RawRainGauge, type RawStation } from './raw.ts'
-import { listRainGauges, listStations } from './source-ids.ts'
+import {
+  rawDetailSchema,
+  rawNetworkLinkSchema,
+  rawRainGaugeSchema,
+  rawStationSchema,
+  type RawRainGauge,
+  type RawStation,
+} from './raw.ts'
+import { typeStations } from './station-typing.ts'
 
 export type FetchReferentialOptions = {
   client: AquasysClient
@@ -27,13 +35,6 @@ export type FetchReferentialOptions = {
    * one request — but everything after the filter costs one request per source.
    */
   extent: BoundingBox | undefined
-  /**
-   * Read `link_pointPrels` on each retained source to learn what it measures.
-   *
-   * The only reliable way to know: `/chronic/stats` takes up to 5.5 s on a
-   * single station with a long history.
-   */
-  withDetails: boolean
 }
 
 type Quantities = Map<number, Quantity[]>
@@ -119,7 +120,7 @@ function retain<T>(placed: readonly Placed<T>[], extent: BoundingBox | undefined
 function commonFields(
   row: RawStation | RawRainGauge,
   position: Position | null,
-  details: Quantities | undefined,
+  details: Quantities,
 ) {
   return {
     id: row.id,
@@ -129,44 +130,31 @@ function commonFields(
     townCode: row.townCode ?? null,
     altitude: row.altitude ?? null,
     position,
-    quantities: details?.get(row.id) ?? null,
+    quantities: details.get(row.id) ?? null,
   }
 }
 
-function quantitiesOf(
+/**
+ * Reads `link_pointPrels` on each retained source to learn what it measures.
+ *
+ * The only reliable way to know: `/chronic/stats` takes up to 5.5 s on a single
+ * station with a long history.
+ */
+async function quantitiesOf(
   options: FetchReferentialOptions,
   family: SourceFamily,
   ids: readonly number[],
-): Promise<Quantities> | undefined {
-  if (!options.withDetails) return undefined
-
-  return fetchQuantities({
-    client: options.client,
-    collector: options.collector,
-    family,
-    table: dataTypesFor(family),
-    ids,
-  })
-}
-
-type FetchQuantitiesOptions = {
-  client: AquasysClient
-  collector: ReportCollector
-  family: SourceFamily
-  table: DataTypeTable
-  ids: readonly number[]
-}
-
-async function fetchQuantities(options: FetchQuantitiesOptions): Promise<Quantities> {
+): Promise<Quantities> {
   const quantities: Quantities = new Map()
-  const label = SOURCE_LABEL[options.family]
-  const tick = options.collector.progressEvery(options.ids.length, `${label} details`)
+  const table = dataTypesFor(family)
+  const label = SOURCE_LABEL[family]
+  const tick = options.collector.progressEvery(ids.length, `${label} details`)
 
-  for (const id of options.ids) {
+  for (const id of ids) {
     try {
-      const detail = rawDetailSchema.parse(await options.client.detail(options.family, id))
+      const detail = rawDetailSchema.parse(await options.client.detail(family, id))
       const found = (detail.link_pointPrels ?? []).flatMap((point) => {
-        const dataType = options.table.byTypeId(point.typeId)
+        const dataType = table.byTypeId(point.typeId)
         return dataType === undefined ? [] : [dataType.quantity]
       })
       quantities.set(id, [...new Set(found)])
@@ -177,4 +165,43 @@ async function fetchQuantities(options: FetchQuantitiesOptions): Promise<Quantit
   }
 
   return quantities
+}
+
+type TypedStation = RawStation & { category: StationCategory }
+
+/**
+ * Reads a whole family referential.
+ *
+ * Always the full list: the identifier space is sparse — 94 stations spread
+ * over 1 to 160, 229 rain gauges over 4 to 744 — so a range is never
+ * enumerated, and `limit` returns a non-deterministic slice.
+ *
+ * A station no network types is out of scope, and dropped here, before any
+ * call is spent on it.
+ */
+async function listStations(
+  client: AquasysClient,
+  collector: ReportCollector,
+): Promise<TypedStation[]> {
+  const rows = z.array(rawStationSchema).parse(await client.list('hydro'))
+  const categories = await stationCategories(client, collector)
+  return rows.flatMap((row) => {
+    const category = categories.get(row.id)
+    return category === undefined ? [] : [{ ...row, category }]
+  })
+}
+
+async function listRainGauges(client: AquasysClient): Promise<RawRainGauge[]> {
+  return z.array(rawRainGaugeSchema).parse(await client.list('rain-gauge'))
+}
+
+/** One call for the whole fleet, whatever its size. */
+async function stationCategories(
+  client: AquasysClient,
+  collector: ReportCollector,
+): Promise<ReadonlyMap<number, StationCategory>> {
+  const links = z.array(rawNetworkLinkSchema).parse(await client.networkLinks())
+  const typing = typeStations(links)
+  for (const fallback of typing.fallbacks) collector.fellBackTo(fallback)
+  return typing.categories
 }

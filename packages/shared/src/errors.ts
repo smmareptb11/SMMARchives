@@ -1,5 +1,5 @@
 /**
- * Process exit codes shared by every collection script.
+ * Process exit codes shared by every command of the worker.
  *
  * `partial` exists so that a caller can tell "94 stations, all answered" from
  * "94 stations, 93 answered" without parsing the report: an empty result is a

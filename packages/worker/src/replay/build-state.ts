@@ -36,7 +36,7 @@ function now(): Instant {
  *
  * A lane and a data set are counted separately because they are not the same
  * thing: the Aquasys lane produces four data sets off one referential, each
- * with the report of the script or the derivation it corresponds to.
+ * with the report of the collection or the derivation it corresponds to.
  */
 export class ReplayBuild {
   readonly #manifest: ReplayManifest
@@ -106,9 +106,14 @@ export class ReplayBuild {
     await this.publish()
   }
 
-  /** A collector for one data set, whose progress reaches the lane's journal. */
-  collectorFor(lane: LaneName, script: string, request: Record<string, unknown>): ReportCollector {
-    return new ReportCollector(script, request, {
+  /**
+   * A collector for one data set, whose progress reaches the lane's journal.
+   *
+   * No request for one that only gathers failures for {@link noteFailures},
+   * which keeps nothing else of its report.
+   */
+  collectorFor(lane: LaneName, request: Record<string, unknown> = {}): ReportCollector {
+    return new ReportCollector(request, {
       onProgress: this.#journal.progressOf(lane, this.#echo),
     })
   }
@@ -226,7 +231,7 @@ export class ReplayBuild {
   /**
    * A replay that stored nothing is failed, one that stored everything without a
    * single failure is complete, anything between is partial — the ladder the
-   * collection scripts express through their exit codes.
+   * exit code of the build follows.
    */
   #state(): ReplayManifest['state'] {
     const datasets = Object.values(this.#manifest.datasets)
@@ -237,8 +242,8 @@ export class ReplayBuild {
       // `runLane` there should be none, which is what makes this a net rather
       // than the only thing standing between a dead lane and a `complete`.
       Object.values(this.#manifest.lanes).some((lane) => lane.state !== 'done') ||
-      // The same rule the scripts apply to their own exit code, read from the
-      // one place that states it.
+      // The rule a report states about its own exit code, read from the one
+      // place that states it.
       datasets.some((dataset) => exitCodeFor(dataset.report) !== ExitCode.success) ||
       this.#manifest.media.failed > 0 ||
       this.#manifest.journalError !== undefined

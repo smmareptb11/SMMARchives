@@ -19,8 +19,7 @@ export type IndexOptions = {
   root: string
   extent: BoundingBox
   collector: ReportCollector
-  deliveries: readonly string[] | undefined
-  window: TimeWindow | undefined
+  window: TimeWindow
 }
 
 export type IndexResult = {
@@ -44,7 +43,10 @@ export type IndexResult = {
 /* eslint-disable-next-line max-statements -- one pass per delivery and per product, an unreadable
    one costing itself alone */
 export async function indexDeliveries(options: IndexOptions): Promise<IndexResult> {
-  const deliveries = await selectDeliveries(options)
+  // An unreadable root is a configuration failure, and the only one here: a root
+  // holding no delivery is not, since deliveries exist only for the periods SMMAR
+  // has published. Anything unreadable deeper down is a partial failure.
+  const deliveries = await subdirectories(options.root)
   const series: RadarRainfallSeries[] = []
   let skipped = 0
 
@@ -67,9 +69,7 @@ export async function indexDeliveries(options: IndexOptions): Promise<IndexResul
       if (scan === undefined) continue
       skipped += scan.skipped
 
-      const frames = options.window
-        ? cropToWindow(scan.frames, options.window, (frame) => frame.at)
-        : scan.frames
+      const frames = cropToWindow(scan.frames, options.window, (frame) => frame.at)
       if (frames.length === 0) {
         options.collector.withoutData(`${delivery}/${product}`)
         continue
@@ -87,20 +87,6 @@ export async function indexDeliveries(options: IndexOptions): Promise<IndexResul
   return { series, skipped }
 }
 
-/**
- * An unreadable root is a configuration failure, and the only one here: a root
- * holding no delivery is not, since deliveries exist only for the periods SMMAR
- * has published. Anything unreadable deeper down is a partial failure.
- */
-async function selectDeliveries(options: IndexOptions): Promise<string[]> {
-  const present = await subdirectories(options.root)
-  if (options.deliveries === undefined) return present
-
-  const missing = options.deliveries.filter((delivery) => !present.includes(delivery))
-  for (const delivery of missing) options.collector.withoutData(delivery)
-  return options.deliveries.filter((delivery) => present.includes(delivery))
-}
-
 /* eslint-disable-next-line max-statements -- reads a directory and keeps the frames named by a
    timestamp; the two failures it survives */
 async function scanProduct(
@@ -111,7 +97,7 @@ async function scanProduct(
   const directory = join(options.root, delivery, product)
 
   // One unreadable product is a partial failure, like one station out of 94:
-  // what is already indexed is kept and the envelope still comes out.
+  // what is already indexed is kept and the series are still returned.
   let entries
   try {
     entries = await readdir(directory, { withFileTypes: true })
