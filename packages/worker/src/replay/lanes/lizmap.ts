@@ -61,7 +61,7 @@ export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
       collector: layers,
       layers: REFERENCE_LAYERS,
     })
-    // No extent here: intersecting a layer with the extent is PostGIS's job.
+    // No extent here: the structures are frozen whole, whatever the replay's extent.
     await build.stored(
       'reference-layers',
       z.array(referenceLayerSchema),
