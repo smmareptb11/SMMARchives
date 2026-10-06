@@ -52,9 +52,6 @@ const RASTER_EPOCH = 1788933600
 const ROUTES = {
   'TYPENAME=webcam': { json: fixture('lizmap/webcam.json') },
   'TYPENAME=ouvrage_hydraulique': { json: fixture('lizmap/ouvrage_hydraulique.json') },
-  'TYPENAME=perimetre_smmar': { json: fixture('lizmap/ouvrage_hydraulique.json') },
-  'TYPENAME=perimetre_syndicats': { json: fixture('lizmap/ouvrage_hydraulique.json') },
-  'TYPENAME=bd_admin_commune': { json: fixture('lizmap/ouvrage_hydraulique.json') },
   Ceneau_img_215: { json: fixture('ceneau/images-215.json') },
   'media.ceneau.test': { text: 'JPEG' },
 }
@@ -154,22 +151,22 @@ describe('the Lizmap data sets of a replay', () => {
     expect(manifest.state).toBe('complete')
   })
 
-  it('freeze the four reference layers whole, since they are the extent referential', async () => {
+  it('read from the Lizmap the structures and the cameras, and no other layer', async () => {
     const { calls } = await build()
 
-    // Asked for by name, and each actually requested: the stored `name` is the
-    // one the lane asked for, so reading it back would only echo the enum.
-    for (const layer of [
-      'ouvrage_hydraulique',
-      'perimetre_smmar',
-      'perimetre_syndicats',
-      'bd_admin_commune',
-    ]) {
-      expect(calls.filter((url) => url.includes(`TYPENAME=${layer}`))).toHaveLength(1)
-    }
+    const read = new Set(calls.flatMap((url) => /TYPENAME=([^&]+)/.exec(url)?.[1] ?? []))
+    expect([...read].sort()).toEqual(['ouvrage_hydraulique', 'webcam'])
+  })
+
+  it('freeze the structures layer whole', async () => {
+    const { calls } = await build()
+
+    // Asked for by name, and actually requested: the stored `name` is the one
+    // the lane asked for, so reading it back would only echo the enum.
+    expect(calls.filter((url) => url.includes('TYPENAME=ouvrage_hydraulique'))).toHaveLength(1)
 
     const layers = await held<ReferenceLayer[]>('reference-layers')
-    expect(layers).toHaveLength(4)
+    expect(layers.map((one) => one.name)).toEqual(['ouvrage_hydraulique'])
     // Whole, not narrowed: every feature the layer holds is in the replay.
     for (const layer of layers) {
       expect(layer.featureCount).toBeGreaterThan(0)
@@ -387,16 +384,17 @@ describe('a Lizmap that cannot be reached', () => {
   })
 
   /** A layer that refuses is one layer, not the lane. */
-  it('keeps the layers that answered when one refuses', async () => {
+  it('keeps the cameras when the layer refuses', async () => {
     const { manifest } = await build({
       routes: {
         ...ROUTES,
-        'TYPENAME=bd_admin_commune': { text: fixtureText('lizmap/forbidden.xml') },
+        'TYPENAME=ouvrage_hydraulique': { text: fixtureText('lizmap/forbidden.xml') },
       },
     })
 
-    expect(manifest.datasets['reference-layers']?.count).toBe(3)
+    expect(manifest.datasets['reference-layers']?.count).toBe(0)
     expect(manifest.datasets['reference-layers']?.report.failures).toHaveLength(1)
+    expect(manifest.datasets['webcams']?.count).toBeGreaterThan(0)
     expect(manifest.state).toBe('partial')
   })
 })

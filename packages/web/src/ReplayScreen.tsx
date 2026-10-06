@@ -3,7 +3,6 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react
 import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 import type { Measure } from '@smmarchives/shared/contracts/measure.ts'
 import type { RadarRainfallSeries } from '@smmarchives/shared/contracts/radar-rainfall.ts'
-import type { ReferenceLayer } from '@smmarchives/shared/contracts/reference-layer.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.ts'
 import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
@@ -11,7 +10,6 @@ import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/we
 
 import { api } from './api.ts'
 import { cursorAt } from './transport/reading.ts'
-import { PERIMETERS } from './map/families.ts'
 import { paintedAt } from './map/state.ts'
 import { gaugesOf } from './rain.ts'
 import { describe } from './problems.ts'
@@ -120,7 +118,7 @@ async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise
       ? fallback
       : api.datasetOf<T>(id, name, filter, signal)
 
-  const [fleet, events, thresholds, rainfall, webcams, images, series, layers] = await Promise.all([
+  const [fleet, events, thresholds, rainfall, webcams, images, series] = await Promise.all([
     askFor<{ stations: Station[]; rainGauges: RainGauge[] }>('stations', {
       stations: [],
       rainGauges: [],
@@ -131,10 +129,6 @@ async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise
     askFor<Webcam[]>('webcams', []),
     askFor<FrozenWebcamImage[]>('webcam-images', []),
     askFor<RadarRainfallSeries[]>('radar-rainfall', []),
-    // Only the one the map draws: the four layers together weigh a megabyte,
-    // and the perimeters of the communes alone are 26 600 vertices nothing
-    // reads. The data set narrows on `layer`, so the filter costs nothing.
-    askFor<ReferenceLayer[]>('reference-layers', [], { layer: PERIMETERS }),
   ])
 
   return {
@@ -149,7 +143,6 @@ async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise
     webcams,
     images,
     series,
-    layers,
   }
 }
 

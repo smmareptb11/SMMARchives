@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { familiesOf } from '../src/map/families.ts'
-import { aGauge, aLayer, aStation, held } from './support/content.ts'
+import { aGauge, aStation, held } from './support/content.ts'
 
 describe('the families a replay holds', () => {
   it('are the ones it has something to draw for', () => {
@@ -10,16 +10,17 @@ describe('the families a replay holds', () => {
       rainGauges: [aGauge(3, 'Pezens', 2.2)],
     })
 
-    expect(familiesOf(content)).toEqual(['watercourse', 'structure', 'rain-gauge'])
+    expect(familiesOf(content)).toEqual(['watercourse', 'structure', 'rain-gauge', 'territory'])
   })
 
   it('hold no switch for a family the replay is empty of', () => {
-    expect(familiesOf(held({ rainGauges: [aGauge(1, 'Pezens', 2.2)] }))).toEqual(['rain-gauge'])
-    expect(familiesOf(held())).toEqual([])
+    expect(familiesOf(held({ rainGauges: [aGauge(1, 'Pezens', 2.2)] }))).toEqual([
+      'rain-gauge',
+      'territory',
+    ])
   })
 
-  it('hold the ground only when the replay copied the layer that draws it', () => {
-    expect(familiesOf(held({ layers: [aLayer('perimetre_syndicats')] }))).toEqual(['territory'])
-    expect(familiesOf(held({ layers: [aLayer('communes')] }))).toEqual([])
+  it('hold the territory, which the application carries for every replay', () => {
+    expect(familiesOf(held())).toEqual(['territory'])
   })
 })
