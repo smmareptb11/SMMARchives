@@ -12,8 +12,7 @@ import unions from './perimetre_syndicats.json' with { type: 'json' }
  * The perimeter of one of the seven basin unions.
  *
  * Frozen reference data, read once from the Lizmap layer `perimetre_syndicats`.
- * It changes rarely, and a replay that copied it would weigh 700 Kb for an
- * outline every other replay holds too.
+ * It changes rarely, so the application carries it rather than each replay.
  *
  * Simplified when frozen, to fifty metres at five decimals with topology
  * preserved: the outline is drawn at six percent opacity, and the bounding box
