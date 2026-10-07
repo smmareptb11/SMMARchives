@@ -96,7 +96,7 @@ describe('creating a replay', () => {
     await withServer(appOn(api, { launch, publishTimeout: 20 }), async (base) => {
       const response = await post(base, {
         ...body,
-        extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.6 },
+        extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.4 },
       })
       const manifest = (await response.json()) as ReplayManifest
 
@@ -104,7 +104,7 @@ describe('creating a replay', () => {
         {
           id: manifest.id,
           label: body.label,
-          extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.6 },
+          extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.4 },
           period: { from: '2019-10-22T00:00:00.000Z', to: '2019-10-23T00:00:00.000Z' },
         },
       ])
@@ -201,6 +201,16 @@ describe('refusing a creation', () => {
       'an extent off the Earth',
       { ...body, extent: { minLon: 0, minLat: 0, maxLon: 1000, maxLat: 1 } },
       'extent.maxLon',
+    ],
+    [
+      'an extent reaching past the territory',
+      { ...body, extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.7 } },
+      'extent',
+    ],
+    [
+      'an extent outside the territory',
+      { ...body, extent: { minLon: 5.3, minLat: 43.2, maxLon: 5.5, maxLat: 43.4 } },
+      'extent',
     ],
     ['a label longer than a title', { ...body, label: 'x'.repeat(201) }, 'label'],
   ])('refuses %s', async (_case, payload, path) => {

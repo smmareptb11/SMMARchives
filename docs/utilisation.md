@@ -14,7 +14,7 @@ npm run build:replay -- --from 2019-10-22T00:00Z --to 2019-10-24T00:00Z --label 
 |---|---|
 | `--from`, `--to` | **Obligatoires.** La période rejouée |
 | `--label` | Le libellé du rejeu |
-| `--bbox` | L'emprise. Omise, tout le parc |
+| `--bbox` | L'emprise, contenue dans le territoire du SMMAR. Omise, tout le parc |
 | `--id` | Construit **dans un rejeu existant**. Sans elle, la base frappe un identifiant neuf. Un identifiant qui ne désigne rien est refusé |
 
 **Un rejeu est nommé par ce qui le stocke.** C'est la base qui frappe

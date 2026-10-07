@@ -3,6 +3,8 @@ import { z } from 'zod'
 
 import {
   boundingBoxSchema,
+  encloses,
+  SMMAR_TERRITORY,
   windowOf,
   type ReplayIdentity,
   type ReplayManifest,
@@ -33,7 +35,14 @@ const creationSchema = z.strictObject({
     .regex(/^[^\p{Cc}]*$/u, 'must not carry control characters')
     .nullish()
     .transform((value) => value ?? null),
-  extent: boundingBoxSchema.nullish().transform((value) => value ?? null),
+  // Refused rather than cut: a build of less than was asked would say nothing
+  // of what it left out.
+  extent: boundingBoxSchema
+    .refine((extent) => encloses(SMMAR_TERRITORY, extent), {
+      message: 'must lie within the SMMAR territory',
+    })
+    .nullish()
+    .transform((value) => value ?? null),
   period: z.object({ from: z.string(), to: z.string() }).transform((period, context) => {
     try {
       return windowOf(period.from, period.to)

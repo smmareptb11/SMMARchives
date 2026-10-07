@@ -4,7 +4,9 @@ import {
   ConfigurationError,
   ContractError,
   ExitCode,
+  SMMAR_TERRITORY,
   SourceError,
+  encloses,
   parseBoundingBox,
   replayIdSchema,
   windowOf,
@@ -51,12 +53,16 @@ export function parseCliArgs<T extends NonNullable<ParseArgsConfig['options']>>(
 
 /**
  * The geographic extent of the replay. Given, a build collects only the
- * sources inside it; omitted, it collects the whole fleet, which is what the
- * SMMAR territory itself amounts to.
+ * sources inside it, which must lie within the SMMAR territory; omitted, it
+ * collects the whole fleet, which is what that territory itself amounts to.
  */
 export function toExtent(value: string | undefined): BoundingBox | undefined {
   if (value === undefined) return undefined
-  return parseBoundingBox(value, (reason) => new UsageError(`--bbox ${reason}`))
+  const extent = parseBoundingBox(value, (reason) => new UsageError(`--bbox ${reason}`))
+  if (!encloses(SMMAR_TERRITORY, extent)) {
+    throw new UsageError('--bbox must lie within the SMMAR territory')
+  }
+  return extent
 }
 
 /**

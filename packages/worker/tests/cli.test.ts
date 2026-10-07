@@ -115,6 +115,13 @@ describe('the extent read from the command line', () => {
     expect(() => toExtent('3.1,43.0,2.7,43.4')).toThrow(/^--bbox has its minimum past its maximum/)
   })
 
+  it('is refused past the SMMAR territory, even by a single side', () => {
+    expect(() => toExtent('2.0,42.7,3.2,43.7')).toThrow(
+      '--bbox must lie within the SMMAR territory',
+    )
+    expect(() => toExtent('5.3,43.2,5.5,43.4')).toThrow(UsageError)
+  })
+
   it('is absent, not empty, when the flag is not given', () => {
     expect(toExtent(undefined)).toBeUndefined()
   })
