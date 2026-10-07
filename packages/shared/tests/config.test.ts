@@ -121,10 +121,10 @@ describe('the radar rainfall extent', () => {
 })
 
 /**
- * An extent nobody could mean used to pass: `1000,2000,3000,4000` was accepted,
- * matched no source, and returned an empty collection indistinguishable from an
- * extent that legitimately holds nothing. The bounds now live on the type, so
- * both the `--bbox` flag and this variable inherit them.
+ * An extent nobody could mean, `1000,2000,3000,4000`, would match no source and
+ * return an empty collection indistinguishable from an extent that legitimately
+ * holds nothing. The bounds live on the type, so both the `--bbox` flag and
+ * this variable inherit them.
  */
 describe('an extent that is not a place on Earth', () => {
   it('is refused rather than silently matching nothing', () => {

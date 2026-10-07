@@ -17,3 +17,4 @@ export * from './contracts/webcam.ts'
 
 export * from './reference/data-types.ts'
 export * from './reference/media.ts'
+export * from './reference/territory.ts'

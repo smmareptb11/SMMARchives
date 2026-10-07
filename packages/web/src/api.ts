@@ -1,4 +1,5 @@
 import type { TimeWindow } from '@smmarchives/shared/clock.ts'
+import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 import type { Measure } from '@smmarchives/shared/contracts/measure.ts'
 import type { Quantity } from '@smmarchives/shared/contracts/quantity.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
@@ -20,7 +21,7 @@ async function ask<T>(path: string, init?: RequestInit): Promise<T> {
 
 export type Creation = {
   label: string | null
-  extent: null
+  extent: BoundingBox | null
   period: TimeWindow
 }
 

@@ -674,3 +674,40 @@ summary .count {
   font-size: 11px;
   color: #cfdae4;
 }
+
+.extent {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+}
+
+.extent legend {
+  font-weight: 600;
+}
+
+/*
+ * The border sits on the view: the frame is placed inside it, so its
+ * percentages fall on the very pixels the extent is read from.
+ */
+.extent-view {
+  position: relative;
+  justify-self: stretch;
+  overflow: hidden;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+}
+
+.extent-map {
+  height: 20rem;
+}
+
+.extent-frame {
+  position: absolute;
+  border: 2px solid var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+  pointer-events: none;
+}

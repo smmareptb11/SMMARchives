@@ -36,7 +36,7 @@ stockage soit touché. Une route inconnue rend `404 no route here`.
 | Champ | Contrainte |
 |---|---|
 | `label` | Chaîne de 200 caractères au plus, sans caractère de contrôle. Nullable |
-| `extent` | Emprise en WGS84. Nullable |
+| `extent` | Emprise en WGS84, contenue dans le territoire du SMMAR. Nullable |
 | `period` | `{ from, to }`, deux instants, dans l'ordre |
 
 Le corps est lu par un schéma strict : **un champ que la requête ne connaît pas

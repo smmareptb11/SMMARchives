@@ -3,6 +3,8 @@ import { z } from 'zod'
 
 import {
   boundingBoxSchema,
+  encloses,
+  SMMAR_TERRITORY,
   windowOf,
   type ReplayIdentity,
   type ReplayManifest,
@@ -33,7 +35,14 @@ const creationSchema = z.strictObject({
     .regex(/^[^\p{Cc}]*$/u, 'must not carry control characters')
     .nullish()
     .transform((value) => value ?? null),
-  extent: boundingBoxSchema.nullish().transform((value) => value ?? null),
+  // Refused rather than cut: a build of less than was asked would say nothing
+  // of what it left out.
+  extent: boundingBoxSchema
+    .refine((extent) => encloses(SMMAR_TERRITORY, extent), {
+      message: 'must lie within the SMMAR territory',
+    })
+    .nullish()
+    .transform((value) => value ?? null),
   period: z.object({ from: z.string(), to: z.string() }).transform((period, context) => {
     try {
       return windowOf(period.from, period.to)
@@ -74,8 +83,8 @@ export function registerCreation(app: Express, routes: CreationRoutes): void {
 /**
  * Runs the build and waits only for the news that changes the answer.
  *
- * The replay exists the moment it is created, so a creation no longer waits to
- * hear that one does: what is still worth waiting for is a build that could not
+ * The replay exists the moment it is created, so a creation has no need to wait
+ * to hear that one does: what is worth waiting for is a build that could not
  * start at all — a missing token, an unreachable volume — because the replay it
  * would have filled must not be left behind as an empty one.
  */

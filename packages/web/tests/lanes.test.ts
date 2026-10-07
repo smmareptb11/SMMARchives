@@ -23,7 +23,7 @@ describe('placing a segment on the ruler', () => {
   /**
    * A crossing with no end is a point in time — the contract says so, and the
    * map reads it the same way. A caller that means « to the end of the period »
-   * names that end, so one `null` can no longer mean two things.
+   * names that end, so one `null` never means two things.
    */
   it('gives a crossing with no end the instant it happened, and nothing more', () => {
     const from = '2019-10-22T18:00:00.000Z'

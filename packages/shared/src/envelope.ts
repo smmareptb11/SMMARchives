@@ -76,12 +76,10 @@ export class ContractError extends Error {
 /**
  * Checks an envelope against the contract its data set is stored under.
  *
- * The contracts of `contracts/` used to be inert — sixteen schemas, eleven of
- * them never parsed, declaring bounds and formats that nothing enforced. One
- * of those inert bounds was on coordinates, and the coordinate bug the review
- * found would have been impossible had it run. Measured cost on the largest
- * run the project has: 42 ms for 175 000 measures, against 40 to 60 s of
- * sequential HTTP.
+ * A contract nothing parses declares bounds and formats that nothing enforces:
+ * a coordinate out of range would be stored as if it were one. Measured cost
+ * on the largest run the project has: 42 ms for 175 000 measures, against 40
+ * to 60 s of sequential HTTP.
  */
 export function checkEnvelope<T>(schema: z.ZodType, envelope: Envelope<T>): void {
   const parsed = envelopeSchema(schema).safeParse(envelope)

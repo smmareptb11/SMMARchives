@@ -21,9 +21,8 @@ export type PostgresCatalogOptions = {
 /**
  * The replays a database holds.
  *
- * `create` is what the directory catalogue never needed: an identity is minted
- * by what stores it, the way a row's is. No client names a replay, so none can
- * collide with another, and the 409 a taken name used to give disappears.
+ * `create` mints an identity in what stores it, the way a row's is. No client
+ * names a replay, so none can collide with another, and none has to be refused.
  */
 export type PostgresCatalog = ReplayCatalog & {
   create(identity: Omit<ReplayIdentity, 'id'>): Promise<{ id: string; store: ReplayStore }>
@@ -33,7 +32,7 @@ export type PostgresCatalog = ReplayCatalog & {
  * An identifier this catalogue could have minted.
  *
  * `replayIdSchema` accepts more than that — it guards a route against a name
- * that could address something else — and a replay identifier is now a UUID.
+ * that could address something else — and a replay identifier is a UUID.
  * Asked for anything else, the catalogue answers that it holds no such replay
  * rather than letting PostgreSQL refuse the value.
  */
