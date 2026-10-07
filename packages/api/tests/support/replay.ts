@@ -5,7 +5,13 @@ import { basename, join } from 'node:path'
 import type { Pool } from 'pg'
 import { expect } from 'vitest'
 
-import type { DatasetName, DatasetStatus, JournalEntry, ReplayManifest } from '@smmarchives/shared'
+import type {
+  DatasetName,
+  DatasetStatus,
+  JournalEntry,
+  Report,
+  ReplayManifest,
+} from '@smmarchives/shared'
 import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 import { openPostgresCatalog } from '@smmarchives/worker/replay/postgres/catalog.ts'
 import { writeManifest } from '@smmarchives/worker/replay/postgres/manifest.ts'
@@ -86,8 +92,8 @@ export async function writeReplay(
     mediaRoot: api.mediaRoot,
   })
 
-  for (const [name, data] of Object.entries(held.datasets ?? {})) {
-    await store.putDataset(name as DatasetName, data)
+  for (const [name, data] of Object.entries(held.datasets ?? {}) as [DatasetName, unknown][]) {
+    await store.putDataset(name, data, reportOf(manifest, name))
   }
   for (const [path, body] of Object.entries(held.media ?? {})) {
     await store.putMedia(path, new TextEncoder().encode(body))
@@ -97,6 +103,12 @@ export async function writeReplay(
   // The manifest again: storing a data set moves `updatedAt`, and a test that
   // asserts on what it published must get what it published.
   await writeManifest(api.pool, manifest)
+}
+
+function reportOf(manifest: ReplayManifest, name: DatasetName): Report {
+  const status = manifest.datasets[name]
+  if (status === undefined) throw new Error(`the manifest holds no ${name} data set to store`)
+  return status.report
 }
 
 /** What a build records about a data set once it has stored it. */

@@ -7,7 +7,9 @@ import {
   DEFAULT_RADAR_RAINFALL_EXTENT,
   ExitCode,
   windowOf,
+  type DatasetName,
   type RadarRainfallSeries,
+  type Report,
 } from '@smmarchives/shared'
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -63,6 +65,12 @@ afterAll(closeDatabase)
 
 type Options = Parameters<typeof buildReplay>[0]
 
+const IDENTITY = {
+  label: null,
+  extent: null,
+  period: windowOf('2020-06-25T00:00:00Z', '2020-06-26T00:00:00Z'),
+}
+
 /** Only the two nested objects merge; the rest is replaced outright. */
 type Overrides = Partial<Omit<Options, 'identity' | 'radarRainfall'>> & {
   identity?: Partial<Options['identity']>
@@ -71,19 +79,13 @@ type Overrides = Partial<Omit<Options, 'identity' | 'radarRainfall'>> & {
 
 /** Merges one level down, so a test changing one field retypes no other. */
 async function build(overrides: Overrides = {}) {
-  replay ??= await aStoredReplay({
-    label: null,
-    extent: null,
-    period: windowOf('2020-06-25T00:00:00Z', '2020-06-26T00:00:00Z'),
-  })
+  replay ??= await aStoredReplay(IDENTITY)
   return buildReplay({
     ...{ copyMedia: true, store: replay.store, aquasys: emptyFleet() },
     ...overrides,
     identity: {
       id: replay.id,
-      label: null,
-      extent: null,
-      period: windowOf('2020-06-25T00:00:00Z', '2020-06-26T00:00:00Z'),
+      ...IDENTITY,
       ...overrides.identity,
     },
     radarRainfall: {
@@ -137,6 +139,37 @@ describe('a replay that builds', () => {
   it('succeeds with an exit code of its own', async () => {
     const { exitCode } = await build()
     expect(exitCode).toBe(ExitCode.success)
+  })
+})
+
+/**
+ * A reader does not wait for the build: the API answers a creation by reading
+ * the replay a few seconds in, whatever the build is doing at that moment.
+ */
+describe('a replay read while it is being built', () => {
+  it('is readable after every data set the build stores', async () => {
+    replay = await aStoredReplay(IDENTITY)
+    const real = replay.store
+    const stored: [DatasetName, Report][] = []
+    const read: [DatasetName, unknown][] = []
+
+    await build({
+      store: {
+        ...real,
+        putDataset: async (name, data, report) => {
+          await real.putDataset(name, data, report)
+          const shown = await real.getManifest().then(
+            (manifest) => manifest?.datasets[name]?.report,
+            (error: Error) => error.name,
+          )
+          stored.push([name, report])
+          read.push([name, shown])
+        },
+      },
+    })
+
+    expect(stored).not.toHaveLength(0)
+    expect(read).toEqual(stored)
   })
 })
 
@@ -240,11 +273,7 @@ describe('a medium that cannot be read', () => {
  */
 describe('a journal that could not be written', () => {
   it('makes the replay incomplete rather than failing the command', async () => {
-    const opened = await aStoredReplay({
-      label: null,
-      extent: null,
-      period: windowOf('2020-06-25T00:00:00Z', '2020-06-26T00:00:00Z'),
-    })
+    const opened = await aStoredReplay(IDENTITY)
     replay = opened
     const { manifest, exitCode } = await build({
       store: {

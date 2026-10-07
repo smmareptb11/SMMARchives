@@ -12,6 +12,7 @@ import type { Measure, ReplayIdentity } from '@smmarchives/shared'
 import { openPostgresCatalog, type PostgresCatalog } from '../src/replay/postgres/catalog.ts'
 import type { ReplayStore, StoredBlob } from '../src/replay/store.ts'
 import { closeDatabase, freshDatabase } from './support/database.ts'
+import { aReport } from './support/replay-store.ts'
 
 afterAll(closeDatabase)
 
@@ -24,6 +25,8 @@ const identity: Omit<ReplayIdentity, 'id'> = {
 const MEASURES: Measure[] = [
   { sourceId: 84, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1.25 },
 ]
+
+const REPORT = aReport()
 
 async function bytesOf(blob: StoredBlob): Promise<Buffer> {
   const chunks: Uint8Array[] = []
@@ -87,14 +90,22 @@ describe('a replay in the database', () => {
 
   it('reads back a data set the way a re-run needs it', async () => {
     const { store } = await catalog.create(identity)
-    await store.putDataset('measures', MEASURES)
+    await store.putDataset('measures', MEASURES, REPORT)
 
     expect(await store.getDataset('measures')).toEqual(MEASURES)
   })
 
+  it('shows a data set in the manifest with its report from the moment it is stored', async () => {
+    const { store } = await catalog.create(identity)
+    await store.putDataset('measures', MEASURES, REPORT)
+
+    const manifest = await store.getManifest()
+    expect(manifest?.datasets['measures']).toEqual({ count: 1, report: REPORT })
+  })
+
   it('serves a data set as bytes, for a reader that does not decode', async () => {
     const { store } = await catalog.create(identity)
-    await store.putDataset('measures', MEASURES)
+    await store.putDataset('measures', MEASURES, REPORT)
 
     const blob = await opened(store)
     expect(JSON.parse((await bytesOf(blob)).toString('utf8'))).toEqual(MEASURES)
@@ -103,11 +114,20 @@ describe('a replay in the database', () => {
 
   it('changes the version of a data set a re-run rewrote', async () => {
     const { store } = await catalog.create(identity)
-    await store.putDataset('measures', MEASURES)
+    await store.putDataset('measures', MEASURES, REPORT)
     const before = (await opened(store)).version
 
-    await store.putDataset('measures', [{ ...MEASURES[0]!, value: 9.99 }])
+    await store.putDataset('measures', [{ ...MEASURES[0]!, value: 9.99 }], REPORT)
     expect((await opened(store)).version).not.toBe(before)
+  })
+
+  it('shows the report of the run that rewrote a data set, not the first one', async () => {
+    const { store } = await catalog.create(identity)
+    await store.putDataset('measures', MEASURES, REPORT)
+
+    const rerun = aReport({ ranAt: '2026-09-12T08:05:00.000Z' })
+    await store.putDataset('measures', MEASURES, rerun)
+    expect((await store.getManifest())?.datasets['measures']?.report).toEqual(rerun)
   })
 
   it('keeps the bytes it froze on the volume, not in the database', async () => {
@@ -148,7 +168,7 @@ describe('a replay in the database', () => {
 
   it('takes rows and bytes away together', async () => {
     const { id, store } = await catalog.create(identity)
-    await store.putDataset('measures', MEASURES)
+    await store.putDataset('measures', MEASURES, REPORT)
     await store.putMedia('webcams/215/1.jpg', new Uint8Array([1]))
 
     expect(await catalog.remove(id)).toBe(true)

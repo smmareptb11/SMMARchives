@@ -3,23 +3,13 @@ import { randomUUID } from 'node:crypto'
 import type { Pool } from 'pg'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 
-import type { Report, ReplayManifest } from '@smmarchives/shared'
+import type { ReplayManifest } from '@smmarchives/shared'
 
 import { readManifest, writeManifest } from '../src/replay/postgres/manifest.ts'
 import { closeDatabase, freshDatabase } from './support/database.ts'
+import { aReport } from './support/replay-store.ts'
 
 afterAll(closeDatabase)
-
-function aReport(extra: Record<string, unknown> = {}): Report {
-  return {
-    ranAt: '2026-09-11T08:05:00.000Z',
-    request: {},
-    sourcesWithoutData: [],
-    fallbacks: [],
-    failures: [],
-    ...extra,
-  }
-}
 
 function aManifest(overrides: Partial<ReplayManifest> = {}): ReplayManifest {
   return {

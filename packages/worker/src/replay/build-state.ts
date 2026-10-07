@@ -135,7 +135,7 @@ export class ReplayBuild {
     count: number,
   ): Promise<void> {
     checkEnvelope(contract, envelope)
-    await this.#store.putDataset(dataset, envelope.data)
+    await this.#store.putDataset(dataset, envelope.data, envelope.report)
 
     this.#manifest.datasets[dataset] = {
       count,
