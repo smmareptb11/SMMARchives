@@ -1,10 +1,12 @@
 import { useState } from 'react'
 
+import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
 import { api } from '../api.ts'
 import { ApiError, describe, type ApiProblem } from '../problems.ts'
 import { formatInstant, toInstant } from '../time.ts'
+import { ExtentPicker } from './ExtentPicker.tsx'
 import { hoursBetween, periodOf } from './period.ts'
 
 export type CreationFormProps = {
@@ -15,6 +17,7 @@ export function CreationForm({ onCreated }: CreationFormProps) {
   const [label, setLabel] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [extent, setExtent] = useState<BoundingBox | null>(null)
   const [refusal, setRefusal] = useState<string | undefined>(undefined)
   const [refusals, setRefusals] = useState<ApiProblem['refusals']>(undefined)
   const [sending, setSending] = useState(false)
@@ -30,7 +33,8 @@ export function CreationForm({ onCreated }: CreationFormProps) {
 
     setSending(true)
     try {
-      onCreated(await api.createReplay({ label: label.trim(), extent: null, ...asked }))
+      const creation = { label: label.trim(), extent, ...asked }
+      onCreated(await api.createReplay(creation))
     } catch (error) {
       setRefusal(describe(error))
       // What the API refused, field by field, rather than one sentence for all.
@@ -46,7 +50,7 @@ export function CreationForm({ onCreated }: CreationFormProps) {
     <form onSubmit={(event) => void submit(event)}>
       <h1>Constituer un rejeu</h1>
       <p className="lead">
-        Le rejeu couvre tout le territoire du SMMAR. Les heures sont en heure française.
+        Par défaut, le rejeu couvre tout le territoire. Les heures sont en heure française.
       </p>
 
       <label>
@@ -60,6 +64,8 @@ export function CreationForm({ onCreated }: CreationFormProps) {
       </div>
 
       {hours !== undefined && hours > 0 ? <p className="note">Durée : {hours} heures.</p> : null}
+
+      <ExtentPicker onChange={setExtent} />
 
       <Refusal said={refusal} fields={refusals} />
 
