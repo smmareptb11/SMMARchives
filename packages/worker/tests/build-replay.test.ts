@@ -158,14 +158,12 @@ describe('a replay read while it is being built', () => {
         ...real,
         putDataset: async (name, data, report) => {
           await real.putDataset(name, data, report)
+          const shown = await real.getManifest().then(
+            (manifest) => manifest?.datasets[name]?.report,
+            (error: Error) => error.name,
+          )
           stored.push([name, report])
-          read.push([
-            name,
-            await real.getManifest().then(
-              (manifest) => manifest?.datasets[name]?.report,
-              (error: Error) => error.name,
-            ),
-          ])
+          read.push([name, shown])
         },
       },
     })
