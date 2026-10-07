@@ -1,11 +1,12 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-import { Map as MapLibreMap, NavigationControl, type StyleSpecification } from 'maplibre-gl'
+import { Map as MapLibreMap, NavigationControl } from 'maplibre-gl'
 import { memo, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { Cursor } from '../transport/reading.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
+import { BLANK, groundOf } from './ground.ts'
 import { drawSources, drawTerritory, paintSources, showFamilies, showMutes } from './layers.ts'
 import { boundsOf } from './sources.ts'
 import { addShapes } from './symbols.ts'
@@ -16,20 +17,6 @@ import { viewsOf, type Views } from '../pictures.ts'
 import { LayerPanel } from './LayerPanel.tsx'
 import { silencesOf } from './silences.ts'
 import { WebcamMarkers } from './WebcamMarkers.tsx'
-
-/**
- * The one thing a replay does not freeze.
- *
- * OpenFreeMap serves this style without a key, so no account, quota or
- * proprietary dependency stands between a reader and the map.
- */
-const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
-
-/** Ground for a map whose basemap never came: no source, so nothing to fetch. */
-const BLANK: StyleSpecification = { version: 8, sources: {}, layers: [] }
-
-/** How long the basemap is waited for before the map is opened without it. */
-const GROUND_TIMEOUT = 8_000
 
 /** The Aude basin, so a replay holding nothing placed still opens somewhere. */
 const FALLBACK = { center: [2.55, 43.17] as [number, number], zoom: 8.6 }
@@ -94,26 +81,6 @@ function drawEverything(map: MapLibreMap, content: ReplayContent): void {
 
   const bounds = boundsOf(content)
   if (bounds !== undefined) map.fitBounds(bounds, { padding: 40, animate: false })
-}
-
-/**
- * The basemap, or blank ground when it cannot be had.
- *
- * Fetched before the map is built rather than raced against it once it is: the
- * ground is an input, so a reader is told it is missing before anything is
- * drawn rather than eight seconds after. A deadline raced against a map that is
- * already drawing throws away a basemap arriving one second late, for good.
- *
- * The style names its sprite, its fonts and its tiles by absolute address, so
- * handing MapLibre the object rather than the address changes nothing it reads.
- */
-async function groundOf(): Promise<string | StyleSpecification> {
-  try {
-    const response = await fetch(BASEMAP, { signal: AbortSignal.timeout(GROUND_TIMEOUT) })
-    return response.ok ? ((await response.json()) as StyleSpecification) : BLANK
-  } catch {
-    return BLANK
-  }
 }
 
 /**
