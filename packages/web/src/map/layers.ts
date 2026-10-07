@@ -115,9 +115,6 @@ function addFamily(map: MapLibreMap, { kind, id, size, colour }: Drawn): void {
  * the family beside them goes on being drawn. Read off a property the parc
  * already carries — `map/sources.ts` puts it there — so a toggle costs one
  * filter per layer rather than three hundred features rewritten.
- *
- * Written against `true` rather than negated: a feature of a replay built
- * before this property existed carries no `mute` at all, and it is drawn.
  */
 export function filterOf(kind: Kind, mutesShown: boolean): ExpressionSpecification {
   const family: ExpressionSpecification = ['==', ['get', 'kind'], kind]

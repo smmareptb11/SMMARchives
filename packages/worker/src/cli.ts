@@ -69,7 +69,7 @@ export function toExtent(value: string | undefined): BoundingBox | undefined {
  * The identifier of a replay, which also names the directory holding its media.
  *
  * Checked here rather than at the store, because a separator in it would escape
- * that directory. A replay is named by the database now, so a flag carrying one
+ * that directory. A replay is named by the database, so a flag carrying one
  * names a replay that already exists.
  */
 export function toReplayId(value: string): string {

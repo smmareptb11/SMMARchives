@@ -33,8 +33,8 @@ export const NAMES: Record<Family, { one: string; many: string }> = {
  *
  * The map's neutral for the two hydro families, which is what a station under
  * every threshold shows. A rain gauge takes the panel's own grey instead: no
- * gauge shows that neutral any more, and it falls between two classes of the
- * ramp under the row, so the shape would read as a quantity.
+ * gauge is drawn in that neutral, and it falls between two classes of the ramp
+ * under the row, so the shape would read as a quantity.
  */
 export function swatchColourOf(family: Family): string {
   return family === 'rain-gauge' ? MUTED : NEUTRAL

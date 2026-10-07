@@ -83,8 +83,8 @@ export function registerCreation(app: Express, routes: CreationRoutes): void {
 /**
  * Runs the build and waits only for the news that changes the answer.
  *
- * The replay exists the moment it is created, so a creation no longer waits to
- * hear that one does: what is still worth waiting for is a build that could not
+ * The replay exists the moment it is created, so a creation has no need to wait
+ * to hear that one does: what is worth waiting for is a build that could not
  * start at all — a missing token, an unreachable volume — because the replay it
  * would have filled must not be left behind as an empty one.
  */

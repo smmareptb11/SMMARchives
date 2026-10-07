@@ -135,7 +135,7 @@ function Swatch({ family }: { family: Family }) {
  * The scale the blue of a rain gauge is read on, and the grey beside it.
  *
  * Here rather than in a legend of its own: the panel is already where a reader
- * comes to learn what the map means, and the two languages of colour it now
+ * comes to learn what the map means, and the two languages of colour it
  * speaks are easiest to tell apart when they are named side by side.
  *
  * The bounds alone, the unit said once: a ramp that darkens from left to right

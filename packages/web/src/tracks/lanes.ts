@@ -97,8 +97,8 @@ const A_POINT_IN_TIME = 0.4
  * Both ends are named, and neither is guessed. A crossing with no end is a
  * point in time and ends where it began — the contract says so, and the map
  * reads it the same way; a picture with no successor runs to the end of the
- * period, and its caller passes that end. The two used to share a `null` with
- * two meanings, and the lane and the map then disagreed about one event.
+ * period, and its caller passes that end. The lane and the map so read one
+ * event the same way.
  */
 export function placeOf(period: TimeWindow, from: Instant, to: Instant): Place {
   return placedIn(boundsOf(period), Date.parse(from), Date.parse(to))
