@@ -7,7 +7,9 @@ import {
   DEFAULT_RADAR_RAINFALL_EXTENT,
   ExitCode,
   windowOf,
+  type DatasetName,
   type RadarRainfallSeries,
+  type Report,
 } from '@smmarchives/shared'
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -148,24 +150,28 @@ describe('a replay read while it is being built', () => {
   it('is readable after every data set the build stores', async () => {
     replay = await aStoredReplay(IDENTITY)
     const real = replay.store
-    const written: string[] = []
-    const unreadable: string[] = []
+    const stored: [DatasetName, Report][] = []
+    const read: [DatasetName, unknown][] = []
 
     await build({
       store: {
         ...real,
         putDataset: async (name, data, report) => {
           await real.putDataset(name, data, report)
-          written.push(name)
-          await real
-            .getManifest()
-            .catch((error: Error) => unreadable.push(`${name}: ${error.name}`))
+          stored.push([name, report])
+          read.push([
+            name,
+            await real.getManifest().then(
+              (manifest) => manifest?.datasets[name]?.report,
+              (error: Error) => error.name,
+            ),
+          ])
         },
       },
     })
 
-    expect(written).not.toHaveLength(0)
-    expect(unreadable).toEqual([])
+    expect(stored).not.toHaveLength(0)
+    expect(read).toEqual(stored)
   })
 })
 
