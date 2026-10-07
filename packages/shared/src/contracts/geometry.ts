@@ -63,6 +63,27 @@ export function contains(extent: BoundingBox, position: Position | null): boolea
   )
 }
 
+/** Bounds included: an extent touching the edge of another still lies within it. */
+export function encloses(outer: BoundingBox, inner: BoundingBox): boolean {
+  return (
+    inner.minLon >= outer.minLon &&
+    inner.maxLon <= outer.maxLon &&
+    inner.minLat >= outer.minLat &&
+    inner.maxLat <= outer.maxLat
+  )
+}
+
+/** Nothing when the two share no area, a common edge included. */
+export function intersectionOf(one: BoundingBox, other: BoundingBox): BoundingBox | undefined {
+  const shared = {
+    minLon: Math.max(one.minLon, other.minLon),
+    minLat: Math.max(one.minLat, other.minLat),
+    maxLon: Math.min(one.maxLon, other.maxLon),
+    maxLat: Math.min(one.maxLat, other.maxLat),
+  }
+  return shared.minLon < shared.maxLon && shared.minLat < shared.maxLat ? shared : undefined
+}
+
 /** As much of GeoJSON as a collector needs to check and to walk. */
 export const featureCollectionSchema = z.object({
   type: z.literal('FeatureCollection'),
