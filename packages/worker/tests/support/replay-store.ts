@@ -4,7 +4,7 @@ import { basename, join } from 'node:path'
 
 import { expect } from 'vitest'
 
-import type { ReplayIdentity } from '@smmarchives/shared'
+import type { Report, ReplayIdentity } from '@smmarchives/shared'
 
 import { openPostgresCatalog } from '../../src/replay/postgres/catalog.ts'
 import type { ReplayStore, StoredBlob } from '../../src/replay/store.ts'
@@ -49,4 +49,16 @@ export async function bytesOf(blob: StoredBlob): Promise<Buffer> {
   const chunks: Uint8Array[] = []
   for await (const chunk of blob.body) chunks.push(chunk as Uint8Array)
   return Buffer.concat(chunks)
+}
+
+/** A report saying nothing went wrong, with what a test needs added. */
+export function aReport(extra: Record<string, unknown> = {}): Report {
+  return {
+    ranAt: '2026-09-11T08:05:00.000Z',
+    request: {},
+    sourcesWithoutData: [],
+    fallbacks: [],
+    failures: [],
+    ...extra,
+  }
 }

@@ -370,9 +370,9 @@ describe('a lane that dies after storing one data set', () => {
       sources: 'aquasys',
       store: (real) => ({
         ...real,
-        putDataset: async (name, data) => {
+        putDataset: async (name, data, report) => {
           if (name === 'thresholds') throw new Error('EROFS: read-only file system')
-          return real.putDataset(name, data)
+          return real.putDataset(name, data, report)
         },
       }),
     })
@@ -465,9 +465,9 @@ describe('a derivation that throws', () => {
       sources: 'aquasys',
       store: (real) => ({
         ...real,
-        putDataset: async (name, data) => {
+        putDataset: async (name, data, report) => {
           if (name === 'events') throw new Error('EROFS: read-only file system')
-          return real.putDataset(name, data)
+          return real.putDataset(name, data, report)
         },
       }),
     })

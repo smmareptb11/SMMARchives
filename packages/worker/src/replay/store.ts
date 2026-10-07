@@ -1,7 +1,7 @@
 import { isAbsolute } from 'node:path'
 import type { Readable } from 'node:stream'
 
-import type { DatasetName, JournalEntry, ReplayManifest } from '@smmarchives/shared'
+import type { DatasetName, JournalEntry, Report, ReplayManifest } from '@smmarchives/shared'
 
 import type { DatasetFilter } from './postgres/datasets/index.ts'
 
@@ -68,7 +68,8 @@ export type ReplayStore = {
    * ignored here.
    */
   openDataset(name: DatasetName, filter?: DatasetFilter): Promise<StoredBlob | undefined>
-  putDataset(name: DatasetName, data: unknown): Promise<void>
+  /** The report is the one a reader finds beside the data, from the moment it is stored. */
+  putDataset(name: DatasetName, data: unknown, report: Report): Promise<void>
   /**
    * The manifest as it is stored, or undefined if nothing stored one.
    *

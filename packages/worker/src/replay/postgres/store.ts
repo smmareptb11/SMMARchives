@@ -2,7 +2,7 @@ import { Readable } from 'node:stream'
 
 import type { Pool } from 'pg'
 
-import type { DatasetName, JournalEntry, ReplayManifest } from '@smmarchives/shared'
+import type { DatasetName, JournalEntry, Report, ReplayManifest } from '@smmarchives/shared'
 
 import { tx } from '../../db/tx.ts'
 import type { ReplayStore, StoredBlob } from '../store.ts'
@@ -56,17 +56,20 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
       return MAPPINGS[name].read(pool, replayId, {})
     },
 
-    async putDataset(name: DatasetName, data: unknown): Promise<void> {
+    async putDataset(name: DatasetName, data: unknown, report: Report): Promise<void> {
       await tx(pool, async (db) => {
         await MAPPINGS[name].write(db, replayId, data)
         await db.query('update replay set updated_at = now() where id = $1', [replayId])
         // Stamped with the rows it describes, so a reader holding an older
-        // copy is told to fetch this one.
+        // copy is told to fetch this one. The report goes in with it: the
+        // manifest is read from these lines, and one without its report is a
+        // manifest its contract refuses.
         await db.query(
           `insert into replay_dataset (replay_id, name, report, updated_at)
-           values ($1, $2, '{}'::jsonb, now())
-           on conflict (replay_id, name) do update set updated_at = now()`,
-          [replayId, name],
+           values ($1, $2, $3::jsonb, now())
+           on conflict (replay_id, name) do update
+             set report = excluded.report, updated_at = now()`,
+          [replayId, name, JSON.stringify(report)],
         )
       })
     },
