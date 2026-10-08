@@ -77,6 +77,8 @@ const EVENTS: ReplayEvent[] = [
     origin: 'automatic',
     category: 'threshold-crossing',
     title: "Vigilance franchie à L'Aude à Trèbes",
+    description: null,
+    provenance: null,
     severity: 1,
     color: '#f0a30a',
     from: '2019-10-22T06:05:00.000Z',

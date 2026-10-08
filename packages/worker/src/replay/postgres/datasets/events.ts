@@ -15,18 +15,21 @@ export async function writeEvents(db: Queryable, replayId: string, data: unknown
 
   for (const event of events) {
     await db.query(
-      `insert into event (replay_id, id, origin, category, title, severity, color,
-                          starts_at, ends_at, position, source_id, media, crossing)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-               case when $10::double precision is null then null
-                    else ST_SetSRID(ST_MakePoint($10, $11), 4326) end,
-               $12, $13::text[], $14::jsonb)`,
+      `insert into event (replay_id, id, origin, category, title, description, provenance,
+                          severity, color, starts_at, ends_at, position, source_id, media,
+                          crossing)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+               case when $12::double precision is null then null
+                    else ST_SetSRID(ST_MakePoint($12, $13), 4326) end,
+               $14, $15::text[], $16::jsonb)`,
       [
         replayId,
         event.id,
         event.origin,
         event.category,
         event.title,
+        event.description,
+        event.provenance,
         event.severity,
         event.color,
         event.from,
@@ -48,6 +51,8 @@ export async function readEvents(db: Queryable, replayId: string): Promise<Repla
       origin: string
       category: string
       title: string
+      description: string | null
+      provenance: string | null
       severity: number | null
       color: string | null
       starts_at: string
@@ -58,7 +63,8 @@ export async function readEvents(db: Queryable, replayId: string): Promise<Repla
       media: string[]
       crossing: unknown
     }>(
-      `select id, origin, category, title, severity, color, starts_at, ends_at,
+      `select id, origin, category, title, description, provenance, severity, color,
+              starts_at, ends_at,
               ST_X(position) as lon, ST_Y(position) as lat, source_id, media, crossing
          from event where replay_id = $1 order by starts_at, id`,
       [replayId],
@@ -71,6 +77,8 @@ export async function readEvents(db: Queryable, replayId: string): Promise<Repla
       origin: row.origin,
       category: row.category,
       title: row.title,
+      description: row.description,
+      provenance: row.provenance,
       severity: row.severity,
       color: row.color,
       from: row.starts_at,

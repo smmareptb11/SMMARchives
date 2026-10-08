@@ -16,11 +16,27 @@ export const eventOriginSchema = z.enum(['automatic', 'manual'])
 /**
  * What kind of fact the event is.
  *
- * Only the one the replay derives today. The categories an agent will choose
- * from arrive with the administration; naming them here before anything can
- * produce them would be a vocabulary nobody speaks.
+ * A crossing is what the replay derives; a report is what an agent writes.
+ * Finer categories for the latter arrive with the administration, and naming
+ * them before anyone can choose one would be a vocabulary nobody speaks.
  */
-export const eventCategorySchema = z.enum(['threshold-crossing'])
+export const eventCategorySchema = z.enum(['threshold-crossing', 'report'])
+
+/**
+ * Who the information came from, as the agent who wrote the event says.
+ *
+ * A closed list rather than free text, so a feed can be read by provenance:
+ * a resident's account and a fire service's are not weighed the same.
+ */
+export const eventProvenanceSchema = z.enum([
+  'smmar',
+  'river-syndicate',
+  'municipality',
+  'fire-service',
+  'individual',
+])
+
+export type EventProvenance = z.infer<typeof eventProvenanceSchema>
 
 /**
  * What a crossing rests on, kept with the event it produced.
@@ -84,6 +100,10 @@ export const eventSchema = z
     origin: eventOriginSchema,
     category: eventCategorySchema,
     title: z.string(),
+    /** What an agent observed, in their own words. A derived event has none. */
+    description: z.string().nullable(),
+    /** Null on a derived event, whose provenance is the replay itself. */
+    provenance: eventProvenanceSchema.nullable(),
     /**
      * The rank of the threshold in the ladder of its station and quantity, 1
      * being the lowest.

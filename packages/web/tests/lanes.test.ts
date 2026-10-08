@@ -194,6 +194,8 @@ describe('a crossing whose threshold was classified by guesswork', () => {
       origin: 'automatic' as const,
       category: 'threshold-crossing' as const,
       title: 'Débit de crise',
+      description: null,
+      provenance: null,
       severity: 1,
       color: '#ff0000',
       from: '2019-10-22T06:00:00.000Z',
