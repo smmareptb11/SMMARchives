@@ -2,9 +2,16 @@ import { eventSchema, type ReplayEvent } from '@smmarchives/shared'
 
 import type { Queryable } from '../../../db/tx.ts'
 
+/**
+ * Replaces what the derivation found, and nothing an agent wrote.
+ *
+ * A re-run derives every crossing again, so the automatic rows are cleared
+ * first; the manual ones exist nowhere else, and a rebuild that took them
+ * would lose them for good.
+ */
 export async function writeEvents(db: Queryable, replayId: string, data: unknown): Promise<void> {
   const events = data as ReplayEvent[]
-  await db.query('delete from event where replay_id = $1', [replayId])
+  await db.query(`delete from event where replay_id = $1 and origin = 'automatic'`, [replayId])
 
   for (const event of events) {
     await db.query(

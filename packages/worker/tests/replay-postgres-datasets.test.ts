@@ -240,6 +240,23 @@ describe('a data set in the database', () => {
     expect(await MAPPINGS.events.read(pool, id, {})).toEqual(EVENTS)
   })
 
+  it('keeps the events an agent wrote when the crossings are written again', async () => {
+    await pool.query(
+      `insert into event (replay_id, id, origin, category, title, starts_at)
+       values ($1, 'agent-note', 'manual', 'report', 'D118 coupée', '2019-10-22T09:00:00Z')`,
+      [id],
+    )
+    await MAPPINGS.events.write(pool, id, EVENTS)
+    await MAPPINGS.events.write(pool, id, EVENTS)
+
+    const ids = (
+      await pool.query<{ id: string }>('select id from event where replay_id = $1 order by id', [
+        id,
+      ])
+    ).rows.map((row) => row.id)
+    expect(ids).toEqual(['agent-note', 'crossing-4-level-11'])
+  })
+
   it('reads back a reference layer as the GeoJSON it was given', async () => {
     await MAPPINGS['reference-layers'].write(pool, id, LAYERS)
 
