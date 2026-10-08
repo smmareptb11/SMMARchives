@@ -18,6 +18,7 @@ export function CreationForm({ onCreated }: CreationFormProps) {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [extent, setExtent] = useState<BoundingBox | null>(null)
+  const [moving, setMoving] = useState(false)
   const [refusal, setRefusal] = useState<string | undefined>(undefined)
   const [refusals, setRefusals] = useState<ApiProblem['refusals']>(undefined)
   const [sending, setSending] = useState(false)
@@ -65,14 +66,24 @@ export function CreationForm({ onCreated }: CreationFormProps) {
 
       {hours !== undefined && hours > 0 ? <p className="note">Durée : {hours} heures.</p> : null}
 
-      <ExtentPicker onChange={setExtent} />
+      <ExtentPicker onChange={setExtent} onMoving={setMoving} />
 
       <Refusal said={refusal} fields={refusals} />
 
-      <button type="submit" disabled={sending}>
-        {sending ? 'Construction lancée…' : 'Constituer'}
-      </button>
+      <Submit sending={sending} moving={moving} />
     </form>
+  )
+}
+
+/**
+ * Held while the map moves: the extent the form holds is the one framed before
+ * the move, until the map rests.
+ */
+function Submit({ sending, moving }: { sending: boolean; moving: boolean }) {
+  return (
+    <button type="submit" disabled={sending || moving}>
+      {sending ? 'Construction lancée…' : 'Constituer'}
+    </button>
   )
 }
 

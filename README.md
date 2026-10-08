@@ -26,7 +26,9 @@ durée, même lorsque les systèmes sources n'exposent plus la période concern�
 ### Ce qui fonctionne
 
 - Création d'un rejeu sur une période et une emprise rectangulaire, limitée au
-  territoire du SMMAR (tout le territoire par défaut), et suivi de sa construction en direct
+  territoire du SMMAR : tout le territoire par défaut, ou à partir du territoire
+  d'un syndicat de bassin
+- Suivi de la construction d'un rejeu en direct
 - Collecte automatisée des hauteurs d'eau, débits, cumuls de pluie et seuils
 - Détection automatique des franchissements de seuils
 - Récupération des images de webcams et des lames d'eau radar

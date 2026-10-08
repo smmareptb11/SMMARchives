@@ -293,7 +293,8 @@ label small {
   color: var(--ink-2);
 }
 
-input {
+input,
+select {
   font: inherit;
   padding: 0.4rem 0.5rem;
   border: 1px solid #c7d0d9;

@@ -15,6 +15,7 @@ export type Picker = {
   map: MapLibreMap
   narrowed: boolean
   framed: (extent: BoundingBox | null) => void
+  moving: (moving: boolean) => void
 }
 
 /** The whole fleet, on a map smaller than a replay's, hence a centre and zoom of its own. */
@@ -23,11 +24,13 @@ const OPENING = { center: [2.55, 43.0] as [number, number], zoom: 7.3 }
 export function pickerOn(
   map: MapLibreMap,
   change: RefObject<(extent: BoundingBox | null) => void>,
+  move: RefObject<(moving: boolean) => void>,
 ): Picker {
   return {
     map,
     narrowed: false,
     framed: (extent) => change.current(extent),
+    moving: (moving) => move.current(moving),
   }
 }
 
@@ -65,9 +68,16 @@ export function basinMap(container: HTMLElement, style: string | StyleSpecificat
 /**
  * Tells the form what the rectangle frames once the map comes to rest: the
  * form only needs the extent to send it.
+ *
+ * Until then, the form holds the extent framed before the move, so it also
+ * hears that a narrowed map is moving.
  */
 export function listen(picker: Picker): void {
+  picker.map.on('movestart', () => {
+    if (picker.narrowed) picker.moving(true)
+  })
   picker.map.on('moveend', () => {
+    picker.moving(false)
     if (picker.narrowed) settle(picker)
   })
 }
