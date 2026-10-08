@@ -64,7 +64,7 @@ export class LizmapClient {
       repository: REPOSITORY,
       project: PROJECT,
       SERVICE: 'WFS',
-      VERSION: '1.3.0',
+      VERSION: '1.1.0',
       REQUEST: 'GetFeature',
       OUTPUTFORMAT: 'geojson',
       TYPENAME: layer,
