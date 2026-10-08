@@ -1,7 +1,7 @@
 import { SMMAR_TERRITORY } from '@smmarchives/shared'
 import { describe, expect, it } from 'vitest'
 
-import { cornersOf, extentBetween, reachOf } from '../src/creation/extent.ts'
+import { cornersOf, extentBetween, paddingOf, reachOf } from '../src/creation/extent.ts'
 
 const VIEW = { width: 500, height: 300 }
 
@@ -10,6 +10,17 @@ describe('the corners of a frame', () => {
     expect(cornersOf({ left: 0.2, top: 0.1, right: 0.6, bottom: 0.9 }, VIEW)).toEqual({
       southWest: { x: 100, y: 270 },
       northEast: { x: 300, y: 30 },
+    })
+  })
+})
+
+describe('the padding of a frame', () => {
+  it('leaves on each side of the view the margin the frame leaves there', () => {
+    expect(paddingOf({ left: 0.25, top: 0.125, right: 0.5, bottom: 0.75 }, VIEW)).toEqual({
+      top: 37.5,
+      right: 250,
+      bottom: 75,
+      left: 125,
     })
   })
 })
