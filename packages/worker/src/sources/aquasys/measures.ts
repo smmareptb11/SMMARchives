@@ -60,7 +60,7 @@ export async function fetchMeasures(options: FetchMeasuresOptions): Promise<Meas
   // 94 identical ones filling the report.
   const requested = resolveQuantities(options)
 
-  const measures: Measure[] = []
+  const series: Measure[][] = []
   const density: Density[] = []
   let rowsDropped = 0
 
@@ -85,7 +85,7 @@ export async function fetchMeasures(options: FetchMeasuresOptions): Promise<Meas
         rowsDropped += rows.length - decoded.length
 
         const kept = cropToWindow(decoded, options.window, (measure) => measure.at)
-        measures.push(...kept)
+        series.push(kept)
         density.push({
           sourceId,
           quantity,
@@ -101,7 +101,7 @@ export async function fetchMeasures(options: FetchMeasuresOptions): Promise<Meas
     if (!foundForSource) options.collector.withoutData(sourceId)
   }
 
-  return { measures, density, rowsDropped }
+  return { measures: series.flat(), density, rowsDropped }
 }
 
 function resolveQuantities(

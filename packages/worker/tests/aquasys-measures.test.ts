@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest'
 
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
 import { fetchMeasures } from '../src/sources/aquasys/measures.ts'
-import { fetchStub, fixture, type StubbedResponse } from './support/fixtures.ts'
+import {
+  aSeriesBeyondTheArgumentLimit,
+  fetchStub,
+  fixture,
+  type StubbedResponse,
+} from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
 
@@ -81,6 +86,14 @@ describe('decoding the positional response', () => {
 
     expect(measures.map((measure) => measure.value)).toEqual([0.206, 0.305])
     expect(rowsDropped).toBe(1)
+    expect(exitCodeFor(report)).toBe(0)
+  })
+
+  it('keeps a series longer than one call can take as arguments', async () => {
+    const rows = aSeriesBeyondTheArgumentLimit()
+    const { measures, report } = await collect(WHOLE, { '/chronic/measures': { json: rows } })
+
+    expect(measures).toHaveLength(rows.length)
     expect(exitCodeFor(report)).toBe(0)
   })
 })

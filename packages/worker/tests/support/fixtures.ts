@@ -75,3 +75,13 @@ function toResponse(answer: StubbedResponse): Response {
   }
   return new Response(answer.body ?? '', { status: answer.status })
 }
+
+/**
+ * More rows than V8 accepts as arguments to one call, one second apart from
+ * 2018-10-15: generated, since no recorded response comes near that size. The
+ * source and quantity are those of the request, whatever the rows carry.
+ */
+export function aSeriesBeyondTheArgumentLimit(): unknown[][] {
+  const start = Date.parse('2018-10-15T00:00:00Z')
+  return Array.from({ length: 150_000 }, (_, index) => [84, 4, start + index * 1000, 0.2, 0.2])
+}

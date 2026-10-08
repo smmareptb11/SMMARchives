@@ -6,13 +6,12 @@ import {
   rainGaugeSchema,
   stationSchema,
   thresholdSchema,
-  type Measure,
   type ReplayIdentity,
   type SourceFamily,
 } from '@smmarchives/shared'
 
 import type { AquasysClient } from '../../sources/aquasys/client.ts'
-import { fetchMeasures } from '../../sources/aquasys/measures.ts'
+import { fetchMeasures, type MeasuresResult } from '../../sources/aquasys/measures.ts'
 import { fetchRainGauges, fetchStations } from '../../sources/aquasys/stations.ts'
 import { fetchThresholds } from '../../sources/aquasys/thresholds.ts'
 import type { ReplayBuild } from '../build-state.ts'
@@ -94,8 +93,7 @@ export async function collectAquasys(
       to: identity.period.to,
       families: ['hydro', 'rain-gauge'],
     })
-    const measures: Measure[] = []
-    const density = []
+    const perFamily: MeasuresResult[] = []
     let rowsDropped = 0
     // Summed per family, never pooled: the two number their sources
     // independently — 94 stations over 1 to 160, 229 rain gauges over 4 to 744
@@ -117,14 +115,16 @@ export async function collectAquasys(
         quantities,
         window: identity.period,
       })
-      measures.push(...result.measures)
-      density.push(...result.density)
+      perFamily.push(result)
       rowsDropped += result.rowsDropped
 
       const answered = new Set<number>()
       for (const one of result.measures) answered.add(one.sourceId)
       withMeasures += answered.size
     }
+
+    const measures = perFamily.flatMap((one) => one.measures)
+    const density = perFamily.flatMap((one) => one.density)
 
     await build.stored(
       'measures',

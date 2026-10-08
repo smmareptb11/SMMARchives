@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- one file per lane, its suites sharing the build helper and the
+   store it writes into; cut by length, each half would repeat them. */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -20,7 +22,12 @@ import { buildReplay } from '../src/replay/build.ts'
 import type { ReplayStore } from '../src/replay/store.ts'
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
 import { closeDatabase } from './support/database.ts'
-import { fetchStub, fixture, stationReferentialRoutes } from './support/fixtures.ts'
+import {
+  aSeriesBeyondTheArgumentLimit,
+  fetchStub,
+  fixture,
+  stationReferentialRoutes,
+} from './support/fixtures.ts'
 import { aStoredReplay, cleanMedia } from './support/replay-store.ts'
 
 const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
@@ -165,6 +172,21 @@ describe('the Aquasys datasets of a replay', () => {
       families: ['hydro', 'rain-gauge'],
     })
   })
+
+  it('hold a family whose measures outnumber what one call can take as arguments', async () => {
+    const rows = aSeriesBeyondTheArgumentLimit()
+    const { manifest } = await build({
+      routes: { ...ROUTES, '/hydrologicalStation/chronic/measures': { json: rows } },
+    })
+
+    expect(manifest.state).toBe('complete')
+    const levels = (await heldMeasures()).filter(
+      (one) => one.sourceId === 84 && one.quantity === 'level',
+    )
+    expect(levels).toHaveLength(rows.length)
+    // Storing that many measures and deriving crossings from them takes a few
+    // seconds on its own.
+  }, 30_000)
 })
 
 /**
