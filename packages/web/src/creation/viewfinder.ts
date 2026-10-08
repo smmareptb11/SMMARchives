@@ -2,7 +2,7 @@ import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 import { Map as MapLibreMap, NavigationControl, type StyleSpecification } from 'maplibre-gl'
 import type { RefObject } from 'react'
 
-import { cornersOf, extentBetween, FRAME, reachOf, type Size } from './extent.ts'
+import { cornersOf, extentBetween, FRAME, paddingOf, reachOf, type Size } from './extent.ts'
 
 /**
  * The map and whether a rectangle narrows it.
@@ -70,6 +70,24 @@ export function listen(picker: Picker): void {
   picker.map.on('moveend', () => {
     if (picker.narrowed) settle(picker)
   })
+}
+
+/**
+ * Moves the map so the rectangle frames these bounds, and narrows to them.
+ *
+ * The frame keeps its proportions, so what it frames holds the bounds and
+ * meets them on one axis only. The move ends like any other, which is when the
+ * form hears of the extent.
+ */
+export function frameOn(picker: Picker, bounds: BoundingBox): void {
+  picker.narrowed = true
+  picker.map.fitBounds(
+    [
+      [bounds.minLon, bounds.minLat],
+      [bounds.maxLon, bounds.maxLat],
+    ],
+    { padding: paddingOf(FRAME, sizeOf(picker.map)) },
+  )
 }
 
 /**

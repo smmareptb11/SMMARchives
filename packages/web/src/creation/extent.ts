@@ -29,6 +29,24 @@ export function cornersOf(frame: Frame, size: Size): { southWest: Point; northEa
 }
 
 /**
+ * The pixels between each side of the view and the frame.
+ *
+ * What the map leaves around a rectangle it fits, so the rectangle lands in
+ * the frame rather than across the whole view.
+ */
+export function paddingOf(
+  frame: Frame,
+  size: Size,
+): { top: number; right: number; bottom: number; left: number } {
+  return {
+    top: frame.top * size.height,
+    right: (1 - frame.right) * size.width,
+    bottom: (1 - frame.bottom) * size.height,
+    left: frame.left * size.width,
+  }
+}
+
+/**
  * The pixels the map may show past its view, so the frame can land on its edge.
  *
  * The frame sits a margin inside each edge of the view. The map runs past the
