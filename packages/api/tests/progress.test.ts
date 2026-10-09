@@ -112,7 +112,7 @@ describe('following a build', () => {
       const stream = following(await fetch(`${base}/replays/${manifest.id}/progress`))
       await stream.take(2)
 
-      await store.putManifest({ ...manifest, updatedAt: '2026-09-10T06:04:12.004Z' })
+      await store.putManifest({ ...manifest, updatedAt: '2026-09-10T06:14:12.004Z' })
       await store.appendJournal(done)
 
       // Both arrive; which of the two first is not promised, and asserting it

@@ -1,6 +1,7 @@
 import { eventSchema, type ReplayEvent } from '@smmarchives/shared'
 
 import type { Queryable } from '../../../db/tx.ts'
+import type { ManualEvent } from '../../store.ts'
 
 /**
  * Replaces what the derivation found, and nothing an agent wrote.
@@ -45,6 +46,23 @@ export async function writeEvents(db: Queryable, replayId: string, data: unknown
 }
 
 export async function readEvents(db: Queryable, replayId: string): Promise<ReplayEvent[]> {
+  return selectEvents(db, 'replay_id = $1', [replayId])
+}
+
+/** One event, without reading every crossing of the replay to find it. */
+export async function readEvent(
+  db: Queryable,
+  replayId: string,
+  eventId: string,
+): Promise<ReplayEvent | undefined> {
+  return (await selectEvents(db, 'replay_id = $1 and id = $2', [replayId, eventId]))[0]
+}
+
+async function selectEvents(
+  db: Queryable,
+  where: string,
+  values: unknown[],
+): Promise<ReplayEvent[]> {
   const rows = (
     await db.query<{
       id: string
@@ -66,8 +84,8 @@ export async function readEvents(db: Queryable, replayId: string): Promise<Repla
       `select id, origin, category, title, description, provenance, severity, color,
               starts_at, ends_at,
               ST_X(position) as lon, ST_Y(position) as lat, source_id, media, crossing
-         from event where replay_id = $1 order by starts_at, id`,
-      [replayId],
+         from event where ${where} order by starts_at, id`,
+      values,
     )
   ).rows
 
@@ -89,4 +107,60 @@ export async function readEvents(db: Queryable, replayId: string): Promise<Repla
       crossing: row.crossing,
     }),
   )
+}
+
+/** An agent's event, under an identifier the database mints. */
+export async function insertManualEvent(
+  db: Queryable,
+  replayId: string,
+  event: ManualEvent,
+): Promise<ReplayEvent> {
+  const minted = (
+    await db.query<{ id: string }>(
+      `insert into event (replay_id, id, origin, category, title, description, provenance,
+                          starts_at, ends_at, position)
+       values ($1, gen_random_uuid()::text, 'manual', 'report', $2, $3, $4, $5, $6,
+               case when $7::double precision is null then null
+                    else ST_SetSRID(ST_MakePoint($7, $8), 4326) end)
+       returning id`,
+      [
+        replayId,
+        event.title,
+        event.description,
+        event.provenance,
+        event.from,
+        event.to,
+        event.position?.lon ?? null,
+        event.position?.lat ?? null,
+      ],
+    )
+  ).rows[0]?.id
+  if (minted === undefined) throw new Error('the database minted no event identifier')
+
+  return eventSchema.parse({
+    ...event,
+    id: minted,
+    origin: 'manual',
+    category: 'report',
+    severity: null,
+    color: null,
+    sourceId: null,
+    media: [],
+    crossing: null,
+  })
+}
+
+/** Whether the medium went onto an agent's event that held none. */
+export async function attachMedia(
+  db: Queryable,
+  replayId: string,
+  eventId: string,
+  path: string,
+): Promise<boolean> {
+  const updated = await db.query(
+    `update event set media = array[$3]
+      where replay_id = $1 and id = $2 and origin = 'manual' and cardinality(media) = 0`,
+    [replayId, eventId, path],
+  )
+  return updated.rowCount === 1
 }

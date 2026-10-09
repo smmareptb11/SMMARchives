@@ -2,10 +2,17 @@ import { Readable } from 'node:stream'
 
 import type { Pool } from 'pg'
 
-import type { DatasetName, JournalEntry, Report, ReplayManifest } from '@smmarchives/shared'
+import type {
+  DatasetName,
+  JournalEntry,
+  Report,
+  ReplayEvent,
+  ReplayManifest,
+} from '@smmarchives/shared'
 
-import { tx } from '../../db/tx.ts'
-import type { ReplayStore, StoredBlob } from '../store.ts'
+import { tx, type Queryable } from '../../db/tx.ts'
+import type { ManualEvent, ReplayStore, StoredBlob } from '../store.ts'
+import { attachMedia, insertManualEvent, readEvent } from './datasets/events.ts'
 import { MAPPINGS, type DatasetFilter } from './datasets/index.ts'
 import { appendJournal, readJournal } from './journal.ts'
 import { readManifest, writeManifest } from './manifest.ts'
@@ -74,6 +81,26 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
       })
     },
 
+    async addManualEvent(event: ManualEvent): Promise<ReplayEvent> {
+      return tx(pool, async (db) => {
+        const added = await insertManualEvent(db, replayId, event)
+        await stampEvents(db, replayId)
+        return added
+      })
+    },
+
+    async getEvent(eventId: string): Promise<ReplayEvent | undefined> {
+      return readEvent(pool, replayId, eventId)
+    },
+
+    async attachEventMedia(eventId: string, path: string): Promise<boolean> {
+      return tx(pool, async (db) => {
+        const attached = await attachMedia(db, replayId, eventId, path)
+        if (attached) await stampEvents(db, replayId)
+        return attached
+      })
+    },
+
     /**
      * The data set as bytes, serialised from the rows the filter keeps.
      *
@@ -109,4 +136,29 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
       }
     },
   }
+}
+
+/**
+ * Moves the version of the events, creating the data set if nothing had.
+ *
+ * A replay built without the Aquasys lane derived nothing, and the manifest
+ * lists only the data sets it has a line for: without one, a reader would
+ * never ask for the events an agent wrote. The report is the one of a set no
+ * run collected, which is what it is; a later derivation replaces it.
+ */
+async function stampEvents(db: Queryable, replayId: string): Promise<void> {
+  const report: Report = {
+    ranAt: new Date().toISOString(),
+    request: {},
+    sourcesWithoutData: [],
+    fallbacks: [],
+    failures: [],
+  }
+  await db.query('update replay set updated_at = now() where id = $1', [replayId])
+  await db.query(
+    `insert into replay_dataset (replay_id, name, report, updated_at)
+     values ($1, 'events', $2::jsonb, now())
+     on conflict (replay_id, name) do update set updated_at = now()`,
+    [replayId, JSON.stringify(report)],
+  )
 }

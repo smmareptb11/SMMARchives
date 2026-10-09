@@ -76,6 +76,18 @@ describe('the manifest of a replay', () => {
     expect((await readManifest(pool, manifest.id))?.state).toBe('partial')
   })
 
+  /** A build publishes what it holds in memory, over an event added meanwhile. */
+  it('never moves the date of update back', async () => {
+    const manifest = aManifest()
+    await writeManifest(pool, manifest)
+    await pool.query(`update replay set updated_at = '2026-09-11T09:00:00Z' where id = $1`, [
+      manifest.id,
+    ])
+
+    await writeManifest(pool, { ...manifest, updatedAt: '2026-09-11T08:30:00.000Z' })
+    expect((await readManifest(pool, manifest.id))?.updatedAt).toBe('2026-09-11T09:00:00.000Z')
+  })
+
   it('counts what the tables hold rather than what it was told', async () => {
     const manifest = aManifest({
       datasets: { measures: { count: 0, report: aReport() } },
@@ -109,9 +121,18 @@ describe('the manifest of a replay', () => {
       withMeasures: 96,
     })
   })
+})
+
+describe('what the derivation implied, in the manifest', () => {
+  let pool: Pool
+
+  beforeEach(async () => {
+    pool = await freshDatabase('test_manifest')
+  })
 
   it('rebuilds what the derivation implied from its own report', async () => {
     const manifest = aManifest({
+      lanes: { events: { state: 'done' } },
       datasets: {
         events: {
           count: 0,
@@ -131,5 +152,58 @@ describe('the manifest of a replay', () => {
       singleStep: 2,
       thresholdsSetAside: { 'flood-mark': 7 },
     })
+  })
+
+  it('counts as crossings only what the derivation found', async () => {
+    const manifest = aManifest({
+      lanes: { events: { state: 'done' } },
+      datasets: { events: { count: 0, report: aReport({ singleStep: 0, setAside: {} }) } },
+    })
+    await writeManifest(pool, manifest)
+    await pool.query(
+      `insert into event (replay_id, id, origin, category, title, starts_at) values
+         ($1, 'a', 'automatic', 'threshold-crossing', 'Vigilance à Trèbes', '2019-10-22T06:00:00Z'),
+         ($1, 'b', 'manual', 'report', 'D118 coupée', '2019-10-22T09:00:00Z')`,
+      [manifest.id],
+    )
+
+    const read = await readManifest(pool, manifest.id)
+    expect(read?.events?.crossings).toBe(1)
+    expect(read?.datasets.events?.count).toBe(2)
+  })
+
+  /** A re-run under way, or one that failed, has not taken the crossings it found before. */
+  it.each(['running', 'failed'] as const)(
+    'still summarises the crossings stored while the lane is %s',
+    async (state) => {
+      const manifest = aManifest({
+        lanes: { events: { state } },
+        datasets: { events: { count: 0, report: aReport({ singleStep: 1, setAside: {} }) } },
+      })
+      await writeManifest(pool, manifest)
+      await pool.query(
+        `insert into event (replay_id, id, origin, category, title, starts_at) values
+           ($1, 'a', 'automatic', 'threshold-crossing', 'Vigilance', '2019-10-22T06:00:00Z')`,
+        [manifest.id],
+      )
+
+      expect((await readManifest(pool, manifest.id))?.events).toEqual({
+        crossings: 1,
+        singleStep: 1,
+        thresholdsSetAside: {},
+      })
+    },
+  )
+
+  it('implies nothing when only an agent wrote events', async () => {
+    const manifest = aManifest({ datasets: { events: { count: 0, report: aReport() } } })
+    await writeManifest(pool, manifest)
+    await pool.query(
+      `insert into event (replay_id, id, origin, category, title, starts_at) values
+         ($1, 'b', 'manual', 'report', 'D118 coupée', '2019-10-22T09:00:00Z')`,
+      [manifest.id],
+    )
+
+    expect((await readManifest(pool, manifest.id))?.events).toBeUndefined()
   })
 })

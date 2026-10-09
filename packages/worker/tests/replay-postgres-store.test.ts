@@ -7,10 +7,10 @@ import { join } from 'node:path'
 import type { Pool } from 'pg'
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import type { Measure, ReplayIdentity } from '@smmarchives/shared'
+import type { Measure, ReplayEvent, ReplayIdentity } from '@smmarchives/shared'
 
 import { openPostgresCatalog, type PostgresCatalog } from '../src/replay/postgres/catalog.ts'
-import type { ReplayStore, StoredBlob } from '../src/replay/store.ts'
+import type { ManualEvent, ReplayStore, StoredBlob } from '../src/replay/store.ts'
 import { closeDatabase, freshDatabase } from './support/database.ts'
 import { aReport } from './support/replay-store.ts'
 
@@ -185,6 +185,135 @@ describe('a replay in the database', () => {
     if (blob === undefined) throw new Error('nothing stored a measures data set')
     return blob
   }
+})
+
+const WRITTEN: ManualEvent = {
+  title: 'D118 coupée à Couffoulens',
+  description: 'Route inondée sur 200 m.',
+  from: '2019-10-22T09:00:00.000Z',
+  to: null,
+  position: { lon: 2.3167, lat: 43.1583 },
+  provenance: 'municipality',
+}
+
+describe('an event an agent wrote', () => {
+  let pool: Pool
+  let mediaRoot: string
+  let catalog: PostgresCatalog
+
+  beforeEach(async () => {
+    pool = await freshDatabase('test_store_events')
+    mediaRoot = await mkdtemp(join(tmpdir(), 'smmarchives-media-'))
+    catalog = openPostgresCatalog({ pool, mediaRoot })
+  })
+
+  afterEach(async () => {
+    await rm(mediaRoot, { recursive: true, force: true })
+  })
+
+  it('is read back with the events, under an identifier the database minted', async () => {
+    const { store } = await catalog.create(identity)
+
+    const added = await store.addManualEvent(WRITTEN)
+    expect(added).toMatchObject({ ...WRITTEN, origin: 'manual', category: 'report', media: [] })
+    expect(added.id).toMatch(/^[0-9a-f-]{36}$/)
+    expect(await store.getDataset('events')).toEqual([added])
+  })
+
+  it('makes the events a data set of a replay that derived none', async () => {
+    const { store } = await catalog.create(identity)
+    await store.addManualEvent(WRITTEN)
+
+    expect((await store.getManifest())?.datasets.events?.count).toBe(1)
+    expect(await store.openDataset('events')).toBeDefined()
+  })
+
+  it('moves the version of the events, so a reader fetches them again', async () => {
+    const { store } = await catalog.create(identity)
+    await store.putDataset('events', [], aReport({ singleStep: 0, setAside: {} }))
+    const before = (await store.openDataset('events'))?.version
+
+    await store.addManualEvent(WRITTEN)
+    expect((await store.openDataset('events'))?.version).not.toBe(before)
+  })
+
+  it('keeps the report of the derivation it was added beside', async () => {
+    const { id, store } = await catalog.create(identity)
+    await pool.query(
+      `insert into replay_lane (replay_id, name, state) values ($1, 'events', 'done')`,
+      [id],
+    )
+    await store.putDataset('events', [], aReport({ singleStep: 3, setAside: {} }))
+
+    await store.addManualEvent(WRITTEN)
+    expect((await store.getManifest())?.events?.singleStep).toBe(3)
+  })
+
+  it('holds the medium attached to it', async () => {
+    const { store } = await catalog.create(identity)
+    const added = await store.addManualEvent(WRITTEN)
+
+    expect(await store.attachEventMedia(added.id, `manual/${added.id}/photo.jpg`)).toBe(true)
+    expect(((await store.getDataset('events')) as ReplayEvent[])[0]?.media).toEqual([
+      `manual/${added.id}/photo.jpg`,
+    ])
+  })
+
+  it('refuses a second medium, which would replace an address served for good', async () => {
+    const { store } = await catalog.create(identity)
+    const added = await store.addManualEvent(WRITTEN)
+    await store.attachEventMedia(added.id, `manual/${added.id}/one.jpg`)
+
+    expect(await store.attachEventMedia(added.id, `manual/${added.id}/two.jpg`)).toBe(false)
+  })
+
+  it('refuses a medium on an event the derivation produced', async () => {
+    const { id, store } = await catalog.create(identity)
+    await pool.query(
+      `insert into event (replay_id, id, origin, category, title, starts_at)
+       values ($1, 'crossing', 'automatic', 'threshold-crossing', 'Vigilance', now())`,
+      [id],
+    )
+
+    expect(await store.attachEventMedia('crossing', 'manual/crossing/one.jpg')).toBe(false)
+  })
+
+  it('reads one event by its identifier, and none it does not hold', async () => {
+    const { store } = await catalog.create(identity)
+    const added = await store.addManualEvent(WRITTEN)
+
+    expect(await store.getEvent(added.id)).toEqual(added)
+    expect(await store.getEvent(randomUUID())).toBeUndefined()
+  })
+
+  it('refuses a medium on an event nobody wrote', async () => {
+    const { store } = await catalog.create(identity)
+
+    expect(await store.attachEventMedia(randomUUID(), 'manual/x/one.jpg')).toBe(false)
+  })
+
+  it('removes a medium nothing names, and says nothing of one that is not there', async () => {
+    const { store } = await catalog.create(identity)
+    await store.putMedia('manual/e/one.jpg', new TextEncoder().encode('x'))
+
+    await store.removeMedia('manual/e/one.jpg')
+    await store.removeMedia('manual/e/none.jpg')
+    expect(await store.hasMedia('manual/e/one.jpg')).toBe(false)
+  })
+
+  it('refuses to remove a medium outside the replay', async () => {
+    const { store } = await catalog.create(identity)
+
+    await expect(store.removeMedia('../other/one.jpg')).rejects.toThrow(/outside the replay/)
+  })
+
+  it('survives the derivation writing its crossings again', async () => {
+    const { store } = await catalog.create(identity)
+    const added = await store.addManualEvent(WRITTEN)
+
+    await store.putDataset('events', [], aReport({ singleStep: 0, setAside: {} }))
+    expect(await store.getDataset('events')).toEqual([added])
+  })
 })
 
 /** Ages a replay, since two creations in one test share a millisecond. */

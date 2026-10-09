@@ -1,7 +1,13 @@
 import { isAbsolute } from 'node:path'
 import type { Readable } from 'node:stream'
 
-import type { DatasetName, JournalEntry, Report, ReplayManifest } from '@smmarchives/shared'
+import type {
+  DatasetName,
+  JournalEntry,
+  Report,
+  ReplayEvent,
+  ReplayManifest,
+} from '@smmarchives/shared'
 
 import type { DatasetFilter } from './postgres/datasets/index.ts'
 
@@ -15,6 +21,15 @@ export type { DatasetFilter }
  * one being written.
  */
 export type MediaBody = Uint8Array | ReadableStream<Uint8Array>
+
+/**
+ * What an agent writes of an event. The rest is the store's to settle: the
+ * identifier, the origin, and a category that only the derivation varies.
+ */
+export type ManualEvent = Pick<
+  ReplayEvent,
+  'title' | 'description' | 'from' | 'to' | 'position' | 'provenance'
+>
 
 /**
  * Stored bytes, ready to be served without being decoded.
@@ -101,6 +116,33 @@ export type ReplayStore = {
    */
   openMedia(path: string): Promise<StoredBlob | undefined>
   putMedia(path: string, body: MediaBody): Promise<void>
+  /**
+   * Removes a medium nothing names, and answers nothing whether it was there.
+   *
+   * For bytes written and never attached: a medium is addressed for good, so
+   * one that is named by a record is never removed while the record stands.
+   */
+  removeMedia(path: string): Promise<void>
+  /**
+   * Adds an event an agent wrote, and answers it as a reader will read it.
+   *
+   * The identifier is minted by what stores it, so none collides with a
+   * crossing's and none has to be refused. The `events` data set exists from
+   * then on, whether or not a derivation ever ran, and its version moves: a
+   * reader holding the list from before is told to fetch it again.
+   */
+  addManualEvent(event: ManualEvent): Promise<ReplayEvent>
+  /** One event, read from its own row, or undefined if the replay holds none by that name. */
+  getEvent(eventId: string): Promise<ReplayEvent | undefined>
+  /**
+   * Records a medium already stored by {@link putMedia} as the one of an event
+   * an agent wrote.
+   *
+   * `false` when there is no such event, when the derivation produced it, or
+   * when it already holds one: a medium is addressed for good, and replacing it
+   * would leave a reader's cached copy naming bytes that are gone.
+   */
+  attachEventMedia(eventId: string, path: string): Promise<boolean>
 }
 
 /**
