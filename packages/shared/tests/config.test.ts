@@ -38,6 +38,19 @@ describe("the API's listening port", () => {
   })
 })
 
+describe('the heaviest image an agent may attach', () => {
+  it('is ten megabytes unless the operator says otherwise', () => {
+    expect(apiConfig({}).imageLimit).toBe(10 * 1024 * 1024)
+    expect(apiConfig({ MANUAL_IMAGE_MAX_BYTES: '2048' }).imageLimit).toBe(2048)
+  })
+
+  it('refuses what is not a number of bytes, rather than accepting any size', () => {
+    expect(() => apiConfig({ MANUAL_IMAGE_MAX_BYTES: 'abc' })).toThrow(/MANUAL_IMAGE_MAX_BYTES/)
+    expect(() => apiConfig({ MANUAL_IMAGE_MAX_BYTES: '0' })).toThrow(/MANUAL_IMAGE_MAX_BYTES/)
+    expect(() => apiConfig({ MANUAL_IMAGE_MAX_BYTES: '1.5' })).toThrow(/MANUAL_IMAGE_MAX_BYTES/)
+  })
+})
+
 describe('a missing variable', () => {
   it('names itself rather than failing later on an undefined url', () => {
     expect(() => aquasysConfig({ ACYCLIQ_TOKEN: 'x' })).toThrow(ConfigurationError)

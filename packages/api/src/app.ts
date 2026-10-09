@@ -1,10 +1,13 @@
 import express, { type Express } from 'express'
 
+import { DEFAULT_IMAGE_LIMIT } from '@smmarchives/shared'
+
 import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 
 import { BuildRegistry, spawnBuild, type BuildLauncher } from './builds.ts'
 import { registerCreation } from './creations.ts'
 import { registerDatasets } from './datasets.ts'
+import { registerEvents } from './events.ts'
 import { registerJournal } from './journal.ts'
 import { registerMedia } from './media.ts'
 import { registerProgress } from './progress.ts'
@@ -24,6 +27,8 @@ export type ApiOptions = {
   publishTimeout?: number | undefined
   /** How often a followed build is re-read. Shortened in tests. */
   pollIntervalMs?: number | undefined
+  /** The heaviest image an agent may attach to an event, in bytes. */
+  imageLimit?: number | undefined
 }
 
 /** Built without listening, so a test mounts it with neither port nor environment. */
@@ -39,6 +44,12 @@ export function createApp(options: ApiOptions): Express {
     catalog: options.catalog,
     builds,
     publishTimeout: options.publishTimeout ?? 5_000,
+    log,
+  })
+  // Before the replays, whose `/replays/:id` would take `limits` for a name.
+  registerEvents(app, {
+    catalog: options.catalog,
+    imageLimit: options.imageLimit ?? DEFAULT_IMAGE_LIMIT,
     log,
   })
   registerReplays(app, { catalog: options.catalog, builds })
