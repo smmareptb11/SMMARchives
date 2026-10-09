@@ -14,6 +14,7 @@ describe('applying the migrations', () => {
     expect(await migrate(pool, MIGRATIONS)).toEqual([
       '0001-replay.sql',
       '0002-webcam-thumbnail.sql',
+      '0003-manual-event.sql',
     ])
   })
 

@@ -100,9 +100,13 @@ export async function writeReplay(
   }
   for (const entry of held.journal ?? []) await store.appendJournal(entry)
 
-  // The manifest again: storing a data set moves `updatedAt`, and a test that
-  // asserts on what it published must get what it published.
-  await writeManifest(api.pool, manifest)
+  // The date of update back to what was published: storing a data set moves
+  // it, a publication never moves it back, and a test that asserts on what it
+  // published must get what it published.
+  await api.pool.query('update replay set updated_at = $2 where id = $1', [
+    manifest.id,
+    manifest.updatedAt,
+  ])
 }
 
 function reportOf(manifest: ReplayManifest, name: DatasetName): Report {
@@ -191,6 +195,12 @@ export function aStore(overrides: Partial<ReplayStore>): ReplayStore {
     hasMedia: async () => false,
     openMedia: async () => undefined,
     putMedia: async () => {},
+    removeMedia: async () => {},
+    addManualEvent: async () => {
+      throw new Error('no event is added here')
+    },
+    getEvent: async () => undefined,
+    attachEventMedia: async () => false,
     ...overrides,
   }
 }

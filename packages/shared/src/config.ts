@@ -108,7 +108,12 @@ export function mediaConfig(env: Environment = process.env): MediaConfig {
 
 export type ApiConfig = {
   port: number
+  /** The heaviest image an agent may attach to an event, in bytes. */
+  imageLimit: number
 }
+
+/** Ten megabytes: a photograph from a phone, with room to spare. */
+export const DEFAULT_IMAGE_LIMIT = 10 * 1024 * 1024
 
 /**
  * Refused rather than coerced: `listen(NaN)` binds an arbitrary free port and
@@ -121,7 +126,13 @@ export function apiConfig(env: Environment = process.env): ApiConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new ConfigurationError('API_PORT', `${value} is not a port number`)
   }
-  return { port }
+
+  const limit = optionalEnv('MANUAL_IMAGE_MAX_BYTES', String(DEFAULT_IMAGE_LIMIT), env)
+  const imageLimit = Number(limit)
+  if (!Number.isInteger(imageLimit) || imageLimit < 1) {
+    throw new ConfigurationError('MANUAL_IMAGE_MAX_BYTES', `${limit} is not a number of bytes`)
+  }
+  return { port, imageLimit }
 }
 
 function parseExtent(value: string): BoundingBox {

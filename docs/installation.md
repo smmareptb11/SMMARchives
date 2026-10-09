@@ -83,6 +83,7 @@ est refusée de la même façon.
 | `RADAR_RAINFALL_PATH` | optionnelle : vide, un rejeu se construit sans les lames d'eau | — | `build:replay`, et donc l'API |
 | `RADAR_RAINFALL_BBOX` | optionnelle | une emprise fixée dans le code | idem |
 | `API_PORT` | optionnelle | `3000` | API, et le serveur de développement pour savoir où relayer |
+| `MANUAL_IMAGE_MAX_BYTES` | optionnelle | `10485760` (10 Mo) | API : taille maximale d'une image jointe à un événement saisi |
 | `WEB_PORT` | optionnelle | `5180` | Serveur de développement |
 | `DATABASE_URL_TEST` | obligatoire pour `npm test` | — | Suites de stockage et de routes |
 | `DB_USER`, `DB_PASSWORD`, `DB_NAME` | optionnelles | `smmarchives` | **Docker Compose seul** |

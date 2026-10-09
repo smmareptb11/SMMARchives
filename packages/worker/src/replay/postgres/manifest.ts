@@ -27,9 +27,12 @@ export async function readManifest(db: Queryable, id: string): Promise<ReplayMan
   const replay = (await db.query<ReplayRow>(REPLAY, [id])).rows[0]
   if (replay === undefined) return undefined
 
-  const [lanes, datasets] = await Promise.all([readLanes(db, id), readDatasets(db, id)])
+  const [lanes, { datasets, crossings }] = await Promise.all([
+    readLanes(db, id),
+    readDatasets(db, id),
+  ])
   const fleet = fleetOf(replay)
-  const events = eventsIn(datasets)
+  const events = eventsIn(datasets, crossings, lanes)
 
   const assembled = {
     schemaVersion: 1,
@@ -130,6 +133,9 @@ const REPLAY = `
          ST_XMax(extent) as max_lon, ST_YMax(extent) as max_lat
     from replay where id = $1`
 
+// The later of the two dates of update, never the one published alone: a
+// build publishes the manifest it holds in memory, and an event an agent added
+// meanwhile stamped a later one, which this would otherwise move back.
 const UPSERT_REPLAY = `
   insert into replay (id, label, extent, period_from, period_to, created_at, updated_at,
                       state, journal_error, media_copied, media_skipped, media_failed,
@@ -139,7 +145,8 @@ const UPSERT_REPLAY = `
                else ST_MakeEnvelope($3, $4, $5, $6, 4326) end,
           $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
   on conflict (id) do update set
-    label = excluded.label, extent = excluded.extent, updated_at = excluded.updated_at,
+    label = excluded.label, extent = excluded.extent,
+    updated_at = greatest(replay.updated_at, excluded.updated_at),
     state = excluded.state, journal_error = excluded.journal_error,
     media_copied = excluded.media_copied, media_skipped = excluded.media_skipped,
     media_failed = excluded.media_failed, media_bytes = excluded.media_bytes,
@@ -188,7 +195,13 @@ const DATASETS = `
            when 'radar-rainfall'   then (select count(*) from radar_series r
                                            where r.replay_id = d.replay_id)
            else 0
-         end as count
+         end as count,
+         -- The crossings apart from the data set, which holds what agents
+         -- wrote as well.
+         case d.name
+           when 'events' then (select count(*) from event e
+                                where e.replay_id = d.replay_id and e.origin = 'automatic')
+         end as crossings
     from replay_dataset d where d.replay_id = $1`
 
 function extentOf(row: ReplayRow): BoundingBox | null {
@@ -228,12 +241,22 @@ async function readLanes(db: Queryable, id: string): Promise<Partial<Record<Lane
 async function readDatasets(
   db: Queryable,
   id: string,
-): Promise<Partial<Record<DatasetName, DatasetStatus>>> {
+): Promise<{ datasets: Partial<Record<DatasetName, DatasetStatus>>; crossings: number }> {
   const rows = (
-    await db.query<{ name: DatasetName; report: Report; count: number }>(DATASETS, [id])
+    await db.query<{
+      name: DatasetName
+      report: Report
+      count: number
+      crossings: number | null
+    }>(DATASETS, [id])
   ).rows
 
-  return Object.fromEntries(rows.map((row) => [row.name, { count: row.count, report: row.report }]))
+  return {
+    datasets: Object.fromEntries(
+      rows.map((row) => [row.name, { count: row.count, report: row.report }]),
+    ),
+    crossings: rows.find((row) => row.name === 'events')?.crossings ?? 0,
+  }
 }
 
 /**
@@ -255,19 +278,29 @@ function fleetOf(row: ReplayRow): ReplayManifest['fleet'] {
  * The thresholds set aside and the single-step crossings are build facts no
  * count over the events retrieves — and the derivation already writes them in
  * its own report, which is where they are read back from.
+ *
+ * Absent while no build ever ran the lane that derives them, even when an
+ * agent's event made the data set exist: asked of the lane, which is what
+ * knows, and not guessed from the shape of a report. Whatever state that lane
+ * is in, the crossings a previous run stored are still there and summarised:
+ * a re-run under way, or one whose derivation failed, leaves them in place.
  */
 const EVENTS_REPORT = z.object({
   singleStep: z.number().int().nonnegative().catch(0),
   setAside: z.partialRecord(thresholdNatureSchema, z.number().int().nonnegative()).catch({}),
 })
 
-function eventsIn(datasets: Partial<Record<DatasetName, DatasetStatus>>): ReplayManifest['events'] {
+function eventsIn(
+  datasets: Partial<Record<DatasetName, DatasetStatus>>,
+  crossings: number,
+  lanes: Partial<Record<LaneName, unknown>>,
+): ReplayManifest['events'] {
   const stored = datasets.events
-  if (stored === undefined) return undefined
+  if (stored === undefined || lanes.events === undefined) return undefined
 
   const summary = EVENTS_REPORT.safeParse(stored.report)
   return {
-    crossings: stored.count,
+    crossings,
     singleStep: summary.success ? summary.data.singleStep : 0,
     thresholdsSetAside: summary.success ? summary.data.setAside : {},
   }

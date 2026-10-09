@@ -23,6 +23,9 @@ origine, et lui ouvrir une origine tierce n'aurait aucune raison d'être.
 | `DELETE` | `/replays/:id` | `204` sans corps · `400` · `404` · `409` |
 | `GET` | `/replays/:id/journal` | `200` en NDJSON · `400` · `404` |
 | `GET` | `/replays/:id/progress` | `200` en flux d'événements · `400` · `404` |
+| `GET` | `/replays/limits` | `200 { "manualImageBytes": … }` |
+| `POST` | `/replays/:id/events` | `201` l'événement · `400` · `404` |
+| `PUT` | `/replays/:id/events/:eventId/image` | `201` l'événement · `400` · `404` · `409` · `413` · `415` |
 | `GET` | `/replays/:id/media/*path` | `200` les octets · `304` · `400` · `404` |
 | `GET` | `/replays/:id/:dataset` | `200` en JSON · `304` · `400` · `404` |
 
@@ -76,6 +79,54 @@ que cette instance a lancé.
 Les lignes partent d'abord, les octets ensuite. Dans l'autre ordre, un rejeu se
 listerait avec ses images envolées.
 
+## Ajouter un événement
+
+`POST /replays/:id/events`, corps JSON, **limite 64 ko**. L'événement est
+enregistré comme saisi par un agent (`origin: "manual"`, `category: "report"`).
+
+| Champ | Contrainte |
+|---|---|
+| `title` | Obligatoire. 120 caractères au plus, espaces de bord retirés, sans caractère de contrôle |
+| `from` | Obligatoire. Un instant, dans la période du rejeu |
+| `to` | Un instant, ni avant `from` ni hors de la période. Absent ou nul, l'événement est ponctuel |
+| `description` | 4 000 caractères au plus. Vide, elle vaut `null` |
+| `position` | `{ lon, lat }` en WGS84, dans l'emprise du rejeu, ou dans le territoire du SMMAR pour un rejeu sans emprise |
+| `provenance` | `smmar`, `river-syndicate`, `municipality`, `fire-service` ou `individual` |
+
+Le schéma est strict, comme celui d'une création : un champ inconnu fait
+refuser la requête, en le nommant. L'identifiant est attribué par la base. La
+réponse est `201` avec l'événement, tel que le jeu `events` le rendra ensuite.
+
+Un événement s'ajoute aussi pendant une construction. Celle-ci publie le rejeu
+tel qu'elle le tient en mémoire, mais la date de mise à jour du rejeu ne recule
+jamais : la plus récente des deux est gardée.
+
+Le premier événement saisi sur un rejeu construit sans la voie Aquasys crée le
+jeu `events` : le manifeste l'annonce dès lors. Une reconstruction remplace les
+franchissements qu'elle dérive et **ne touche pas aux événements saisis**.
+
+### Joindre une image
+
+`PUT /replays/:id/events/:eventId/image`, l'image en corps brut. La limite vaut
+10 Mo, se règle par `MANUAL_IMAGE_MAX_BYTES`, et `GET /replays/limits` la donne en
+octets, pour qu'un client refuse une image trop lourde avant d'avoir rien créé.
+Au-delà, la réponse est `413`, et son `detail` donne la limite.
+
+Le rejeu et l'événement sont vérifiés **avant** que le corps soit lu : une
+image trop lourde envoyée à un événement inconnu rend `404`, pas `413`. Une image que
+l'événement n'a finalement pas reçue, parce qu'une autre requête l'a précédée,
+est retirée du volume.
+
+- Le format est lu dans les premiers octets, jamais dans le nom ni dans
+  `Content-Type` : JPEG, PNG ou WebP, sinon `415`.
+- Seul un événement saisi prend une image, et **une seule** : une seconde, ou
+  une image sur un franchissement, rend `409`. Une adresse de média est servie
+  comme immuable, et la remplacer ferait mentir les caches.
+- L'image est rangée sous `manual/<eventId>/`, sous un nom attribué par le
+  serveur, et servie par la route des médias.
+
+La réponse est `201` avec l'événement, qui porte le chemin dans `media`.
+
 ## Les jeux de données
 
 `GET /replays/:id/:dataset`, où `:dataset` est l'un de :
@@ -112,7 +163,8 @@ vide.
 
 Les jeux de données sont servis avec `ETag` et
 `Cache-Control: public, max-age=0, must-revalidate`, et compressés. Ils ne sont
-pas `immutable` : une reconstruction réécrit un jeu sur place.
+pas `immutable` : une reconstruction réécrit un jeu sur place, et un événement
+saisi change le jeu `events`.
 
 Les médias, eux, sont servis avec `Cache-Control: public, max-age=31536000,
 immutable` : une adresse de média, une fois gelée, désigne les mêmes octets pour
@@ -172,5 +224,5 @@ la génération, seuils compris.
 ## Ce qui n'existe pas encore
 
 Ni administration, ni authentification, ni publication : aucune route ne protège
-ni ne restitue ce qui précède. La saisie manuelle d'événements n'a ni route ni
-écran, bien que la table qui les porterait existe.
+ni ne restitue ce qui précède. Un événement saisi ne se modifie ni ne se
+supprime, et quiconque atteint l'API peut en ajouter.

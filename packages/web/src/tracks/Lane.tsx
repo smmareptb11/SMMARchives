@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react'
 
 import { api } from '../api.ts'
 import { formatInstant } from '../time.ts'
@@ -29,6 +36,8 @@ const RESTING_MS = 150
 export type LaneProps = {
   lane: LaneModel
   replayId: string
+  /** What a mark drawing an agent's event opens. */
+  onOpenEvent?: ((id: string) => void) | undefined
 }
 
 /** The full image behind a frame, and the style that pins it where it belongs. */
@@ -38,8 +47,8 @@ type Preview = {
   style: CSSProperties
 }
 
-export function Lane({ lane, replayId }: LaneProps) {
-  const film = lane.filmstrip === true
+export function Lane({ lane, replayId, onOpenEvent }: LaneProps) {
+  const rows = lane.rows ?? 1
   const marks = drawnMarks(lane, MIN_GAP)
   const [preview, setPreview] = useState<Preview | undefined>(undefined)
   const resting = useRef<number | undefined>(undefined)
@@ -60,22 +69,22 @@ export function Lane({ lane, replayId }: LaneProps) {
   }
 
   return (
-    <div
-      className={['lane', film ? 'film' : '', lane.bars === true ? 'bars' : '']
-        .filter(Boolean)
-        .join(' ')}
-    >
+    <div className={laneClassOf(lane)}>
       <div className="lane-label" title={lane.label}>
         {lane.label}
       </div>
-      <div className="lane-track">
+      <div
+        className="lane-track"
+        style={rows > 1 ? ({ '--rows': String(rows) } as CSSProperties) : undefined}
+      >
         {marks.map((mark) => (
           <LaneMark
-            key={`${lane.id}-${mark.at}`}
+            key={`${lane.id}-${mark.event ?? mark.at}`}
             mark={mark}
             caption={captionOf(lane.label, mark)}
             replayId={replayId}
             onPreview={onPreview}
+            onOpenEvent={onOpenEvent}
           />
         ))}
         {lane.marks.length === 0 ? <span className="empty">rien à cette période</span> : null}
@@ -90,10 +99,12 @@ type LaneMarkProps = {
   caption: string
   replayId: string
   onPreview: (preview: Preview | undefined) => void
+  onOpenEvent?: ((id: string) => void) | undefined
 }
 
-function LaneMark({ mark, caption, replayId, onPreview }: LaneMarkProps) {
+function LaneMark({ mark, caption, replayId, onPreview, onOpenEvent }: LaneMarkProps) {
   const full = mark.full
+  const opens = opening(mark.event, onOpenEvent)
 
   return (
     <span
@@ -102,6 +113,7 @@ function LaneMark({ mark, caption, replayId, onPreview }: LaneMarkProps) {
         left: `${String(mark.left)}%`,
         width: `${String(mark.width)}%`,
         ...(mark.height === undefined ? {} : { height: `${String(mark.height)}%` }),
+        ...(mark.row === undefined ? {} : { '--row': String(mark.row) }),
         // `backgroundColor`, never the `background` shorthand: it would wipe
         // the hatching the stylesheet puts on an assumed crossing.
         ...(mark.color === undefined ? {} : { backgroundColor: mark.color }),
@@ -110,6 +122,7 @@ function LaneMark({ mark, caption, replayId, onPreview }: LaneMarkProps) {
       // tooltip over that image would only fight with it. Where the image is
       // pinned is read here and not on the timer, because React clears
       // `currentTarget` the moment the handler returns.
+      {...opens}
       {...(full === undefined
         ? { title: caption }
         : {
@@ -144,8 +157,46 @@ function FullImage({ preview }: { preview: Preview }) {
   )
 }
 
+/**
+ * What makes a mark answer a click and a key, when it draws an agent's event.
+ *
+ * A button by its role rather than its element: the mark is placed and sized
+ * like every other, and a `button` brings the form's own padding with it.
+ */
+function opening(event: string | undefined, open: ((id: string) => void) | undefined) {
+  if (event === undefined || open === undefined) return {}
+
+  return {
+    role: 'button',
+    tabIndex: 0,
+    onClick: () => {
+      open(event)
+    },
+    onKeyDown: (key: KeyboardEvent<HTMLElement>) => {
+      if (key.key !== 'Enter' && key.key !== ' ') return
+      key.preventDefault()
+      open(event)
+    },
+  }
+}
+
+function laneClassOf(lane: LaneModel): string {
+  return [
+    'lane',
+    lane.filmstrip === true ? 'film' : '',
+    lane.bars === true ? 'bars' : '',
+    (lane.rows ?? 1) > 1 ? 'rows' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
 function classOf(mark: Mark): string {
-  return [mark.path === undefined ? 'mark' : 'frame', mark.assumed === true ? 'assumed' : '']
+  return [
+    mark.path === undefined ? 'mark' : 'frame',
+    mark.assumed === true ? 'assumed' : '',
+    mark.event === undefined ? '' : 'written',
+  ]
     .filter(Boolean)
     .join(' ')
 }

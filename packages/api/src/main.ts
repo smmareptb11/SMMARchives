@@ -11,11 +11,11 @@ function log(message: string): void {
 }
 
 try {
-  const { port } = apiConfig()
+  const { port, imageLimit } = apiConfig()
   const pool = openPool(databaseConfig().url)
   const catalog = openPostgresCatalog({ pool, mediaRoot: mediaConfig().root, onProgress: log })
 
-  createApp({ catalog, log }).listen(port, () => {
+  createApp({ catalog, log, imageLimit }).listen(port, () => {
     log(`api listening on ${port}`)
   })
 } catch (error) {

@@ -35,12 +35,13 @@ durée, même lorsque les systèmes sources n'exposent plus la période concern�
 - Rejeu synchronisé carte et frise, piloté par une seule horloge
 - Graphiques par station et par pluviomètre
 - Liste des rejeux constitués, du plus récent au plus ancien
+- Saisie d'événements par un agent : titre, dates, description, provenance,
+  position sur la carte et photo
 
 ### Ce qui est prévu et n'est pas écrit
 
-La saisie manuelle d'événements et de témoignages géolocalisés, l'export
-d'images pour les supports de présentation, et l'administration protégée par
-mot de passe.
+La modification et la suppression d'un événement saisi, l'export d'images pour
+les supports de présentation, et l'administration protégée par mot de passe.
 
 > [!WARNING]
 > **Rien n'est protégé aujourd'hui.** Aucune route ne demande de mot de passe,

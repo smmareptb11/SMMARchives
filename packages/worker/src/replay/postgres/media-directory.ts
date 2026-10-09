@@ -23,7 +23,7 @@ export type MediaDirectoryOptions = {
  */
 export function openMediaDirectory(
   options: MediaDirectoryOptions,
-): Pick<ReplayStore, 'hasMedia' | 'openMedia' | 'putMedia'> {
+): Pick<ReplayStore, 'hasMedia' | 'openMedia' | 'putMedia' | 'removeMedia'> {
   // Resolved, not joined: a relative MEDIA_PATH would leave every target
   // relative while the containment check resolves its argument, and every copy
   // would fail with a message about traversal.
@@ -49,6 +49,10 @@ export function openMediaDirectory(
 
     async putMedia(path: string, body: MediaBody): Promise<void> {
       await writeAtomically(join(directory, relativeMediaPath(path)), body)
+    },
+
+    async removeMedia(path: string): Promise<void> {
+      await rm(join(directory, relativeMediaPath(path)), { force: true })
     },
   }
 }

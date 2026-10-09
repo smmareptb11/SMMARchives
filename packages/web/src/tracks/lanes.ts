@@ -5,6 +5,7 @@ import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.t
 import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
 import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
+import { shownUntil, writtenIn } from '../events/span.ts'
 import { instantOf, viewsOf, type View } from '../pictures.ts'
 import { barSaid, scaleOf, spanSaid, stepsOf, type Gauges, type Step } from '../rain.ts'
 import { instantAt, type Cursor } from '../transport/reading.ts'
@@ -60,6 +61,10 @@ export type Mark = Place & {
   path?: string | undefined
   /** The full image behind a frame, fetched only when someone asks to see it. */
   full?: string | undefined
+  /** The event an agent wrote that the mark draws, which a click opens. */
+  event?: string | undefined
+  /** The row of its lane it is drawn on, when the lane has more than one. */
+  row?: number | undefined
 }
 
 export type Lane = {
@@ -70,6 +75,10 @@ export type Lane = {
   filmstrip?: boolean
   /** Its marks are bars standing on the floor of the lane, each one a measure. */
   bars?: boolean
+  /** Every mark is drawn, however close: each is a fact, and costs no file. */
+  everyMark?: boolean
+  /** How many rows its marks are spread over, so that none hides another. */
+  rows?: number
 }
 
 export type Family = {
@@ -78,6 +87,8 @@ export type Family = {
   lanes: Lane[]
   /** How many sources of this family hold no lane, and why there is none. */
   silent?: number
+  /** What its heading counts, when that is not its lanes: one lane holds every event. */
+  count?: number
 }
 
 /**
@@ -172,7 +183,7 @@ function withTheLastOne<T extends { left: number }>(
  * `barsOf` has already laid them widest first, an order they keep.
  */
 export function drawnMarks(lane: Lane, minGap: number): Mark[] {
-  if (lane.bars === true) return lane.marks
+  if (lane.bars === true || lane.everyMark === true) return lane.marks
   return lane.filmstrip === true ? tiled(lane.marks, minGap) : spacedOut(lane.marks, minGap)
 }
 
@@ -213,6 +224,20 @@ const STATION_FAMILIES = [
  */
 export function lanesOf(content: ReplayContent): Family[] {
   const families: Family[] = []
+
+  // First, because they are what an agent came to add to the replay, and a
+  // single lane: what sets them apart is their title, not a source.
+  const written = writtenIn(content.events)
+  if (written.length > 0) {
+    families.push({
+      id: 'written',
+      label: 'Événements saisis',
+      count: written.length,
+      lanes: [
+        { id: 'written-events', label: 'Saisie manuelle', everyMark: true, ...rowed(content) },
+      ],
+    })
+  }
 
   for (const family of STATION_FAMILIES) {
     const stations = content.stations.filter((one) => one.category === family.id)
@@ -278,6 +303,11 @@ function push(families: Family[], family: Family | undefined): void {
   if (family !== undefined) families.push(family)
 }
 
+/** How many crossings the replay derived, which the events an agent wrote are not. */
+export function crossingCount(content: ReplayContent): number {
+  return content.events.filter((one) => one.origin === 'automatic').length
+}
+
 /** How many of the replay's crossings rest on a nature nobody read. */
 export function assumedCrossings(content: ReplayContent): number {
   return content.events.filter((one) => one.crossing?.natureIsFallback === true).length
@@ -293,6 +323,38 @@ function crossingsOf(content: ReplayContent, sourceId: number): Mark[] {
       ...(one.crossing?.natureIsFallback === true ? { assumed: true } : {}),
       color: one.color ?? undefined,
     }))
+}
+
+/**
+ * One mark per event an agent wrote, over the span the screen shows it for,
+ * each on a row where no other one covers it.
+ *
+ * Which is not always the span it has: an instant is given a minute, the one
+ * `events/span.ts` gives it on the map as well.
+ *
+ * Rows, because the form offers the reading's own instant as a start: two
+ * events written without moving the cursor stand on the same instant, and on a
+ * single row the second would hide the first — whose lane is the only way to
+ * open it when it has no place on the map.
+ */
+function rowed(content: ReplayContent): Pick<Lane, 'marks' | 'rows'> {
+  const ends: number[] = []
+  const marks = writtenIn(content.events)
+    .map((one) => ({
+      ...placeOf(content.period, one.from, instantAt(shownUntil(one))),
+      at: one.from,
+      label: one.title,
+      event: one.id,
+    }))
+    .sort((one, other) => one.left - other.left)
+    .map((mark) => {
+      const free = ends.findIndex((end) => end <= mark.left)
+      const row = free === -1 ? ends.length : free
+      ends[row] = mark.left + mark.width
+      return { ...mark, row }
+    })
+
+  return { marks, rows: Math.max(ends.length, 1) }
 }
 
 function webcamLanes(content: ReplayContent): Lane[] {

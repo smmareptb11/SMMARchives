@@ -22,6 +22,12 @@ function storeThat(appendJournal: ReplayStore['appendJournal']): ReplayStore {
     hasMedia: async () => false,
     openMedia: async () => undefined,
     putMedia: async () => {},
+    removeMedia: async () => {},
+    addManualEvent: async () => {
+      throw new Error('no event is added here')
+    },
+    getEvent: async () => undefined,
+    attachEventMedia: async () => false,
   }
 }
 

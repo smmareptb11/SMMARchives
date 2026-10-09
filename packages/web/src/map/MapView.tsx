@@ -1,9 +1,10 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 import { Map as MapLibreMap, NavigationControl } from 'maplibre-gl'
-import { memo, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
+import type { Writing } from '../events/useWriting.ts'
 import type { Cursor } from '../transport/reading.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { BLANK, groundOf } from './ground.ts'
@@ -17,6 +18,7 @@ import { viewsOf, type Views } from '../pictures.ts'
 import { LayerPanel } from './LayerPanel.tsx'
 import { silencesOf } from './silences.ts'
 import { WebcamMarkers } from './WebcamMarkers.tsx'
+import { WrittenOnMap } from './WrittenEventMarkers.tsx'
 
 /** The Aude basin, so a replay holding nothing placed still opens somewhere. */
 const FALLBACK = { center: [2.55, 43.17] as [number, number], zoom: 8.6 }
@@ -150,6 +152,12 @@ export type MapViewProps = {
   onMutesShown: (shown: boolean) => void
   /** How many sources the switch holds back, the lanes' own included. */
   heldBack: number
+  /** An agent writing an event, or reading one: what the map takes part in. */
+  writing: Writing
+  /** What floats on the map: the form an agent writes in, or a sheet. */
+  overlay: ReactNode
+  /** Told when the map can carry what floats on it, and when it no longer can. */
+  onReady: (ready: boolean) => void
 }
 
 export function MapView({
@@ -160,6 +168,9 @@ export function MapView({
   mutesShown,
   onMutesShown,
   heldBack,
+  writing,
+  overlay,
+  onReady,
 }: MapViewProps) {
   const drawn = useRef<MapLibreMap | undefined>(undefined)
   const [ready, setReady] = useState(false)
@@ -169,15 +180,16 @@ export function MapView({
   // than held in state: what says it is there is `ready`, set beside it.
   const hung = ready ? drawn.current : undefined
   const { bubble, shown: open } = useCallout(hung, replayId)
-  useSourceClicks(hung, bubble)
+  useSourceClicks(hung, bubble, writing.picking)
   const views = useMemo(() => viewsOf(content.images), [content.images])
 
+  useEffect(() => onReady(ready), [ready, onReady])
   useShownSources(hung, shown, mutesShown)
   usePaintedSources(ready, drawn, colours)
 
   return (
     <>
-      <Ground content={content} drawn={drawn} onReady={setReady} />
+      <Ground content={content} drawn={drawn} onReady={setReady} overlay={overlay} />
       <LayerPanel
         content={content}
         shown={shown}
@@ -198,6 +210,7 @@ export function MapView({
         mutesShown={mutesShown}
         views={views}
       />
+      <WrittenOnMap map={hung} content={content} at={at} shown={shown.event} writing={writing} />
       <Callout open={open} content={content} views={views} replayId={replayId} at={at} />
     </>
   )
@@ -214,10 +227,12 @@ function Ground({
   content,
   drawn,
   onReady,
+  overlay,
 }: {
   content: ReplayContent
   drawn: RefObject<MapLibreMap | undefined>
   onReady: (ready: boolean) => void
+  overlay: ReactNode
 }) {
   // The content is read through a ref rather than taken as a dependency: a map
   // rebuilt whenever the object changes would flash, and lose wherever the
@@ -233,7 +248,10 @@ function Ground({
           Fond de carte injoignable. Les sources sont à leur place, le fond reste blanc.
         </p>
       ) : null}
-      <div className="map" ref={container} />
+      <div className="map-stage">
+        <div className="map" ref={container} />
+        {overlay}
+      </div>
     </>
   )
 }

@@ -226,6 +226,8 @@ function toEvent(
     origin: 'automatic',
     category: 'threshold-crossing',
     title: `${station.name} — ${threshold.label}`,
+    description: null,
+    provenance: null,
     severity,
     color: threshold.color,
     from: crossing.from,
