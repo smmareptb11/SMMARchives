@@ -121,6 +121,27 @@ export function aCrossing(one: Partial<ReplayEvent> & { sourceId: number }): Rep
   }
 }
 
+/** An event an agent wrote, as the API answers it. */
+export function aWrittenEvent(one: Partial<ReplayEvent> = {}): ReplayEvent {
+  return {
+    id: 'a2b5e8c1-0000-4000-8000-000000000001',
+    origin: 'manual',
+    category: 'report',
+    title: 'D118 coupée à Couffoulens',
+    description: null,
+    provenance: null,
+    severity: null,
+    color: null,
+    from: '2019-10-22T09:00:00.000Z',
+    to: null,
+    position: { lon: 2.3167, lat: 43.1583 },
+    sourceId: null,
+    media: [],
+    crossing: null,
+    ...one,
+  }
+}
+
 /**
  * What a crossing rests on, with every field the contract asks for.
  *

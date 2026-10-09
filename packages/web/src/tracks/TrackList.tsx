@@ -7,7 +7,13 @@ import { formatHour, formatInstant } from '../time.ts'
 import { cursorAt, instantAt } from '../transport/reading.ts'
 import { Lane } from './Lane.tsx'
 import { MUTES } from '../mutes.ts'
-import { assumedCrossings, speaking, type Family, type ReplayContent } from './lanes.ts'
+import {
+  assumedCrossings,
+  crossingCount,
+  speaking,
+  type Family,
+  type ReplayContent,
+} from './lanes.ts'
 
 export type TrackListProps = {
   manifest: ReplayManifest
@@ -17,6 +23,11 @@ export type TrackListProps = {
   onSeek: (fraction: number) => void
   /** Whether the lanes with nothing on them are asked for. */
   mutesShown: boolean
+  /**
+   * Opens the sheet of an event an agent wrote. Stable, or the lanes redraw.
+   * Absent while nothing can show a sheet, and the marks then open nothing.
+   */
+  onOpenEvent?: ((id: string) => void) | undefined
 }
 
 /**
@@ -32,6 +43,7 @@ export const TrackList = memo(function TrackList({
   families,
   onSeek,
   mutesShown,
+  onOpenEvent,
 }: TrackListProps) {
   return (
     <section>
@@ -43,6 +55,7 @@ export const TrackList = memo(function TrackList({
           family={family}
           replayId={manifest.id}
           mutesShown={mutesShown}
+          onOpenEvent={onOpenEvent}
         />
       ))}
 
@@ -56,10 +69,12 @@ function FamilyLanes({
   family,
   replayId,
   mutesShown,
+  onOpenEvent,
 }: {
   family: Family
   replayId: string
   mutesShown: boolean
+  onOpenEvent: ((id: string) => void) | undefined
 }) {
   const lanes = mutesShown ? family.lanes : speaking(family)
   const held = family.lanes.length - lanes.length
@@ -67,12 +82,12 @@ function FamilyLanes({
   return (
     <details open>
       <summary>
-        {family.label} <span className="count">{lanes.length}</span>
+        {family.label} <span className="count">{family.count ?? lanes.length}</span>
       </summary>
       {family.silent === undefined ? null : <p className="note">{silenceOf(family.silent)}</p>}
       {held === 0 ? null : <p className="note">{heldSaid(family, held)}</p>}
       {lanes.map((lane) => (
-        <Lane key={lane.id} lane={lane} replayId={replayId} />
+        <Lane key={lane.id} lane={lane} replayId={replayId} onOpenEvent={onOpenEvent} />
       ))}
     </details>
   )
@@ -98,7 +113,7 @@ export function ReplayHeading({
         Du {formatInstant(manifest.period.from)} au {formatInstant(manifest.period.to)} — heure
         française.
       </p>
-      <Assumed crossings={assumedCrossings(content)} total={content.events.length} />
+      <Assumed crossings={assumedCrossings(content)} total={crossingCount(content)} />
     </>
   )
 }

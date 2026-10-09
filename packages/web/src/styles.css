@@ -9,6 +9,8 @@
   --rail: #f2f5f8;
   /* The blue a rain gauge's bars are drawn in, taken from the map's own ramp. */
   --rain: #2171b5;
+  /* What an agent wrote, on the map and on its lane: the POC's own green. */
+  --written: #22a06b;
   /* The lane label column, which the reading bar has to clear to line up. */
   --label-w: 11rem;
   --night: #0b1218;
@@ -711,4 +713,242 @@ summary .count {
   border: 2px solid var(--brand);
   background: color-mix(in srgb, var(--brand) 8%, transparent);
   pointer-events: none;
+}
+
+/*
+ * The reading and the one action that writes into it, on one line.
+ *
+ * As tall as the button with or without it: the button leaves while an event
+ * is written, and a bar that shrank would move the map under the agent's
+ * pointer, along with the place they had just picked.
+ */
+.replay-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: calc(1.45em + 1rem);
+  margin-bottom: 0.75rem;
+}
+
+.replay-actions .transport {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+textarea {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #c7d0d9;
+  border-radius: 3px;
+  background: #fff;
+  resize: vertical;
+}
+
+button.secondary {
+  background: #fff;
+  color: var(--brand);
+  border: 1px solid #c7d0d9;
+}
+
+/*
+ * The event an agent wrote: a green diamond, the POC's green on a shape no
+ * source of the map has.
+ *
+ * The marker is a point of no size, and only the diamond inside it turns: the
+ * element MapLibre places must carry no transform of its own. A past event is
+ * dimmed and kept.
+ */
+.written-event {
+  width: 0;
+  height: 0;
+}
+
+.written-shape,
+.swatch.event {
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  background: var(--written);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 45%);
+}
+
+.written-shape {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+  cursor: pointer;
+}
+
+.swatch.event {
+  width: 11px;
+  height: 11px;
+  margin: 0 1.5px;
+  rotate: 45deg;
+}
+
+.written-event.past .written-shape {
+  opacity: 0.45;
+}
+
+/*
+ * While a place is picked, a click on a marker is a click on the map under it:
+ * the place, and nothing opened on the side.
+ */
+.map.picking .written-shape,
+.map.picking .camera {
+  pointer-events: none;
+}
+
+/* Where the event being written will stand: the same shape, nothing stored. */
+.written-event.pending .written-shape {
+  border: 2px dashed var(--written);
+  background: #fff;
+  cursor: default;
+  pointer-events: none;
+}
+
+.mark.written {
+  background: var(--written);
+  cursor: pointer;
+}
+
+/* A lane whose marks would cover one another gives each a row of its own. */
+.rows .lane-track {
+  height: calc(1.75rem * var(--rows));
+}
+
+.rows .mark {
+  top: calc(1.75rem * var(--row) + 0.25rem);
+  bottom: auto;
+  height: 1.25rem;
+}
+
+/*
+ * The map and what floats on it.
+ *
+ * The form and the sheet are laid over the map, as the POC lays them, where
+ * the panel of layers keeps under it: an agent placing an event has to see
+ * the map and the form at once, and the map stays clickable around them.
+ */
+.map-stage {
+  position: relative;
+}
+
+.written-form,
+.sheet {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  box-sizing: border-box;
+  width: min(380px, calc(100% - 24px));
+  max-width: none;
+  max-height: calc(100% - 24px);
+  margin: 0;
+  padding: 0.75rem 1rem 1rem;
+  overflow: auto;
+  border: 1px solid #e3e8ed;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 25%);
+}
+
+.written-form {
+  top: 12px;
+}
+
+.sheet {
+  bottom: 12px;
+  width: min(480px, calc(100% - 24px));
+}
+
+/* What the next click on the map will be, where the agent is looking. */
+.picking-hint {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.written-form h2,
+.sheet h2 {
+  margin: 0;
+  font-family: var(--display);
+  color: var(--brand);
+}
+
+.written-form .refused {
+  color: #b3261e;
+}
+
+.written-preview {
+  max-width: 16rem;
+  max-height: 10rem;
+  object-fit: contain;
+}
+
+.place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.place-name {
+  font-weight: 600;
+}
+
+.place button,
+.actions button,
+.sheet header button {
+  padding: 0.35rem 0.8rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sheet header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.sheet dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.sheet dt {
+  color: var(--ink-2);
+}
+
+.sheet dd {
+  margin: 0;
+}
+
+/* As the agent typed it, line breaks included. */
+.sheet .description {
+  white-space: pre-wrap;
+}
+
+.sheet img {
+  display: block;
+  max-width: 100%;
+  max-height: 24rem;
+  border-radius: 3px;
 }

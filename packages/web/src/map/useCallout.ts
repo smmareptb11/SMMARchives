@@ -115,9 +115,14 @@ export function useCallout(
  * On the shapes and not on their white rings: a ring is wider than the shape it
  * backs, and clicking beside a rain gauge would open the rain gauge.
  */
-export function useSourceClicks(map: MapLibreMap | undefined, bubble: Bubble): void {
+export function useSourceClicks(
+  map: MapLibreMap | undefined,
+  bubble: Bubble,
+  picking: boolean,
+): void {
   useEffect(() => {
-    if (map === undefined) return
+    // A click while a place is being picked is that place, and nothing else.
+    if (map === undefined || picking) return
 
     const canvas = map.getCanvas()
     const layers = KINDS.map(shapeLayerOf)
@@ -143,7 +148,7 @@ export function useSourceClicks(map: MapLibreMap | undefined, bubble: Bubble): v
       pointer.stop()
       canvas.style.cursor = ''
     }
-  }, [map, bubble])
+  }, [map, bubble, picking])
 }
 
 /**

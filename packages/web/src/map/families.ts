@@ -1,10 +1,11 @@
+import { writtenIn } from '../events/span.ts'
 import { MUTED } from '../palette.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { KINDS, kindOf } from './sources.ts'
 import { NEUTRAL } from './state.ts'
 
-/** The families a reader can cut off: the three drawn, and the two others. */
-export const FAMILIES = [...KINDS, 'webcam', 'territory'] as const
+/** The families a reader can cut off: the three drawn, and the three others. */
+export const FAMILIES = [...KINDS, 'webcam', 'event', 'territory'] as const
 
 export type Family = (typeof FAMILIES)[number]
 
@@ -23,6 +24,7 @@ export const NAMES: Record<Family, { one: string; many: string }> = {
   structure: { one: 'Ouvrage', many: 'Ouvrages' },
   'rain-gauge': { one: 'Pluviomètre', many: 'Pluviomètres' },
   webcam: { one: 'Webcam', many: 'Webcams' },
+  event: { one: 'Événement saisi', many: 'Événements saisis' },
   territory: { one: 'Périmètre de syndicat', many: 'Périmètres des syndicats' },
 }
 
@@ -52,6 +54,7 @@ export function familiesOf(content: ReplayContent): Family[] {
   return FAMILIES.filter((family) => {
     if (family === 'rain-gauge') return content.rainGauges.length > 0
     if (family === 'webcam') return content.webcams.length > 0
+    if (family === 'event') return writtenIn(content.events).some((one) => one.position !== null)
     if (family === 'territory') return true
     return drawn.has(family)
   })
@@ -63,5 +66,6 @@ export const EVERYTHING: Shown = {
   structure: true,
   'rain-gauge': true,
   webcam: true,
+  event: true,
   territory: true,
 }

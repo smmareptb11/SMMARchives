@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatHour, formatInstant, toInstant, toLocalInput } from '../src/time.ts'
+import { formatHour, formatInstant, instantsOf, toInstant, toLocalInput } from '../src/time.ts'
 
 describe('a French wall time turned into an instant', () => {
   it('takes two hours off in summer', () => {
@@ -19,6 +19,15 @@ describe('a French wall time turned into an instant', () => {
   it('keeps the first of the two hours that bear the same name', () => {
     // On 2019-10-27, 02:30 happens twice in Paris: at 00:30Z, then at 01:30Z.
     expect(toInstant('2019-10-27T02:30')).toBe('2019-10-27T00:30:00.000Z')
+  })
+
+  it('names both of those hours, the first first, when asked for every one', () => {
+    expect(instantsOf('2019-10-27T02:30')).toEqual([
+      '2019-10-27T00:30:00.000Z',
+      '2019-10-27T01:30:00.000Z',
+    ])
+    expect(instantsOf('2019-10-22T06:00')).toEqual(['2019-10-22T04:00:00.000Z'])
+    expect(instantsOf('hier')).toEqual([])
   })
 
   it('takes the instant that follows an hour the calendar skipped', () => {

@@ -9,15 +9,17 @@ import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
 import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
 import { api } from './api.ts'
+import { useWriting, type Writing } from './events/useWriting.ts'
+import { WritingPanel } from './events/WritingPanel.tsx'
 import { cursorAt } from './transport/reading.ts'
 import { paintedAt } from './map/state.ts'
 import { gaugesOf } from './rain.ts'
 import { describe } from './problems.ts'
 import { Playhead } from './transport/Playhead.tsx'
 import { Transport } from './transport/Transport.tsx'
-import { useCursor } from './transport/useCursor.ts'
+import { useCursor, type Reading } from './transport/useCursor.ts'
 import { ReplayHeading, TrackList } from './tracks/TrackList.tsx'
-import { heldIn, lanesOf, type ReplayContent } from './tracks/lanes.ts'
+import { heldIn, lanesOf, type Family, type ReplayContent } from './tracks/lanes.ts'
 
 /**
  * Loaded on the screen that draws one, and on no other.
@@ -36,12 +38,19 @@ const MapView = lazy(async () => ({ default: (await import('./map/MapView.tsx'))
  * draw its segment. Loading them twice would be reading the same thing twice.
  */
 export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
-  const { content, failure } = useContent(manifest)
+  const { content, failure, onEvents } = useContent(manifest)
 
   if (failure !== undefined) return <p className="refusal">{failure}</p>
   if (content === undefined) return <p>Lecture du rejeu…</p>
 
-  return <Replayed manifest={manifest} content={content} />
+  return <Replayed manifest={manifest} content={content} onEvents={onEvents} />
+}
+
+type ReplayedProps = {
+  manifest: ReplayManifest
+  content: ReplayContent
+  /** Replaces the events alone, once an agent has added one. */
+  onEvents: (events: ReplayEvent[]) => void
 }
 
 /**
@@ -55,18 +64,9 @@ export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
  * start, its end and its colour, so the same events the lanes draw are what the
  * map paints with.
  */
-function Replayed({ manifest, content }: { manifest: ReplayManifest; content: ReplayContent }) {
+function Replayed({ manifest, content, onEvents }: ReplayedProps) {
   const marks = useMemo(() => content.events.map((one) => Date.parse(one.from)), [content.events])
   const reading = useCursor(manifest.period, marks)
-  const seek = useCallback(
-    (fraction: number) => {
-      reading.seek(cursorAt(manifest.period, fraction))
-    },
-    // `reading.seek` is memoised by `useCursor`; `reading` itself is a new object on every
-    // render, so watching it would rebuild this callback sixty times a second.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the stable member, not the object
-    [reading.seek, manifest.period],
-  )
   const colours = useMemo(() => paintedAt(content, reading.at), [content, reading.at])
   // Above the map and the lanes because it reaches both: a replay keeps the
   // sources that answered nothing, and the reader says when to see them.
@@ -77,10 +77,11 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
   // is built rather than building it again.
   const families = useMemo(() => lanesOf(content), [content])
   const heldBack = useMemo(() => heldIn(families), [families])
+  const writing = useWriting()
 
   return (
     <>
-      <Transport reading={reading} />
+      <Toolbar reading={reading} writing={writing} />
       {/* Nothing while it arrives: a box the height of the map would push the
           lanes down and back up again, and the lanes are readable without it. */}
       <Suspense fallback={null}>
@@ -92,17 +93,90 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
           mutesShown={mutesShown}
           onMutesShown={setMutesShown}
           heldBack={heldBack}
+          writing={writing}
+          onReady={writing.onReady}
+          overlay={
+            <WritingPanel
+              writing={writing}
+              manifest={manifest}
+              content={content}
+              reading={reading}
+              onEvents={onEvents}
+            />
+          }
         />
       </Suspense>
       <ReplayHeading manifest={manifest} content={content} />
-
-      {/* One positioned wrapper for the two: the bar is laid over the lanes,
-          and is the only child of the pair that a tick re-renders. */}
-      <div className="tracks">
-        <Playhead period={manifest.period} at={reading.at} />
-        <TrackList manifest={manifest} families={families} onSeek={seek} mutesShown={mutesShown} />
-      </div>
+      <Lanes
+        manifest={manifest}
+        families={families}
+        reading={reading}
+        mutesShown={mutesShown}
+        onOpenEvent={writing.ready && !writing.writing ? writing.open : undefined}
+      />
     </>
+  )
+}
+
+/** Playing the replay, and the one action that writes into it. */
+function Toolbar({ reading, writing }: { reading: Reading; writing: Writing }) {
+  return (
+    <div className="replay-actions">
+      <Transport reading={reading} />
+      {writing.writing || !writing.ready ? null : (
+        <button
+          type="button"
+          onClick={() => {
+            reading.pause()
+            writing.start()
+          }}
+        >
+          + Ajouter un événement
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The lanes, and the reading bar laid over them.
+ *
+ * One positioned wrapper for the two: the bar is laid over the lanes, and is
+ * the only child of the pair that a tick re-renders.
+ */
+function Lanes({
+  manifest,
+  families,
+  reading,
+  mutesShown,
+  onOpenEvent,
+}: {
+  manifest: ReplayManifest
+  families: Family[]
+  reading: Reading
+  mutesShown: boolean
+  onOpenEvent: ((id: string) => void) | undefined
+}) {
+  const seek = useCallback(
+    (fraction: number) => {
+      reading.seek(cursorAt(manifest.period, fraction))
+    },
+    // `reading.seek` is memoised by `useCursor`; `reading` itself is a new object on every
+    // render, so watching it would rebuild this callback sixty times a second.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the stable member, not the object
+    [reading.seek, manifest.period],
+  )
+  return (
+    <div className="tracks">
+      <Playhead period={manifest.period} at={reading.at} />
+      <TrackList
+        manifest={manifest}
+        families={families}
+        onSeek={seek}
+        mutesShown={mutesShown}
+        onOpenEvent={onOpenEvent}
+      />
+    </div>
   )
 }
 
@@ -157,8 +231,17 @@ async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise
  * The rain of the whole parc is among it, being a fortieth of that on the same
  * replay — so are the ladders that say which quantity a station is read on.
  */
-function useContent(manifest: ReplayManifest): Loaded {
+function useContent(
+  manifest: ReplayManifest,
+): Loaded & { onEvents: (events: ReplayEvent[]) => void } {
   const [loaded, setLoaded] = useState<Loaded>({ content: undefined, failure: undefined })
+  // The events alone, once an agent has added one: the rest of the replay has
+  // not moved, and reading its megabytes again would be for nothing.
+  const onEvents = useCallback((events: ReplayEvent[]) => {
+    setLoaded((held) =>
+      held.content === undefined ? held : { ...held, content: { ...held.content, events } },
+    )
+  }, [])
 
   useEffect(() => {
     const leaving = new AbortController()
@@ -183,5 +266,5 @@ function useContent(manifest: ReplayManifest): Loaded {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the fields read, not the manifest
   }, [manifest.id, manifest.datasets, manifest.period])
 
-  return loaded
+  return { ...loaded, onEvents }
 }

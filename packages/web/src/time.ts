@@ -59,27 +59,38 @@ const HALF_A_DAY = 12 * 60 * 60 * 1000
 /**
  * A wall time in Paris, as `datetime-local` spells it, as the instant it names.
  *
- * Both offsets in force around it are tried — the one half a day before and the
- * one half a day after, which is the pair a clock change sits between — and an
- * instant is kept only if Paris reads it back as the wall time asked for.
- *
  * **The last Sunday of October, two instants bear the same name**, and this
  * keeps the first: the hour before the change. That Sunday falls in the middle
  * of the season this tool replays, so it is not a case of the calendar's
- * imagination. **The last Sunday of March, one hour never happens**, no
- * instant reads back, and this takes the one that follows it. Neither choice
- * shows on screen, which is why both are written here and in the design.
+ * imagination. **The last Sunday of March, one hour never happens**, and this
+ * takes the instant that follows it. Neither choice shows on screen, which is
+ * why both are written here and in the design.
  */
 export function toInstant(local: string): Instant | undefined {
-  if (!WALL_TIME.test(local)) return undefined
+  return instantsOf(local)[0]
+}
+
+/**
+ * Every instant a wall time in Paris names, earliest first: two in the hour
+ * the clocks go back, one otherwise, none for what is not a wall time.
+ *
+ * Both offsets in force around it are tried — the one half a day before and the
+ * one half a day after, which is the pair a clock change sits between — and an
+ * instant is kept only if Paris reads it back as the wall time asked for. The
+ * hour that never happens reads back as none, and is given the offset before.
+ */
+export function instantsOf(local: string): Instant[] {
+  if (!WALL_TIME.test(local)) return []
   const asIfUtc = Date.parse(`${local}:00.000Z`)
-  if (Number.isNaN(asIfUtc)) return undefined
+  if (Number.isNaN(asIfUtc)) return []
 
   const before = asIfUtc - offsetAt(asIfUtc - HALF_A_DAY)
   const after = asIfUtc - offsetAt(asIfUtc + HALF_A_DAY)
-  const named = [before, after].filter((epoch) => asIfUtc - epoch === offsetAt(epoch))
+  const named = [...new Set([before, after])].filter((epoch) => asIfUtc - epoch === offsetAt(epoch))
 
-  return new Date(named.length === 0 ? before : Math.min(...named)).toISOString()
+  return (named.length === 0 ? [before] : named.sort((one, other) => one - other)).map((epoch) =>
+    new Date(epoch).toISOString(),
+  )
 }
 
 /** An instant as `datetime-local` wants it back: the French wall time. */

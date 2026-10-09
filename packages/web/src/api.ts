@@ -1,5 +1,6 @@
-import type { TimeWindow } from '@smmarchives/shared/clock.ts'
-import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
+import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
+import type { EventProvenance, ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
+import type { BoundingBox, Position } from '@smmarchives/shared/contracts/geometry.ts'
 import type { Measure } from '@smmarchives/shared/contracts/measure.ts'
 import type { Quantity } from '@smmarchives/shared/contracts/quantity.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
@@ -25,6 +26,16 @@ export type Creation = {
   period: TimeWindow
 }
 
+/** What an agent writes of an event; the API settles the rest. */
+export type ManualEventInput = {
+  title: string
+  description: string | null
+  from: Instant
+  to: Instant | null
+  position: Position | null
+  provenance: EventProvenance | null
+}
+
 export const api = {
   health: () => ask<{ status: string }>('/health'),
 
@@ -37,6 +48,24 @@ export const api = {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(creation),
+    }),
+
+  /** What the API accepts at most, asked before anything is sent. */
+  limits: () => ask<{ manualImageBytes: number }>('/replays/limits'),
+
+  addEvent: (id: string, event: ManualEventInput) =>
+    ask<ReplayEvent>(`/replays/${id}/events`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(event),
+    }),
+
+  /** The bytes as they are: the API reads their format from them, not from a header. */
+  attachImage: (id: string, eventId: string, image: Blob) =>
+    ask<ReplayEvent>(`/replays/${id}/events/${encodeURIComponent(eventId)}/image`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/octet-stream' },
+      body: image,
     }),
 
   datasetOf: <T>(

@@ -20,7 +20,7 @@ export function Transport({ reading }: { reading: Reading }) {
         type="button"
         onClick={reading.toPrevious}
         disabled={previousMark(reading.marks, reading.at) === undefined}
-        title="Franchissement précédent"
+        title="Événement précédent"
       >
         ⏮
       </button>
@@ -31,7 +31,7 @@ export function Transport({ reading }: { reading: Reading }) {
         type="button"
         onClick={reading.toNext}
         disabled={nextMark(reading.marks, reading.at) === undefined}
-        title="Franchissement suivant"
+        title="Événement suivant"
       >
         ⏭
       </button>
