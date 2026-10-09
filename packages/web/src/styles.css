@@ -52,12 +52,19 @@ main:has(.map) {
  * 26rem map leaves above or below it, and MapLibre picks a side without ever
  * asking whether the bubble fits there: clipped, the curve is simply not
  * shown. The clipping moves one box in, where the canvas and the markers are.
+ *
+ * Positioned, and laid over the whole map: a marker is absolutely positioned,
+ * and a box clips such a child only if it is the box the child is placed in.
+ * Left static, the markers are placed in the map's own box, which clips
+ * nothing, and a camera panned out of the map lands on the page beneath.
  */
 .map.maplibregl-map {
   overflow: visible;
 }
 
 .map .maplibregl-canvas-container {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
