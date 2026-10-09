@@ -3,7 +3,7 @@ import { memo, type MouseEvent as ReactMouseEvent } from 'react'
 import type { TimeWindow } from '@smmarchives/shared/clock.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
-import { formatHour, formatInstant } from '../time.ts'
+import { formatInstant, formatTick } from '../time.ts'
 import { cursorAt, instantAt } from '../transport/reading.ts'
 import { Lane } from './Lane.tsx'
 import { MUTES } from '../mutes.ts'
@@ -208,7 +208,7 @@ function Ruler({ period, onSeek }: { period: TimeWindow; onSeek: (fraction: numb
           const at = instantAt(cursorAt(period, index / TICKS))
           return (
             <span className="tick" key={at} style={{ left: `${String((index / TICKS) * 100)}%` }}>
-              {formatHour(at)}
+              {formatTick(at, period)}
             </span>
           )
         })}

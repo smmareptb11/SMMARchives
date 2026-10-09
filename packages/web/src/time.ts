@@ -1,4 +1,4 @@
-import type { Instant } from '@smmarchives/shared/clock.ts'
+import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
 
 /**
  * The interface speaks French time; the API speaks UTC.
@@ -32,6 +32,14 @@ const READABLE = new Intl.DateTimeFormat('fr-FR', {
 
 const HOUR = new Intl.DateTimeFormat('fr-FR', {
   timeZone: FRENCH_TIME,
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+const DAY_AND_HOUR = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: FRENCH_TIME,
+  day: '2-digit',
+  month: '2-digit',
   hour: '2-digit',
   minute: '2-digit',
 })
@@ -112,4 +120,21 @@ export function formatInstant(instant: Instant): string {
 export function formatHour(instant: Instant): string {
   const epoch = Date.parse(instant)
   return Number.isNaN(epoch) ? '' : HOUR.format(new Date(epoch))
+}
+
+const A_DAY = 24 * 60 * 60 * 1000
+
+/**
+ * A graduation of the ruler: the hour alone over a day, the day with it beyond.
+ *
+ * Eight graduations over nine days fall twenty-seven hours apart, and an hour
+ * alone then names an instant a day away from the one under it: « 03:00 »
+ * stands over the eleventh at three, and an event of the tenth at four reads
+ * as misplaced. Over a day or less, the date is the one the heading says.
+ */
+export function formatTick(instant: Instant, period: TimeWindow): string {
+  const epoch = Date.parse(instant)
+  if (Number.isNaN(epoch)) return ''
+  const span = Date.parse(period.to) - Date.parse(period.from)
+  return (span > A_DAY ? DAY_AND_HOUR : HOUR).format(new Date(epoch))
 }

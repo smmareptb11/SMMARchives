@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatHour, formatInstant, instantsOf, toInstant, toLocalInput } from '../src/time.ts'
+import {
+  formatHour,
+  formatInstant,
+  formatTick,
+  instantsOf,
+  toInstant,
+  toLocalInput,
+} from '../src/time.ts'
 
 describe('a French wall time turned into an instant', () => {
   it('takes two hours off in summer', () => {
@@ -56,5 +63,26 @@ describe('an instant read back', () => {
   it('reads as a date and an hour, in French', () => {
     expect(formatInstant('2019-10-22T04:00:00.000Z')).toContain('06:00')
     expect(formatHour('2019-10-22T04:00:00.000Z')).toBe('06:00')
+  })
+})
+
+describe('a graduation of the ruler', () => {
+  const day = { from: '2019-10-21T22:00:00.000Z', to: '2019-10-22T22:00:00.000Z' }
+  const nineDays = { from: '2026-02-09T23:00:00.000Z', to: '2026-02-18T23:00:00.000Z' }
+
+  it('is the hour alone over a day, whose date the heading says', () => {
+    expect(formatTick('2019-10-22T04:00:00.000Z', day)).toBe('06:00')
+  })
+
+  /** Eight graduations over nine days are twenty-seven hours apart. */
+  it('carries its day over a longer period, or it names the wrong one', () => {
+    expect(formatTick('2026-02-11T02:00:00.000Z', nineDays)).toBe('11/02 03:00')
+  })
+
+  it('is French time across a change of clock', () => {
+    const autumn = { from: '2019-10-25T22:00:00.000Z', to: '2019-10-29T23:00:00.000Z' }
+
+    expect(formatTick('2019-10-26T22:00:00.000Z', autumn)).toBe('27/10 00:00')
+    expect(formatTick('2019-10-27T23:00:00.000Z', autumn)).toBe('28/10 00:00')
   })
 })
