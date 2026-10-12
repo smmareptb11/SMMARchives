@@ -118,21 +118,27 @@ create table measure (
 );
 
 create table event (
-  replay_id uuid not null references replay on delete cascade,
-  id        text not null,
-  origin    text not null,
-  category  text not null,
-  title     text not null,
-  severity  integer,
-  color     text,
-  starts_at timestamptz not null,
+  replay_id     uuid not null references replay on delete cascade,
+  -- Minted here for an agent's event; a derivation supplies its own.
+  id            text not null default gen_random_uuid()::text,
+  origin        text not null,
+  category      text not null,
+  title         text not null,
+  description   text,
+  -- What kind of producer reported it, in the agent's own words: an SMMAR
+  -- agent, a river syndicate, a commune, the SDIS, a resident.
+  producer_kind text,
+  severity      integer,
+  color         text,
+  starts_at     timestamptz not null,
   -- Null is a point in time; a value means it stayed active until then.
-  ends_at   timestamptz,
-  position  geometry(Point, 4326),
-  family    text,
-  source_id text,
-  media     text[] not null default '{}',
-  crossing  jsonb,
+  ends_at       timestamptz,
+  -- A point or an area: a flooded field is not a spot.
+  position      geometry(Geometry, 4326),
+  family        text,
+  source_id     text,
+  media         text[] not null default '{}',
+  crossing      jsonb,
   primary key (replay_id, id)
 );
 
