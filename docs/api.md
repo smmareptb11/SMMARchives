@@ -21,7 +21,7 @@ origine, et lui ouvrir une origine tierce n'aurait aucune raison d'être.
 | `POST` | `/replays` | `201` · `400` · `500` |
 | `GET` | `/replays/:id` | `200` le manifeste · `400` · `404` |
 | `DELETE` | `/replays/:id` | `204` sans corps · `400` · `404` · `409` |
-| `POST` | `/replays/:id/events` | `201` l'événement · `400` · `404` · `409` |
+| `POST` | `/replays/:id/events` | `201` l'événement · `400` · `404` · `409` · `413` · `415` |
 | `GET` | `/replays/:id/journal` | `200` en NDJSON · `400` · `404` |
 | `GET` | `/replays/:id/progress` | `200` en flux d'événements · `400` · `404` |
 | `GET` | `/replays/:id/media/*path` | `200` les octets · `304` · `400` · `404` |
@@ -79,8 +79,17 @@ listerait avec ses images envolées.
 
 ## Saisir un événement
 
-`POST /replays/:id/events`, corps JSON, **limite 64 ko**. Un agent y rapporte
-un fait qu'aucune source n'a produit : une route coupée, un appel d'une commune.
+`POST /replays/:id/events`. Un agent y rapporte un fait qu'aucune source n'a
+produit : une route coupée, un appel d'une commune.
+
+Le corps prend deux formes :
+
+- **JSON**, limite 64 ko, pour un événement sans photo ;
+- **`multipart/form-data`**, pour un événement avec ses photos : d'abord une
+  partie `event` portant le même JSON, limite 64 ko, puis de 0 à 10 parties
+  `photo`, de 15 Mo chacune au plus. Toute autre partie est refusée.
+
+Tout autre type de corps rend `415`.
 
 | Champ | Contrainte |
 |---|---|
@@ -100,6 +109,23 @@ bien qu'un client qui tenait la liste d'avant la recharge.
 
 `409` dans deux cas : le rejeu est en cours de construction ou de suppression,
 ou il n'a pas de jeu `events`, parce que la voie qui le produit a échoué.
+
+### Les photos
+
+Le type d'une photo est lu dans **ses premiers octets**, jamais dans le nom ou
+le type que le client lui a donné : JPEG, PNG ou WebP, sinon `415`. Une photo
+trop lourde, ou une de trop, rend `413` ; une photo envoyée avant la partie
+`event`, `400`.
+
+Chaque photo est rangée sous `field-reports/<uuid>/<n>.<extension>`, un dossier
+tiré au hasard par événement, et l'événement porte ces chemins dans `media`. Elle
+se lit ensuite par `GET /replays/:id/media/*path`, avec le même cache que tout
+média.
+
+L'événement est jugé avant qu'aucune photo soit écrite : un événement refusé ne
+laisse rien derrière lui. **Ce que le refus ne promet pas :** une photo refusée
+après d'autres laisse celles déjà écrites sur le volume. Aucun événement ne les
+nomme ; elles restent sur le volume jusqu'à la suppression du rejeu.
 
 ## Les jeux de données
 
@@ -197,5 +223,4 @@ la génération, seuils compris.
 ## Ce qui n'existe pas encore
 
 Ni administration, ni authentification, ni publication : aucune route ne protège
-ni ne restitue ce qui précède. Un événement saisi ne porte pas encore de photo,
-et ne se modifie ni ne se supprime.
+ni ne restitue ce qui précède. Un événement saisi ne se modifie ni ne se supprime.

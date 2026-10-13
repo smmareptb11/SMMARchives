@@ -13,6 +13,7 @@ export const NEEDS_DATABASE = [
   'packages/api/tests/events.test.ts',
   'packages/api/tests/journal.test.ts',
   'packages/api/tests/media.test.ts',
+  'packages/api/tests/photos.test.ts',
   'packages/api/tests/progress.test.ts',
   'packages/api/tests/replays.test.ts',
   'packages/worker/tests/build-replay-cli.test.ts',

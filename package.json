@@ -25,6 +25,7 @@
     "build:web": "vite build --config packages/web/vite.config.ts"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.0",

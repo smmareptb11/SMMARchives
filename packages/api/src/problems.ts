@@ -59,6 +59,19 @@ export function conflict(res: Response, detail: string): void {
   sendProblem(res, { type: 'conflict', title: 'Conflict', status: 409, detail })
 }
 
+export function contentTooLarge(res: Response, detail: string): void {
+  sendProblem(res, { type: 'content-too-large', title: 'Content too large', status: 413, detail })
+}
+
+export function unsupportedMediaType(res: Response, detail: string): void {
+  sendProblem(res, {
+    type: 'unsupported-media-type',
+    title: 'Unsupported media type',
+    status: 415,
+    detail,
+  })
+}
+
 export function internalError(res: Response, detail: string): void {
   sendProblem(res, { type: 'internal', title: 'Internal error', status: 500, detail })
 }

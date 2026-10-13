@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import express, { type Express, type Response } from 'express'
 import { z } from 'zod'
 
@@ -12,10 +14,18 @@ import {
   type ReplayManifest,
 } from '@smmarchives/shared'
 import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
+import type { ReplayStore } from '@smmarchives/worker/replay/store.ts'
 
 import type { BuildRegistry } from './builds.ts'
-import { badRequest, conflict, refusalsIn } from './problems.ts'
+import {
+  badRequest,
+  conflict,
+  contentTooLarge,
+  refusalsIn,
+  unsupportedMediaType,
+} from './problems.ts'
 import { checkedReplayId, openReplay } from './replays.ts'
+import { readReport, type Refusal, type ReportReader } from './uploads.ts'
 
 /** A line of text, printable, the way a label is. */
 function line(max: number) {
@@ -120,17 +130,48 @@ export function registerEvents(app: Express, routes: EventRoutes): void {
       const opened = await openReplay(catalog, res, id)
       if (opened === undefined || !acceptsReports(res, opened.manifest)) return
 
-      const parsed = reportSchemaFor(opened.manifest).safeParse(req.body)
-      if (!parsed.success) {
-        badRequest(res, 'the event is not described correctly', refusalsIn(parsed.error))
+      const read = await readReport(req, readerFor(opened.manifest, opened.store))
+      if ('status' in read) {
+        refuse(res, read)
         return
       }
 
-      res.status(201).json(await opened.store.addManualEvent({ ...parsed.data, media: [] }))
+      res.status(201).json(await opened.store.addManualEvent({ ...read.report, media: read.media }))
     } finally {
       builds.release(id)
     }
   })
+}
+
+type Report = z.infer<ReturnType<typeof reportSchemaFor>>
+
+/**
+ * Judges the event against its replay, and keeps its photos where nothing else
+ * will ever be written: a folder of their own, named at random, so the address
+ * of a photo never names other bytes and its `immutable` header stays true.
+ */
+function readerFor(manifest: ReplayManifest, store: ReplayStore): ReportReader<Report> {
+  const schema = reportSchemaFor(manifest)
+  const folder = `field-reports/${randomUUID()}`
+  let kept = 0
+  return {
+    accept: (body) => {
+      const parsed = schema.safeParse(body)
+      return parsed.success ? { report: parsed.data } : { refusals: refusalsIn(parsed.error) }
+    },
+    keep: async (photo, extension) => {
+      kept += 1
+      const path = `${folder}/${kept}.${extension}`
+      await store.putMedia(path, photo)
+      return path
+    },
+  }
+}
+
+function refuse(res: Response, refusal: Refusal): void {
+  if (refusal.status === 413) contentTooLarge(res, refusal.detail)
+  else if (refusal.status === 415) unsupportedMediaType(res, refusal.detail)
+  else badRequest(res, refusal.detail, refusal.refusals)
 }
 
 /** A replay an event can be added to, or the answer saying why not. */
