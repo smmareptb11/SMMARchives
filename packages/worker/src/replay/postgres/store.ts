@@ -10,9 +10,14 @@ import type {
   ReplayManifest,
 } from '@smmarchives/shared'
 
-import { tx } from '../../db/tx.ts'
-import type { ManualEvent, ReplayStore, StoredBlob } from '../store.ts'
-import { insertManualEvent, readEvent } from './datasets/events.ts'
+import { tx, type Queryable } from '../../db/tx.ts'
+import type { ManualEvent, ManualEventChange, ReplayStore, StoredBlob } from '../store.ts'
+import {
+  deleteManualEvent,
+  insertManualEvent,
+  readEvent,
+  updateManualEvent,
+} from './datasets/events.ts'
 import { MAPPINGS, type DatasetFilter } from './datasets/index.ts'
 import { appendJournal, readJournal } from './journal.ts'
 import { readManifest, writeManifest } from './manifest.ts'
@@ -84,13 +89,33 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
     async addManualEvent(event: ManualEvent): Promise<ReplayEvent> {
       return tx(pool, async (db) => {
         const id = await insertManualEvent(db, replayId, event)
-        await db.query('update replay set updated_at = now() where id = $1', [replayId])
-        await db.query(
-          `update replay_dataset set updated_at = now()
-            where replay_id = $1 and name = 'events'`,
-          [replayId],
-        )
+        await touchEvents(db, replayId)
         return (await readEvent(db, replayId, id))!
+      })
+    },
+
+    async updateManualEvent(
+      id: string,
+      event: ManualEvent,
+    ): Promise<ManualEventChange | undefined> {
+      return tx(pool, async (db) => {
+        const previous = await readEvent(db, replayId, id)
+        if (previous?.origin !== 'manual') return undefined
+
+        await updateManualEvent(db, replayId, id, event)
+        await touchEvents(db, replayId)
+        return { previous, current: (await readEvent(db, replayId, id))! }
+      })
+    },
+
+    async removeManualEvent(id: string): Promise<ReplayEvent | undefined> {
+      return tx(pool, async (db) => {
+        const previous = await readEvent(db, replayId, id)
+        if (previous?.origin !== 'manual') return undefined
+
+        await deleteManualEvent(db, replayId, id)
+        await touchEvents(db, replayId)
+        return previous
       })
     },
 
@@ -129,4 +154,17 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
       }
     },
   }
+}
+
+/**
+ * Moves the version of the events data set, so a reader holding the list from
+ * before an agent's change is told to fetch it again.
+ */
+async function touchEvents(db: Queryable, replayId: string): Promise<void> {
+  await db.query('update replay set updated_at = now() where id = $1', [replayId])
+  await db.query(
+    `update replay_dataset set updated_at = now()
+      where replay_id = $1 and name = 'events'`,
+    [replayId],
+  )
 }

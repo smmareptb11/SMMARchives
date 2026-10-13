@@ -123,3 +123,40 @@ export async function insertManualEvent(
   )
   return inserted.rows[0]!.id
 }
+
+/** Rewrites what an agent wrote of an event, leaving what the store settled. */
+export async function updateManualEvent(
+  db: Queryable,
+  replayId: string,
+  eventId: string,
+  event: ManualEvent,
+): Promise<void> {
+  await db.query(
+    `update event
+        set title = $3, description = $4, producer_kind = $5, starts_at = $6, ends_at = $7,
+            position = ST_SetSRID(ST_GeomFromGeoJSON($8), 4326), media = $9::text[]
+      where replay_id = $1 and id = $2 and origin = 'manual'`,
+    [
+      replayId,
+      eventId,
+      event.title,
+      event.description,
+      event.producerKind,
+      event.from,
+      event.to,
+      event.position === null ? null : JSON.stringify(event.position),
+      event.media,
+    ],
+  )
+}
+
+export async function deleteManualEvent(
+  db: Queryable,
+  replayId: string,
+  eventId: string,
+): Promise<void> {
+  await db.query(`delete from event where replay_id = $1 and id = $2 and origin = 'manual'`, [
+    replayId,
+    eventId,
+  ])
+}

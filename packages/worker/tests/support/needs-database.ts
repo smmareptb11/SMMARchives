@@ -24,5 +24,6 @@ export const NEEDS_DATABASE = [
   'packages/worker/tests/replay-postgres-datasets.test.ts',
   'packages/worker/tests/replay-postgres-journal.test.ts',
   'packages/worker/tests/replay-postgres-manifest.test.ts',
+  'packages/worker/tests/replay-postgres-manual-events.test.ts',
   'packages/worker/tests/replay-postgres-store.test.ts',
 ]

@@ -117,6 +117,11 @@ export type ReplayStore = {
   openMedia(path: string): Promise<StoredBlob | undefined>
   putMedia(path: string, body: MediaBody): Promise<void>
   /**
+   * Takes a medium off the volume. One already gone is no error: what was
+   * asked for is that it no longer be there.
+   */
+  removeMedia(path: string): Promise<void>
+  /**
    * Adds an event an agent reported to the `events` data set, and answers it
    * as a reader will read it.
    *
@@ -124,7 +129,21 @@ export type ReplayStore = {
    * told to fetch it again.
    */
   addManualEvent(event: ManualEvent): Promise<ReplayEvent>
+  /**
+   * Replaces what an agent wrote of an event, photos included, and answers it
+   * as it was and as it now is: the photos it no longer names are the caller's
+   * to remove, once the rows no longer point at them.
+   *
+   * Undefined for an identifier nobody holds, and for a crossing: one is
+   * derived from the frozen measures, and corrected by hand it would no longer
+   * say what they said.
+   */
+  updateManualEvent(id: string, event: ManualEvent): Promise<ManualEventChange | undefined>
+  /** Removes it for good, and answers what it was, so that its photos can follow. */
+  removeManualEvent(id: string): Promise<ReplayEvent | undefined>
 }
+
+export type ManualEventChange = { previous: ReplayEvent; current: ReplayEvent }
 
 /**
  * A manifest is there and its own contract refuses it.
