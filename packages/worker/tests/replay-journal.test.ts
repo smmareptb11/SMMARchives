@@ -26,6 +26,7 @@ function storeThat(appendJournal: ReplayStore['appendJournal']): ReplayStore {
     addManualEvent: async () => {
       throw new Error('this store adds no event')
     },
+    getManualEvent: async () => undefined,
     updateManualEvent: async () => undefined,
     removeManualEvent: async () => undefined,
   }

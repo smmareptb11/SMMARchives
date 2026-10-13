@@ -129,6 +129,8 @@ export type ReplayStore = {
    * told to fetch it again.
    */
   addManualEvent(event: ManualEvent): Promise<ReplayEvent>
+  /** Undefined for an identifier nobody holds, and for a crossing, as for the two below. */
+  getManualEvent(id: string): Promise<ReplayEvent | undefined>
   /**
    * Replaces what an agent wrote of an event, photos included, and answers it
    * as it was and as it now is: the photos it no longer names are the caller's

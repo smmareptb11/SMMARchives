@@ -94,6 +94,11 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
       })
     },
 
+    async getManualEvent(id: string): Promise<ReplayEvent | undefined> {
+      const event = await readEvent(pool, replayId, id)
+      return event?.origin === 'manual' ? event : undefined
+    },
+
     async updateManualEvent(
       id: string,
       event: ManualEvent,

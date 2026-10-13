@@ -119,6 +119,27 @@ describe('an event an agent reports', () => {
   })
 })
 
+describe('reading one event an agent reported', () => {
+  it('answers it as the events data set holds it', async () => {
+    const store = await aReplayWithCrossings()
+    const added = await store.addManualEvent(REPORTED)
+
+    expect(await store.getManualEvent(added.id)).toEqual(added)
+  })
+
+  it('answers undefined for a crossing', async () => {
+    const store = await aReplayWithCrossings()
+
+    expect(await store.getManualEvent(CROSSING.id)).toBeUndefined()
+  })
+
+  it('answers undefined for an event nobody reported', async () => {
+    const store = await aReplayWithCrossings()
+
+    expect(await store.getManualEvent(crypto.randomUUID())).toBeUndefined()
+  })
+})
+
 describe('amending an event an agent reported', () => {
   it('rewrites what the agent wrote and keeps what the store settled', async () => {
     const store = await aReplayWithCrossings()
