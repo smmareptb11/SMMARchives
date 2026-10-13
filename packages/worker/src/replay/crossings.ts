@@ -226,11 +226,16 @@ function toEvent(
     origin: 'automatic',
     category: 'threshold-crossing',
     title: `${station.name} — ${threshold.label}`,
+    description: null,
+    producerKind: null,
     severity,
     color: threshold.color,
     from: crossing.from,
     to: crossing.to,
-    position: station.position,
+    position:
+      station.position === null
+        ? null
+        : { type: 'Point', coordinates: [station.position.lon, station.position.lat] },
     sourceId: threshold.stationId,
     media: [],
     crossing: {

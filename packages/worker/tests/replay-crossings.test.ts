@@ -279,7 +279,11 @@ describe('an event a crossing produced', () => {
   it('carries the station it happened on, so the map can place it', () => {
     const { events } = derive(series([2.0, 3.1]))
 
-    expect(events[0]).toMatchObject({ sourceId: 84, position: BERRE, media: [] })
+    expect(events[0]).toMatchObject({
+      sourceId: 84,
+      position: { type: 'Point', coordinates: [BERRE.lon, BERRE.lat] },
+      media: [],
+    })
     expect(events[0]?.title).toContain('Vigilance')
   })
 

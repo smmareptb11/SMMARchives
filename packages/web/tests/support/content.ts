@@ -108,6 +108,8 @@ export function aCrossing(one: Partial<ReplayEvent> & { sourceId: number }): Rep
     origin: 'automatic',
     category: 'threshold-crossing',
     title: 'Vigilance',
+    description: null,
+    producerKind: null,
     severity: 1,
     color: '#ffff00',
     from: '2019-10-22T06:00:00.000Z',

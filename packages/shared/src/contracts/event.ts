@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 import { instantSchema } from '../clock.ts'
-import { positionSchema } from './geometry.ts'
 import { thresholdSchema } from './threshold.ts'
 
 /**
@@ -13,14 +12,29 @@ import { thresholdSchema } from './threshold.ts'
  */
 export const eventOriginSchema = z.enum(['automatic', 'manual'])
 
-/**
- * What kind of fact the event is.
- *
- * Only the one the replay derives today. The categories an agent will choose
- * from arrive with the administration; naming them here before anything can
- * produce them would be a vocabulary nobody speaks.
- */
-export const eventCategorySchema = z.enum(['threshold-crossing'])
+/** What kind of fact the event is: a crossing the replay derived, or what an agent reported. */
+export const eventCategorySchema = z.enum(['threshold-crossing', 'field-report'])
+
+const coordinatesSchema = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)])
+
+/** Where the event happened, in GeoJSON: a spot, or an area such as a flooded field. */
+export const eventPositionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('Point'), coordinates: coordinatesSchema }),
+  z.object({
+    type: z.literal('Polygon'),
+    coordinates: z
+      .array(z.array(coordinatesSchema).min(4).refine(isClosed, 'is not closed'))
+      .min(1),
+  }),
+])
+
+export type EventPosition = z.infer<typeof eventPositionSchema>
+
+function isClosed(ring: [number, number][]): boolean {
+  const first = ring[0]
+  const last = ring.at(-1)
+  return first !== undefined && last !== undefined && first[0] === last[0] && first[1] === last[1]
+}
 
 /**
  * What a crossing rests on, kept with the event it produced.
@@ -84,6 +98,10 @@ export const eventSchema = z
     origin: eventOriginSchema,
     category: eventCategorySchema,
     title: z.string(),
+    /** What the agent wrote of it. */
+    description: z.string().nullable(),
+    /** Who reported it, as the agent wrote it: an SMMAR agent, a commune, the SDIS… */
+    producerKind: z.string().nullable(),
     /**
      * The rank of the threshold in the ladder of its station and quantity, 1
      * being the lowest.
@@ -97,15 +115,19 @@ export const eventSchema = z
     from: instantSchema,
     /** Null is a point in time; a value means it stayed active until then. */
     to: instantSchema.nullable(),
-    position: positionSchema.nullable(),
+    position: eventPositionSchema.nullable(),
     sourceId: z.number().int().nullable(),
-    /** Paths relative to the replay's `media/`. */
+    /** The photos an agent joined, as paths relative to the replay's `media/`. */
     media: z.array(z.string()),
     crossing: thresholdCrossingSchema.nullable(),
   })
   .refine((event) => event.to === null || event.from <= event.to, {
     message: 'ends before it starts',
     path: ['to'],
+  })
+  .refine((event) => event.origin !== 'manual' || (event.producerKind ?? '') !== '', {
+    message: 'names no producer kind',
+    path: ['producerKind'],
   })
 
 export type ReplayEvent = z.infer<typeof eventSchema>
