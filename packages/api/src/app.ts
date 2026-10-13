@@ -43,7 +43,7 @@ export function createApp(options: ApiOptions): Express {
     log,
   })
   registerReplays(app, { catalog: options.catalog, builds })
-  registerEvents(app, { catalog: options.catalog, builds })
+  registerEvents(app, { catalog: options.catalog, builds, log })
   registerMedia(app, options.catalog)
   registerJournal(app, options.catalog)
   registerProgress(app, options.catalog, options.pollIntervalMs ?? 500)

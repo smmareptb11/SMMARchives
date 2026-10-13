@@ -7,6 +7,7 @@
  * rather than in the config so that checking it costs no side effect.
  */
 export const NEEDS_DATABASE = [
+  'packages/api/tests/amend.test.ts',
   'packages/api/tests/create.test.ts',
   'packages/api/tests/datasets.test.ts',
   'packages/api/tests/delete.test.ts',

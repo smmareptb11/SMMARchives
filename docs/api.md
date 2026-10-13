@@ -22,6 +22,8 @@ origine, et lui ouvrir une origine tierce n'aurait aucune raison d'être.
 | `GET` | `/replays/:id` | `200` le manifeste · `400` · `404` |
 | `DELETE` | `/replays/:id` | `204` sans corps · `400` · `404` · `409` |
 | `POST` | `/replays/:id/events` | `201` l'événement · `400` · `404` · `409` · `413` · `415` |
+| `PUT` | `/replays/:id/events/:eventId` | `200` l'événement · `400` · `404` · `409` · `413` · `415` |
+| `DELETE` | `/replays/:id/events/:eventId` | `204` sans corps · `400` · `404` · `409` |
 | `GET` | `/replays/:id/journal` | `200` en NDJSON · `400` · `404` |
 | `GET` | `/replays/:id/progress` | `200` en flux d'événements · `400` · `404` |
 | `GET` | `/replays/:id/media/*path` | `200` les octets · `304` · `400` · `404` |
@@ -118,7 +120,7 @@ trop lourde, ou une de trop, rend `413` ; une photo envoyée avant la partie
 `event`, `400`.
 
 Chaque photo est rangée sous `field-reports/<uuid>/<n>.<extension>`, un dossier
-tiré au hasard par événement, et l'événement porte ces chemins dans `media`. Elle
+tiré au hasard à chaque envoi, et l'événement porte ces chemins dans `media`. Elle
 se lit ensuite par `GET /replays/:id/media/*path`, avec le même cache que tout
 média.
 
@@ -126,6 +128,41 @@ L'événement est jugé avant qu'aucune photo soit écrite : un événement refu
 laisse rien derrière lui. **Ce que le refus ne promet pas :** une photo refusée
 après d'autres laisse celles déjà écrites sur le volume. Aucun événement ne les
 nomme ; elles restent sur le volume jusqu'à la suppression du rejeu.
+
+## Modifier ou supprimer un événement
+
+Seul un événement saisi par un agent se modifie ou se supprime. Un franchissement
+est calculé sur les mesures figées : `PUT` et `DELETE` le traitent comme un
+identifiant inconnu, et rendent `404`. Le corps d'erreur ne répète pas
+l'identifiant demandé.
+
+Le rejeu doit pouvoir recevoir un événement, comme pour une saisie : sinon `409`.
+
+### Modifier
+
+`PUT /replays/:id/events/:eventId` remplace l'événement **en entier** : un
+champ omis prend sa valeur par défaut, il ne garde pas l'ancienne. Le corps a
+les deux mêmes formes qu'une saisie, et les mêmes règles, avec un champ de plus,
+**obligatoire** :
+
+| Champ | Contrainte |
+|---|---|
+| `media` | Les photos que l'événement garde, parmi les siennes, sans doublon, dans l'ordre voulu |
+
+Les photos envoyées dans le formulaire s'ajoutent après celles qu'il garde. Les
+photos qu'il ne garde plus sont effacées du volume, une fois l'événement
+modifié.
+
+La réponse est `200`, avec l'événement modifié ; il garde son identifiant.
+
+### Supprimer
+
+`DELETE /replays/:id/events/:eventId` rend `204`. La suppression est
+définitive, et efface les photos de l'événement.
+
+**Ce que la réponse ne promet pas :** une photo que le volume refuse d'effacer
+reste derrière, et l'échec va au journal du serveur. La modification ou la
+suppression, elle, est faite.
 
 ## Les jeux de données
 
@@ -223,4 +260,4 @@ la génération, seuils compris.
 ## Ce qui n'existe pas encore
 
 Ni administration, ni authentification, ni publication : aucune route ne protège
-ni ne restitue ce qui précède. Un événement saisi ne se modifie ni ne se supprime.
+ni ne restitue ce qui précède.
