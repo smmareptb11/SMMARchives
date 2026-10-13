@@ -7,10 +7,10 @@ import { join } from 'node:path'
 import type { Pool } from 'pg'
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import type { Measure, ReplayIdentity } from '@smmarchives/shared'
+import type { Measure, ReplayEvent, ReplayIdentity } from '@smmarchives/shared'
 
 import { openPostgresCatalog, type PostgresCatalog } from '../src/replay/postgres/catalog.ts'
-import type { ReplayStore, StoredBlob } from '../src/replay/store.ts'
+import type { ManualEvent, ReplayStore, StoredBlob } from '../src/replay/store.ts'
 import { closeDatabase, freshDatabase } from './support/database.ts'
 import { aReport } from './support/replay-store.ts'
 
@@ -185,6 +185,100 @@ describe('a replay in the database', () => {
     if (blob === undefined) throw new Error('nothing stored a measures data set')
     return blob
   }
+})
+
+const CROSSING: ReplayEvent = {
+  id: 'crossing:84:level:11:2019-10-22T06:00:00.000Z',
+  origin: 'automatic',
+  category: 'threshold-crossing',
+  title: 'Trèbes — Vigilance',
+  description: null,
+  producerKind: null,
+  severity: 1,
+  color: '#ffcc00',
+  from: '2019-10-22T06:00:00.000Z',
+  to: null,
+  position: { type: 'Point', coordinates: [2.4433, 43.21] },
+  sourceId: 84,
+  media: [],
+  crossing: null,
+}
+
+const REPORTED: ManualEvent = {
+  title: 'RD 118 coupée',
+  description: 'La route est sous l’eau au droit du pont.',
+  producerKind: 'Commune',
+  from: '2019-10-22T07:30:00.000Z',
+  to: '2019-10-22T11:00:00.000Z',
+  position: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [2.35, 43.21],
+        [2.36, 43.21],
+        [2.36, 43.22],
+        [2.35, 43.21],
+      ],
+    ],
+  },
+  media: ['events/rd118-1.jpg', 'events/rd118-2.jpg'],
+}
+
+describe('an event an agent reports', () => {
+  let catalog: PostgresCatalog
+
+  beforeEach(async () => {
+    const pool = await freshDatabase('test_store_manual_event')
+    catalog = openPostgresCatalog({ pool, mediaRoot: tmpdir() })
+  })
+
+  async function aReplayWithCrossings(): Promise<ReplayStore> {
+    const { store } = await catalog.create(identity)
+    await store.putDataset('events', [CROSSING], REPORT)
+    return store
+  }
+
+  it('reads back as it was written, under an identifier the database minted', async () => {
+    const store = await aReplayWithCrossings()
+
+    const added = await store.addManualEvent(REPORTED)
+
+    expect(added).toEqual({
+      ...REPORTED,
+      id: expect.stringMatching(/^[0-9a-f-]{36}$/) as unknown,
+      origin: 'manual',
+      category: 'field-report',
+      severity: null,
+      color: null,
+      sourceId: null,
+      crossing: null,
+    })
+  })
+
+  it('joins the crossings in the events data set', async () => {
+    const store = await aReplayWithCrossings()
+
+    const added = await store.addManualEvent(REPORTED)
+
+    expect(await store.getDataset('events')).toEqual([CROSSING, added])
+  })
+
+  it('moves the version of the events data set', async () => {
+    const store = await aReplayWithCrossings()
+    const before = (await store.openDataset('events'))?.version
+
+    await store.addManualEvent(REPORTED)
+
+    expect((await store.openDataset('events'))?.version).not.toBe(before)
+  })
+
+  it('leaves the count of crossings alone', async () => {
+    const store = await aReplayWithCrossings()
+
+    await store.addManualEvent(REPORTED)
+
+    expect((await store.getManifest())?.events?.crossings).toBe(1)
+  })
 })
 
 /** Ages a replay, since two creations in one test share a millisecond. */

@@ -27,9 +27,13 @@ export async function readManifest(db: Queryable, id: string): Promise<ReplayMan
   const replay = (await db.query<ReplayRow>(REPLAY, [id])).rows[0]
   if (replay === undefined) return undefined
 
-  const [lanes, datasets] = await Promise.all([readLanes(db, id), readDatasets(db, id)])
+  const [lanes, datasets, crossings] = await Promise.all([
+    readLanes(db, id),
+    readDatasets(db, id),
+    countCrossings(db, id),
+  ])
   const fleet = fleetOf(replay)
-  const events = eventsIn(datasets)
+  const events = eventsIn(datasets, crossings)
 
   const assembled = {
     schemaVersion: 1,
@@ -225,6 +229,15 @@ async function readLanes(db: Queryable, id: string): Promise<Partial<Record<Lane
   )
 }
 
+/** The events the replay derived, apart from those agents reported in the same data set. */
+async function countCrossings(db: Queryable, id: string): Promise<number> {
+  const rows = await db.query<{ count: number }>(
+    `select count(*) as count from event where replay_id = $1 and origin = 'automatic'`,
+    [id],
+  )
+  return rows.rows[0]?.count ?? 0
+}
+
 async function readDatasets(
   db: Queryable,
   id: string,
@@ -261,13 +274,16 @@ const EVENTS_REPORT = z.object({
   setAside: z.partialRecord(thresholdNatureSchema, z.number().int().nonnegative()).catch({}),
 })
 
-function eventsIn(datasets: Partial<Record<DatasetName, DatasetStatus>>): ReplayManifest['events'] {
+function eventsIn(
+  datasets: Partial<Record<DatasetName, DatasetStatus>>,
+  crossings: number,
+): ReplayManifest['events'] {
   const stored = datasets.events
   if (stored === undefined) return undefined
 
   const summary = EVENTS_REPORT.safeParse(stored.report)
   return {
-    crossings: stored.count,
+    crossings,
     singleStep: summary.success ? summary.data.singleStep : 0,
     thresholdsSetAside: summary.success ? summary.data.setAside : {},
   }

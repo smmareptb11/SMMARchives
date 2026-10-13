@@ -2,10 +2,17 @@ import { Readable } from 'node:stream'
 
 import type { Pool } from 'pg'
 
-import type { DatasetName, JournalEntry, Report, ReplayManifest } from '@smmarchives/shared'
+import type {
+  DatasetName,
+  JournalEntry,
+  Report,
+  ReplayEvent,
+  ReplayManifest,
+} from '@smmarchives/shared'
 
 import { tx } from '../../db/tx.ts'
-import type { ReplayStore, StoredBlob } from '../store.ts'
+import type { ManualEvent, ReplayStore, StoredBlob } from '../store.ts'
+import { insertManualEvent, readEvent } from './datasets/events.ts'
 import { MAPPINGS, type DatasetFilter } from './datasets/index.ts'
 import { appendJournal, readJournal } from './journal.ts'
 import { readManifest, writeManifest } from './manifest.ts'
@@ -71,6 +78,19 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
              set report = excluded.report, updated_at = now()`,
           [replayId, name, JSON.stringify(report)],
         )
+      })
+    },
+
+    async addManualEvent(event: ManualEvent): Promise<ReplayEvent> {
+      return tx(pool, async (db) => {
+        const id = await insertManualEvent(db, replayId, event)
+        await db.query('update replay set updated_at = now() where id = $1', [replayId])
+        await db.query(
+          `update replay_dataset set updated_at = now()
+            where replay_id = $1 and name = 'events'`,
+          [replayId],
+        )
+        return (await readEvent(db, replayId, id))!
       })
     },
 

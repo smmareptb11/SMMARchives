@@ -191,6 +191,9 @@ export function aStore(overrides: Partial<ReplayStore>): ReplayStore {
     hasMedia: async () => false,
     openMedia: async () => undefined,
     putMedia: async () => {},
+    addManualEvent: async () => {
+      throw new Error('this store adds no event')
+    },
     ...overrides,
   }
 }

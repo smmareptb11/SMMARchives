@@ -1,7 +1,13 @@
 import { isAbsolute } from 'node:path'
 import type { Readable } from 'node:stream'
 
-import type { DatasetName, JournalEntry, Report, ReplayManifest } from '@smmarchives/shared'
+import type {
+  DatasetName,
+  JournalEntry,
+  Report,
+  ReplayEvent,
+  ReplayManifest,
+} from '@smmarchives/shared'
 
 import type { DatasetFilter } from './postgres/datasets/index.ts'
 
@@ -15,6 +21,15 @@ export type { DatasetFilter }
  * one being written.
  */
 export type MediaBody = Uint8Array | ReadableStream<Uint8Array>
+
+/**
+ * What an agent writes of an event. The rest is the store's to settle: the
+ * identifier, the origin and the category.
+ */
+export type ManualEvent = Pick<
+  ReplayEvent,
+  'title' | 'description' | 'producerKind' | 'from' | 'to' | 'position' | 'media'
+>
 
 /**
  * Stored bytes, ready to be served without being decoded.
@@ -101,6 +116,14 @@ export type ReplayStore = {
    */
   openMedia(path: string): Promise<StoredBlob | undefined>
   putMedia(path: string, body: MediaBody): Promise<void>
+  /**
+   * Adds an event an agent reported to the `events` data set, and answers it
+   * as a reader will read it.
+   *
+   * The data set's version moves, so a reader holding the list from before is
+   * told to fetch it again.
+   */
+  addManualEvent(event: ManualEvent): Promise<ReplayEvent>
 }
 
 /**
