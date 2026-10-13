@@ -5,6 +5,7 @@ import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 import { BuildRegistry, spawnBuild, type BuildLauncher } from './builds.ts'
 import { registerCreation } from './creations.ts'
 import { registerDatasets } from './datasets.ts'
+import { registerEvents } from './events.ts'
 import { registerJournal } from './journal.ts'
 import { registerMedia } from './media.ts'
 import { registerProgress } from './progress.ts'
@@ -42,6 +43,7 @@ export function createApp(options: ApiOptions): Express {
     log,
   })
   registerReplays(app, { catalog: options.catalog, builds })
+  registerEvents(app, { catalog: options.catalog, builds })
   registerMedia(app, options.catalog)
   registerJournal(app, options.catalog)
   registerProgress(app, options.catalog, options.pollIntervalMs ?? 500)

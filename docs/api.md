@@ -21,6 +21,7 @@ origine, et lui ouvrir une origine tierce n'aurait aucune raison d'être.
 | `POST` | `/replays` | `201` · `400` · `500` |
 | `GET` | `/replays/:id` | `200` le manifeste · `400` · `404` |
 | `DELETE` | `/replays/:id` | `204` sans corps · `400` · `404` · `409` |
+| `POST` | `/replays/:id/events` | `201` l'événement · `400` · `404` · `409` |
 | `GET` | `/replays/:id/journal` | `200` en NDJSON · `400` · `404` |
 | `GET` | `/replays/:id/progress` | `200` en flux d'événements · `400` · `404` |
 | `GET` | `/replays/:id/media/*path` | `200` les octets · `304` · `400` · `404` |
@@ -75,6 +76,30 @@ que cette instance a lancé.
 
 Les lignes partent d'abord, les octets ensuite. Dans l'autre ordre, un rejeu se
 listerait avec ses images envolées.
+
+## Saisir un événement
+
+`POST /replays/:id/events`, corps JSON, **limite 64 ko**. Un agent y rapporte
+un fait qu'aucune source n'a produit : une route coupée, un appel d'une commune.
+
+| Champ | Contrainte |
+|---|---|
+| `title` | Chaîne non vide de 200 caractères au plus, sans caractère de contrôle |
+| `description` | Chaîne de 5 000 caractères au plus ; tabulations et retours à la ligne admis. Nullable |
+| `producerKind` | Qui l'a rapporté — agent SMMAR, commune, SDIS… Chaîne non vide de 100 caractères au plus, sans caractère de contrôle |
+| `from` | Un instant, dans la période du rejeu |
+| `to` | Un instant, dans la période du rejeu et pas avant `from`. Nullable : l'événement est alors ponctuel |
+| `position` | Un `Point` ou un `Polygon` GeoJSON en WGS84, dans l'emprise du rejeu — le territoire du SMMAR si le rejeu n'en a pas. Nullable |
+
+Comme pour un rejeu, le schéma est strict : l'identifiant, l'origine et la
+catégorie ne s'envoient pas, ils sont fixés par le stockage.
+
+La réponse est `201`, avec l'événement tel que `GET /replays/:id/events` le
+servira, horodaté sur l'horloge commune. La version du jeu `events` change, si
+bien qu'un client qui tenait la liste d'avant la recharge.
+
+`409` dans deux cas : le rejeu est en cours de construction ou de suppression,
+ou il n'a pas de jeu `events`, parce que la voie qui le produit a échoué.
 
 ## Les jeux de données
 
@@ -172,5 +197,5 @@ la génération, seuils compris.
 ## Ce qui n'existe pas encore
 
 Ni administration, ni authentification, ni publication : aucune route ne protège
-ni ne restitue ce qui précède. La saisie manuelle d'événements n'a ni route ni
-écran, bien que la table qui les porterait existe.
+ni ne restitue ce qui précède. Un événement saisi ne porte pas encore de photo,
+et ne se modifie ni ne se supprime.

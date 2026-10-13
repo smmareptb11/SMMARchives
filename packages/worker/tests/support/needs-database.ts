@@ -10,6 +10,7 @@ export const NEEDS_DATABASE = [
   'packages/api/tests/create.test.ts',
   'packages/api/tests/datasets.test.ts',
   'packages/api/tests/delete.test.ts',
+  'packages/api/tests/events.test.ts',
   'packages/api/tests/journal.test.ts',
   'packages/api/tests/media.test.ts',
   'packages/api/tests/progress.test.ts',
