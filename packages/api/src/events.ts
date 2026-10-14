@@ -34,16 +34,17 @@ const JSON_BODY = express.json({ limit: '64kb' })
 
 export function registerEvents(app: Express, routes: EventRoutes): void {
   app.post('/replays/:id/events', JSON_BODY, async (req, res) => {
-    await withReportable(routes, res, req.params.id, async ({ manifest, store }) => {
+    await withReportable(routes, res, req.params.id, async ({ manifest, store }, written) => {
       const read = await readReport(req, readerFor(reportSchemaFor(manifest), store))
       if ('status' in read) return refuse(res, read)
 
-      res.status(201).json(await store.addManualEvent({ ...read.report, media: read.media }))
+      const added = await written(() => store.addManualEvent({ ...read.report, media: read.media }))
+      if (added !== undefined) res.status(201).json(added.done)
     })
   })
 
   app.put('/replays/:id/events/:eventId', JSON_BODY, async (req, res) => {
-    await withReportable(routes, res, req.params.id, async (found) => {
+    await withReportable(routes, res, req.params.id, async (found, written) => {
       const { manifest, store } = found
       const previous = await store.getManualEvent(req.params.eventId)
       if (previous === undefined) return noSuchEvent(res, manifest)
@@ -54,53 +55,68 @@ export function registerEvents(app: Express, routes: EventRoutes): void {
 
       // The photos kept, in the order the agent left them, then the new ones.
       const { media: kept, ...report } = read.report
-      const change = await store.updateManualEvent(previous.id, {
-        ...report,
-        media: [...kept, ...read.media],
-      })
-      if (change === undefined) return noSuchEvent(res, manifest)
+      const amended = await written(() =>
+        store.updateManualEvent(previous.id, { ...report, media: [...kept, ...read.media] }),
+      )
+      if (amended === undefined) return
+      if (amended.done === undefined) return noSuchEvent(res, manifest)
 
-      await removePhotos(routes, found, dropped(change))
-      res.json(change.current)
+      await removePhotos(routes, found, dropped(amended.done))
+      res.json(amended.done.current)
     })
   })
 
   app.delete('/replays/:id/events/:eventId', async (req, res) => {
-    await withReportable(routes, res, req.params.id, async (found) => {
+    await withReportable(routes, res, req.params.id, async (found, written) => {
       const { manifest, store } = found
-      const removed = await store.removeManualEvent(req.params.eventId)
-      if (removed === undefined) return noSuchEvent(res, manifest)
+      const removed = await written(() => store.removeManualEvent(req.params.eventId))
+      if (removed === undefined) return
+      if (removed.done === undefined) return noSuchEvent(res, manifest)
 
-      await removePhotos(routes, found, removed.media)
+      await removePhotos(routes, found, removed.done.media)
       res.status(204).end()
     })
   })
 }
 
 /**
+ * Runs the write itself with the replay held, or answers why it cannot.
+ * Undefined means the answer has been sent.
+ */
+type Written = <T>(write: () => Promise<T>) => Promise<{ done: T } | undefined>
+
+/**
  * Runs a change on a replay that can take one, or answers why it cannot.
  *
- * The replay is claimed for as long as the change is written, so a deletion
- * cannot carry it away underneath.
+ * The replay is held only while the change is written, not while its photos
+ * arrive: a phone on a slow link takes tens of seconds to send three, and a
+ * second agent reporting on the same replay meanwhile would be turned away.
+ * Held, it cannot be deleted or rebuilt underneath the write, which is checked
+ * again once it is held.
  */
 async function withReportable(
   routes: EventRoutes,
   res: Response,
   id: string,
-  change: (opened: Opened) => Promise<void>,
+  change: (opened: Opened, written: Written) => Promise<void>,
 ): Promise<void> {
   if (!checkedReplayId(res, id)) return
-  if (!routes.builds.reserve(id)) {
-    conflict(res, `replay ${id} is being built or deleted`)
-    return
-  }
-  try {
-    const found = await openReplay(routes.catalog, res, id)
-    if (found === undefined || !acceptsReports(res, found.manifest)) return
-    await change(found)
-  } finally {
-    routes.builds.release(id)
-  }
+  const found = await openReplay(routes.catalog, res, id)
+  if (found === undefined || !acceptsReports(res, found.manifest)) return
+
+  await change(found, async (write) => {
+    if (!routes.builds.reserve(id)) {
+      conflict(res, `replay ${id} is being built or deleted`)
+      return undefined
+    }
+    try {
+      const still = await openReplay(routes.catalog, res, id)
+      if (still === undefined || !acceptsReports(res, still.manifest)) return undefined
+      return { done: await write() }
+    } finally {
+      routes.builds.release(id)
+    }
+  })
 }
 
 /** Never the identifier asked for: it is the client's own text, and no schema cleared it. */

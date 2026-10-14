@@ -1,4 +1,6 @@
+import { once } from 'node:events'
 import { existsSync } from 'node:fs'
+import { request } from 'node:http'
 import { join } from 'node:path'
 
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
@@ -197,6 +199,42 @@ describe('refusing photos', () => {
     await withServer(appOn(api), async (base) => {
       const response = await send(base, id, JSON.stringify(EVENT), 'text/plain')
       expect(response.status).toBe(415)
+    })
+  })
+})
+
+describe('photos on their way', () => {
+  /** The replay is held while an event is written, never while its photos travel. */
+  it('turn no other report away while they arrive', async () => {
+    const { api, id } = await aReplay()
+
+    await withServer(appOn(api), async (base) => {
+      const { port } = new URL(base)
+      const boundary = 'slowly'
+      const slow = request({
+        port,
+        method: 'POST',
+        path: `/replays/${id}/events`,
+        headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+      })
+      const answered = once(slow, 'response')
+      slow.write(
+        `--${boundary}\r\nContent-Disposition: form-data; name="event"\r\n\r\n` +
+          `${JSON.stringify(EVENT)}\r\n--${boundary}\r\n` +
+          'Content-Disposition: form-data; name="photo"; filename="p.jpg"\r\n' +
+          'Content-Type: image/jpeg\r\n\r\n',
+      )
+      slow.write(JPEG)
+      // The first photo is still on its way when the second agent sends.
+
+      const meanwhile = await send(base, id, JSON.stringify(EVENT), 'application/json')
+      expect(meanwhile.status).toBe(201)
+
+      slow.end(`\r\n--${boundary}--\r\n`)
+      const [response] = (await answered) as [{ statusCode: number; resume: () => void }]
+      response.resume()
+      expect(response.statusCode).toBe(201)
+      expect(await eventsOf(base, id)).toHaveLength(2)
     })
   })
 })

@@ -112,6 +112,12 @@ bien qu'un client qui tenait la liste d'avant la recharge.
 `409` dans deux cas : le rejeu est en cours de construction ou de suppression,
 ou il n'a pas de jeu `events`, parce que la voie qui le produit a échoué.
 
+Le rejeu n'est réservé que le temps d'écrire l'événement en base, pas pendant
+la réception des photos : une saisie dont les photos arrivent ne fait pas
+refuser celles des autres agents. Deux écritures qui tombent au même instant,
+elles, se refusent encore l'une l'autre par `409`. Les vérifications sont
+refaites une fois le rejeu réservé.
+
 ### Les photos
 
 Le type d'une photo est lu dans **ses premiers octets**, jamais dans le nom ou
