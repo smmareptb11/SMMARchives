@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
@@ -6,8 +7,10 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import type { ReplayEvent, ReplayIdentity } from '@smmarchives/shared'
 
 import type { ManualEvent, ReplayStore } from '../src/replay/store.ts'
-import { closeDatabase } from './support/database.ts'
-import { aReport, aStoredReplay, cleanMedia, frozenBytes } from './support/replay-store.ts'
+import { openPostgresCatalog } from '../src/replay/postgres/catalog.ts'
+import { openPostgresStore } from '../src/replay/postgres/store.ts'
+import { closeDatabase, freshDatabase } from './support/database.ts'
+import { aReport, aStoredReplay, bytesOf, cleanMedia, frozenBytes } from './support/replay-store.ts'
 
 afterEach(cleanMedia)
 afterAll(closeDatabase)
@@ -137,6 +140,44 @@ describe('reading one event an agent reported', () => {
     const store = await aReplayWithCrossings()
 
     expect(await store.getManualEvent(crypto.randomUUID())).toBeUndefined()
+  })
+})
+
+describe('the events served while an agent writes', () => {
+  /**
+   * A list served under a version newer than its rows would be taken as
+   * current at every revalidation, whatever was written since.
+   */
+  it('never carry a version newer than the rows they hold', async () => {
+    const pool = await freshDatabase('test_manual_events_served')
+    const { id, store } = await openPostgresCatalog({ pool, mediaRoot: tmpdir() }).create(identity)
+    await store.putDataset('events', [CROSSING], aReport())
+
+    // A connection that lets an agent's write land right after the version is read.
+    let written = false
+    const racing = new Proxy(pool, {
+      get(target, key) {
+        if (key !== 'query') return Reflect.get(target, key, target) as unknown
+        return async (...args: Parameters<typeof pool.query>) => {
+          const result = await (target.query as (...a: unknown[]) => Promise<unknown>)(...args)
+          if (!written && String(args[0]).includes('select updated_at from replay_dataset')) {
+            written = true
+            await store.addManualEvent(REPORTED)
+          }
+          return result
+        }
+      },
+    })
+    const reading = openPostgresStore({ pool: racing, replayId: id, mediaRoot: tmpdir() })
+
+    const served = await reading.openDataset('events')
+    const latest = await store.openDataset('events')
+    const rows =
+      served === undefined ? [] : (JSON.parse(String(await bytesOf(served))) as unknown[])
+
+    // The write is in what was served, under a version that still says to fetch again.
+    expect(rows).toHaveLength(2)
+    expect(served?.version).not.toBe(latest?.version)
   })
 })
 

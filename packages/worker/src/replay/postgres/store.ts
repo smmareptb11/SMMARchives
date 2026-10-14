@@ -130,15 +130,18 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
      * The version is the moment those rows were last written, and the filter is
      * part of it: two questions over one data set are two answers, and a client
      * holding one must not be told it already has the other.
+     *
+     * Read before the rows, never after. Agents write while others read, and a
+     * write landing between the two reads would otherwise send the rows from
+     * before it under the version from after: the reader would be told, at
+     * every revalidation, that the stale copy it holds is current. In this
+     * order the worst a write can do is send newer rows under an older
+     * version, which only costs the reader one more fetch.
      */
     async openDataset(
       name: DatasetName,
       filter: DatasetFilter = {},
     ): Promise<StoredBlob | undefined> {
-      const stored = await MAPPINGS[name].read(pool, replayId, filter)
-      if (stored === undefined) return undefined
-
-      const body = Buffer.from(JSON.stringify(stored))
       const version = (
         await pool.query<{ updated_at: string }>(
           'select updated_at from replay_dataset where replay_id = $1 and name = $2',
@@ -146,6 +149,10 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
         )
       ).rows[0]?.updated_at
       if (version === undefined) return undefined
+
+      const stored = await MAPPINGS[name].read(pool, replayId, filter)
+      if (stored === undefined) return undefined
+      const body = Buffer.from(JSON.stringify(stored))
 
       const asked = Object.entries(filter)
         .filter(([, value]) => value !== undefined)
