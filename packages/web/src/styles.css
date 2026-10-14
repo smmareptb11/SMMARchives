@@ -55,7 +55,13 @@ main:has(.map) {
   overflow: visible;
 }
 
+/*
+ * Positioned, and as large as the map: the markers are absolute, and a box
+ * that is not their containing block clips none of them.
+ */
 .map .maplibregl-canvas-container {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
