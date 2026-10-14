@@ -180,6 +180,31 @@ export function endOnEntry(draft: Draft): string {
   return toLocalInput(new Date(Date.parse(from) + PROPOSED_SPAN_MS).toISOString())
 }
 
+/** How the form names each field, for a summary that points to them. */
+const LABELS: Record<Field, string> = {
+  title: 'Titre',
+  producerKind: 'Signalé par',
+  from: 'Début',
+  to: 'Fin',
+  description: 'Description',
+  position: 'Lieu',
+  photos: 'Photos',
+}
+
+/**
+ * What is left to correct, said beside the button that sends.
+ *
+ * A refusal sits under its field, which on a small screen is out of sight of
+ * the button the agent just pressed: without this, the press seems to do
+ * nothing. In the form's own order, so the list reads top to bottom.
+ */
+export function toCorrect(refusals: Refusals): string | undefined {
+  const fields = (Object.keys(LABELS) as Field[]).filter((one) => refusals[one] !== undefined)
+  return fields.length === 0
+    ? undefined
+    : `À corriger : ${fields.map((one) => LABELS[one]).join(', ')}.`
+}
+
 /** Whether the agent has typed anything a click elsewhere would throw away. */
 export function touched(draft: Draft, from: Draft, photos: number): boolean {
   return (

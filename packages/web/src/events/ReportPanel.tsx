@@ -2,11 +2,14 @@ import type { Instant } from '@smmarchives/shared/clock.ts'
 import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
+import { useRef } from 'react'
+
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { extentOf } from './placing.ts'
 import { ReportForm } from './ReportForm.tsx'
 import { ReportSheet } from './ReportSheet.tsx'
 import type { PanelControl } from './usePanel.ts'
+import { useClickOutside } from './useClickOutside.ts'
 
 export type ReportPanelProps = {
   manifest: ReplayManifest
@@ -16,8 +19,27 @@ export type ReportPanelProps = {
   onSaved: (event: ReplayEvent) => void
 }
 
-/** The sheet of an event, or the form that reports one, on the left of the replay. */
-export function ReportPanel({ manifest, content, control, onSaved }: ReportPanelProps) {
+/**
+ * The sheet of an event, or the form that reports one, on the left of the replay.
+ *
+ * A click anywhere else closes it — through the same request as its own close
+ * button, so a form the agent typed into asks first.
+ */
+export function ReportPanel(props: ReportPanelProps) {
+  const held = useRef<HTMLDivElement>(null)
+  const { panel, close } = props.control
+  useClickOutside(held, panel !== undefined, close)
+  if (panel === undefined) return null
+
+  return (
+    // A box for the click to be judged against, which lays nothing out.
+    <div className="panel" ref={held}>
+      <PanelContent {...props} />
+    </div>
+  )
+}
+
+function PanelContent({ manifest, content, control, onSaved }: ReportPanelProps) {
   const { panel } = control
   if (panel === undefined) return null
 

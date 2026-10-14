@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useId, useMemo, useState, type FormEvent } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState, type FormEvent } from 'react'
 
 import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
 import type { EventPosition, ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
@@ -6,17 +6,8 @@ import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 
 import { api } from '../api.ts'
 import { ApiError, describe } from '../problems.ts'
-import { formatInstant, toInstant } from '../time.ts'
-import {
-  draftAt,
-  endOnEntry,
-  judged,
-  placed,
-  PRODUCER_KINDS,
-  touched,
-  type Draft,
-  type Refusals,
-} from './draft.ts'
+import { draftAt, judged, placed, toCorrect, touched, type Draft, type Refusals } from './draft.ts'
+import { Fields } from './fields.tsx'
 import { PhotoPicker } from './PhotoPicker.tsx'
 
 /**
@@ -84,7 +75,12 @@ export function ReportForm(props: ReportFormProps) {
         }}
         refusal={sent.refusals.photos}
       />
-      <Ending failure={sent.failure} sending={sent.sending} onCancel={props.onCancel} />
+      <Ending
+        failure={sent.failure}
+        uncorrected={toCorrect(sent.refusals)}
+        sending={sent.sending}
+        onCancel={props.onCancel}
+      />
     </form>
   )
 }
@@ -92,10 +88,13 @@ export function ReportForm(props: ReportFormProps) {
 /** What the API said against it, and the two ways out of the form. */
 function Ending({
   failure,
+  uncorrected,
   sending,
   onCancel,
 }: {
   failure: readonly string[]
+  /** The fields refused, named beside the button: their messages may be out of sight. */
+  uncorrected: string | undefined
   sending: boolean
   onCancel: () => void
 }) {
@@ -106,6 +105,11 @@ function Ending({
           {one}
         </p>
       ))}
+      {uncorrected === undefined ? null : (
+        <p className="refused" role="alert">
+          {uncorrected}
+        </p>
+      )}
       <footer>
         <button type="submit" disabled={sending}>
           {sending ? 'Envoi…' : 'Enregistrer'}
@@ -184,115 +188,4 @@ function Leaving({ onLeave, onStay }: { onLeave: () => void; onStay: () => void 
       </button>
     </div>
   )
-}
-
-/** What the agent writes of the event, each field with what was refused of it. */
-function Fields({
-  draft,
-  edit,
-  refusals,
-}: {
-  draft: Draft
-  edit: (field: keyof Draft) => (value: string) => void
-  refusals: Refusals
-}) {
-  return (
-    <>
-      <TextField
-        label="Titre"
-        value={draft.title}
-        onChange={edit('title')}
-        refusal={refusals.title}
-      />
-      <TextField
-        label="Signalé par"
-        value={draft.producerKind}
-        onChange={edit('producerKind')}
-        refusal={refusals.producerKind}
-        suggestions={PRODUCER_KINDS}
-      />
-      <HourField label="Début" value={draft.from} onChange={edit('from')} refusal={refusals.from} />
-      <HourField
-        label="Fin (facultative)"
-        value={draft.to}
-        onChange={edit('to')}
-        refusal={refusals.to}
-        onClick={() => {
-          edit('to')(endOnEntry(draft))
-        }}
-      />
-      <TextField
-        label="Description"
-        value={draft.description}
-        onChange={edit('description')}
-        refusal={refusals.description}
-        multiline
-      />
-    </>
-  )
-}
-
-type TextFieldProps = {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  refusal: string | undefined
-  multiline?: boolean
-  suggestions?: readonly string[]
-}
-
-function TextField({ label, value, onChange, refusal, multiline, suggestions }: TextFieldProps) {
-  const id = useId()
-  const list = suggestions === undefined ? undefined : id
-
-  return (
-    <label>
-      {label}
-      {multiline === true ? (
-        <textarea rows={4} value={value} onChange={(event) => onChange(event.target.value)} />
-      ) : (
-        <input value={value} list={list} onChange={(event) => onChange(event.target.value)} />
-      )}
-      {list === undefined ? null : (
-        <datalist id={list}>
-          {suggestions?.map((one) => (
-            <option key={one} value={one} />
-          ))}
-        </datalist>
-      )}
-      <Refused said={refusal} />
-    </label>
-  )
-}
-
-/**
- * An hour of the French clock, and the instant it names said back underneath —
- * the one place the change of clock becomes visible, as on the creation form.
- */
-function HourField({
-  label,
-  value,
-  onChange,
-  refusal,
-  onClick,
-}: Omit<TextFieldProps, 'multiline'> & { onClick?: () => void }) {
-  const instant = toInstant(value)
-
-  return (
-    <label>
-      {label}
-      <input
-        type="datetime-local"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onClick={onClick}
-      />
-      <small>{instant === undefined ? null : formatInstant(instant)}</small>
-      <Refused said={refusal} />
-    </label>
-  )
-}
-
-function Refused({ said }: { said: string | undefined }) {
-  return said === undefined ? null : <span className="refused">{said}</span>
 }

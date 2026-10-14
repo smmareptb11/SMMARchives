@@ -7,6 +7,7 @@ import {
   PHOTO_COUNT_LIMIT,
   PHOTO_SIZE_LIMIT,
   placed,
+  toCorrect,
   touched,
   type Draft,
 } from '../src/events/draft.ts'
@@ -134,6 +135,18 @@ describe('where a refusal of the API lands', () => {
       },
       rest: ['media : names a photo twice'],
     })
+  })
+})
+
+describe('what is left to correct, beside the button', () => {
+  it('names the refused fields, in the order the form shows them', () => {
+    expect(toCorrect({ photos: '…', title: '…', from: '…' })).toBe(
+      'À corriger : Titre, Début, Photos.',
+    )
+  })
+
+  it('says nothing once nothing is refused', () => {
+    expect(toCorrect({})).toBeUndefined()
   })
 })
 

@@ -741,6 +741,11 @@ summary .count {
   pointer-events: none;
 }
 
+/* The panel's box: what a click outside it is judged against, and nothing more. */
+.panel {
+  display: contents;
+}
+
 /*
  * What an agent wrote of an event, beside the replay rather than over its
  * middle: the map and the lanes stay readable while it is open. On the left,
@@ -754,6 +759,8 @@ summary .count {
   bottom: 1rem;
   width: min(28rem, calc(100vw - 2rem));
   overflow-y: auto;
+  /* Its end is not the page's: scrolling past it does not carry on with the replay underneath. */
+  overscroll-behavior: contain;
   padding: 1rem;
   background: #fff;
   border-right: 4px solid var(--report);
