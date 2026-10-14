@@ -1,10 +1,14 @@
-import { MUTED } from '../palette.ts'
+import { reportsOf } from '../events/reports.ts'
+import { MUTED, REPORT } from '../palette.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { KINDS, kindOf } from './sources.ts'
 import { NEUTRAL } from './state.ts'
 
-/** The families a reader can cut off: the three drawn, and the two others. */
-export const FAMILIES = [...KINDS, 'webcam', 'territory'] as const
+/**
+ * The families a reader can cut off: what agents reported, the three sources
+ * drawn, and the two others.
+ */
+export const FAMILIES = ['report', ...KINDS, 'webcam', 'territory'] as const
 
 export type Family = (typeof FAMILIES)[number]
 
@@ -19,6 +23,7 @@ export type Shown = Record<Family, boolean>
  * lanes below keep their own names, for a fourth family the map folds away.
  */
 export const NAMES: Record<Family, { one: string; many: string }> = {
+  report: { one: 'Événement saisi', many: 'Événements saisis' },
   watercourse: { one: "Station cours d'eau", many: "Stations cours d'eau" },
   structure: { one: 'Ouvrage', many: 'Ouvrages' },
   'rain-gauge': { one: 'Pluviomètre', many: 'Pluviomètres' },
@@ -35,6 +40,7 @@ export const NAMES: Record<Family, { one: string; many: string }> = {
  * under the row, so the shape would read as a quantity.
  */
 export function swatchColourOf(family: Family): string {
+  if (family === 'report') return REPORT
   return family === 'rain-gauge' ? MUTED : NEUTRAL
 }
 
@@ -50,6 +56,9 @@ export function familiesOf(content: ReplayContent): Family[] {
   const drawn = new Set(content.stations.map((one) => kindOf(one.category)))
 
   return FAMILIES.filter((family) => {
+    // Placed, or the map has nothing of it to cut: a report with no position is
+    // on the lanes alone.
+    if (family === 'report') return reportsOf(content.events).some((one) => one.position !== null)
     if (family === 'rain-gauge') return content.rainGauges.length > 0
     if (family === 'webcam') return content.webcams.length > 0
     if (family === 'territory') return true
@@ -59,6 +68,7 @@ export function familiesOf(content: ReplayContent): Family[] {
 
 /** Everything drawn, which is where a reader starts. */
 export const EVERYTHING: Shown = {
+  report: true,
   watercourse: true,
   structure: true,
   'rain-gauge': true,

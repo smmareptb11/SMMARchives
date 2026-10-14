@@ -7,8 +7,9 @@ import { BRAND } from '../palette.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import type { Shown } from './families.ts'
 import { KINDS, sourcesOf, type Kind } from './sources.ts'
+import { reportColourOf, reportFilterOf, reportsOnTheMap, type ReportPainting } from './reports.ts'
 import { NEUTRAL, paintingOf } from './state.ts'
-import { imageOf, widthOf } from './symbols.ts'
+import { imageOf, widthOf, type Shape } from './symbols.ts'
 
 /**
  * The shape of a family, and the white ring behind it.
@@ -120,8 +121,87 @@ export function filterOf(kind: Kind, mutesShown: boolean): ExpressionSpecificati
 }
 
 /** The scale that adds `RING` pixels on each side of a shape of this width. */
-function ringScaleOf(kind: Kind): number {
-  return 1 + (2 * RING) / widthOf(kind)
+function ringScaleOf(shape: Shape): number {
+  return 1 + (2 * RING) / widthOf(shape)
+}
+
+const REPORT_AREA = 'reports-area'
+const REPORT_OUTLINE = 'reports-area-line'
+const REPORT_RING = 'reports-ring'
+const REPORT_POINT = 'reports-point'
+
+/** Where a click lands on a report placed on a spot, and on one covering an area. */
+export const REPORT_SPOTS = [REPORT_POINT]
+export const REPORT_AREAS = [REPORT_AREA]
+
+/** Nothing reported yet: the first repaint says what the cursor has reached. */
+const NOTHING_YET: ReportPainting = { during: [], after: [] }
+
+/**
+ * What agents reported, over the sources: a diamond on a spot, an area
+ * otherwise.
+ *
+ * Above the parc, because a report placed on a station is what the agent came
+ * to say about it, and the station is still there once the report is cut off.
+ * The area is light, so the ground and the sources under it stay legible.
+ */
+export function drawReports(map: MapLibreMap, content: ReplayContent): void {
+  map.addSource('reports', { type: 'geojson', data: reportsOnTheMap(content.events) })
+
+  map.addLayer({
+    id: REPORT_AREA,
+    type: 'fill',
+    source: 'reports',
+    filter: reportFilterOf(NOTHING_YET, 'Polygon'),
+    paint: { 'fill-color': reportColourOf(NOTHING_YET), 'fill-opacity': 0.25 },
+  })
+  map.addLayer({
+    id: REPORT_OUTLINE,
+    type: 'line',
+    source: 'reports',
+    filter: reportFilterOf(NOTHING_YET, 'Polygon'),
+    paint: { 'line-color': reportColourOf(NOTHING_YET), 'line-width': 2 },
+  })
+  for (const [id, size, colour] of [
+    [REPORT_RING, ringScaleOf('report'), '#ffffff'],
+    [REPORT_POINT, 1, reportColourOf(NOTHING_YET)],
+  ] as const) {
+    map.addLayer({
+      id,
+      type: 'symbol',
+      source: 'reports',
+      filter: reportFilterOf(NOTHING_YET, 'Point'),
+      layout: {
+        'icon-image': imageOf('report'),
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+        'icon-size': size,
+      },
+      paint: { 'icon-color': colour },
+    })
+  }
+}
+
+/**
+ * Shows what has been reported by the instant read, in the colour of whether
+ * it is still under way. A filter and a paint property: the reports themselves
+ * do not change, only which of them the cursor has reached.
+ */
+export function paintReports(map: MapLibreMap, painting: ReportPainting): void {
+  const colour = reportColourOf(painting)
+  for (const [layer, shape] of [
+    [REPORT_AREA, 'Polygon'],
+    [REPORT_OUTLINE, 'Polygon'],
+    [REPORT_RING, 'Point'],
+    [REPORT_POINT, 'Point'],
+  ] as const) {
+    if (map.getLayer(layer) === undefined) continue
+    map.setFilter(layer, reportFilterOf(painting, shape))
+  }
+  if (map.getLayer(REPORT_POINT) === undefined) return
+  map.setPaintProperty(REPORT_AREA, 'fill-color', colour)
+  map.setPaintProperty(REPORT_OUTLINE, 'line-color', colour)
+  map.setPaintProperty(REPORT_POINT, 'icon-color', colour)
 }
 
 /**
@@ -141,6 +221,7 @@ export function showFamilies(map: MapLibreMap, shown: Shown): void {
     show(map, [shapeLayerOf(kind), ringLayerOf(kind)], shown[kind])
   }
   show(map, [TERRITORY_LAYER, lineLayerOf(TERRITORY_LAYER)], shown.territory)
+  show(map, [REPORT_AREA, REPORT_OUTLINE, REPORT_RING, REPORT_POINT], shown.report)
 }
 
 /**

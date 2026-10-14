@@ -7,7 +7,16 @@ import { createPortal } from 'react-dom'
 import type { Cursor } from '../transport/reading.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { BLANK, groundOf } from './ground.ts'
-import { drawSources, drawTerritory, paintSources, showFamilies, showMutes } from './layers.ts'
+import {
+  drawReports,
+  drawSources,
+  drawTerritory,
+  paintReports,
+  paintSources,
+  showFamilies,
+  showMutes,
+} from './layers.ts'
+import { reportPaintingAt, samePainting, type ReportPainting } from './reports.ts'
 import { boundsOf } from './sources.ts'
 import { addShapes } from './symbols.ts'
 import { CalloutView } from './CalloutView.tsx'
@@ -78,6 +87,7 @@ function drawEverything(map: MapLibreMap, content: ReplayContent): void {
   addShapes(map)
   drawTerritory(map)
   drawSources(map, content)
+  drawReports(map, content)
 
   const bounds = boundsOf(content)
   if (bounds !== undefined) map.fitBounds(bounds, { padding: 40, animate: false })
@@ -110,6 +120,28 @@ function usePaintedSources(
     painted.current = colours
     paintSources(drawn.current, colours)
   }, [ready, drawn, colours])
+}
+
+/**
+ * Shows what agents had reported by the instant read, and only when that
+ * changes: once per report a reading reaches, and once more when it is over.
+ */
+function usePaintedReports(
+  ready: boolean,
+  drawn: RefObject<MapLibreMap | undefined>,
+  content: ReplayContent,
+  at: Cursor,
+): void {
+  const painted = useRef<ReportPainting | undefined>(undefined)
+  const painting = useMemo(() => reportPaintingAt(content.events, at), [content.events, at])
+
+  useEffect(() => {
+    if (!ready || drawn.current === undefined) return
+    if (painted.current !== undefined && samePainting(painted.current, painting)) return
+
+    painted.current = painting
+    paintReports(drawn.current, painting)
+  }, [ready, drawn, painting])
 }
 
 /**
@@ -150,6 +182,8 @@ export type MapViewProps = {
   onMutesShown: (shown: boolean) => void
   /** How many sources the switch holds back, the lanes' own included. */
   heldBack: number
+  /** Opens what an agent reported, from the diamond or the area that stands for it. */
+  onOpenReport: (id: string) => void
 }
 
 export function MapView({
@@ -160,6 +194,7 @@ export function MapView({
   mutesShown,
   onMutesShown,
   heldBack,
+  onOpenReport,
 }: MapViewProps) {
   const drawn = useRef<MapLibreMap | undefined>(undefined)
   const [ready, setReady] = useState(false)
@@ -169,11 +204,12 @@ export function MapView({
   // than held in state: what says it is there is `ready`, set beside it.
   const hung = ready ? drawn.current : undefined
   const { bubble, shown: open } = useCallout(hung, replayId)
-  useSourceClicks(hung, bubble)
+  useSourceClicks(hung, bubble, onOpenReport)
   const views = useMemo(() => viewsOf(content.images), [content.images])
 
   useShownSources(hung, shown, mutesShown)
   usePaintedSources(ready, drawn, colours)
+  usePaintedReports(ready, drawn, content, at)
 
   return (
     <>

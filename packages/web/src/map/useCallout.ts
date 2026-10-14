@@ -3,7 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'reac
 
 import { CURVE_WIDTH } from '../detail/chart.ts'
 import type { Subject } from './CalloutView.tsx'
-import { shapeLayerOf } from './layers.ts'
+import { REPORT_AREAS, REPORT_SPOTS, shapeLayerOf } from './layers.ts'
+import { clickedOf, reportUnder } from './reports.ts'
 import { KINDS, sourceUnder } from './sources.ts'
 
 /** How far the bubble keeps from its anchor, so it does not cover it. */
@@ -106,34 +107,53 @@ export function useCallout(
 }
 
 /**
- * What the measuring sources answer to a click, and what the map answers.
+ * What the measuring sources and the reports answer to a click, and what the
+ * map answers.
  *
  * One handler asking what is under the pointer, rather than one per family: a
  * handler per family fires once per family the click covers, and the last one
  * to answer would replace the bubble the first had opened.
  *
+ * Which of a report or a source is meant is `clickedOf`'s to say. A report
+ * opens the sheet rather than a bubble, being what was written rather than
+ * what was measured at the instant.
+ *
  * On the shapes and not on their white rings: a ring is wider than the shape it
  * backs, and clicking beside a rain gauge would open the rain gauge.
  */
-export function useSourceClicks(map: MapLibreMap | undefined, bubble: Bubble): void {
+export function useSourceClicks(
+  map: MapLibreMap | undefined,
+  bubble: Bubble,
+  onOpenReport: (id: string) => void,
+): void {
   useEffect(() => {
     if (map === undefined) return
 
     const canvas = map.getCanvas()
     const layers = KINDS.map(shapeLayerOf)
-    const under = (point: MapMouseEvent['point']) =>
-      sourceUnder(map.queryRenderedFeatures(point, { layers }))
+    const clicked = (point: MapMouseEvent['point']) =>
+      clickedOf({
+        spot: reportUnder(map.queryRenderedFeatures(point, { layers: REPORT_SPOTS })),
+        source: sourceUnder(map.queryRenderedFeatures(point, { layers })),
+        area: reportUnder(map.queryRenderedFeatures(point, { layers: REPORT_AREAS })),
+      })
 
     const onClick = (event: MapMouseEvent) => {
-      const source = under(event.point)
-      if (source === undefined) return bubble.close()
+      const meant = clicked(event.point)
+      if (meant === undefined) return bubble.close()
+      if ('report' in meant) {
+        bubble.close()
+        onOpenReport(meant.report)
+        return
+      }
 
+      const { source } = meant
       // The bubble on the source rather than on the point clicked, or its tip
       // lands beside the marker and names none of the ones around it.
       bubble.open(source.at, { kind: 'source', source })
     }
 
-    const pointer = pointerOver(map, under)
+    const pointer = pointerOver(map, clicked)
     map.on('click', onClick)
     map.on('mousemove', pointer.onMove)
 
@@ -143,7 +163,7 @@ export function useSourceClicks(map: MapLibreMap | undefined, bubble: Bubble): v
       pointer.stop()
       canvas.style.cursor = ''
     }
-  }, [map, bubble])
+  }, [map, bubble, onOpenReport])
 }
 
 /**

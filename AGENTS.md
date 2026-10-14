@@ -126,7 +126,8 @@ Breaking one produces a wrong result, not merely slower work.
    parameter, surface the fallback, never guess.
 
 The map knows two symbols — a watercourse station is a circle, a hydraulic
-structure a square. The charts follow the Acycliq Widget and never embed it:
+structure a square — and an event an agent reported is a diamond, or the area
+it covers. The charts follow the Acycliq Widget and never embed it:
 it is built for live data, where a replay is frozen.
 
 ## Rules

@@ -6,8 +6,7 @@ import { MUTES } from '../mutes.ts'
 import { SHADES, UNMEASURED } from '../rain.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { familiesOf, NAMES, swatchColourOf, type Family, type Shown } from './families.ts'
-import { isKind } from './sources.ts'
-import { swatchOf } from './symbols.ts'
+import { isShape, swatchOf } from './symbols.ts'
 
 /**
  * The legend, and the switch that cuts a family off.
@@ -120,10 +119,10 @@ function Row({
   )
 }
 
-/** The mark of a family, from `map/symbols.ts` for the three it draws. */
+/** The mark of a family, from `map/symbols.ts` for the shapes it draws. */
 function Swatch({ family }: { family: Family }) {
   const drawn = useMemo(
-    () => (isKind(family) ? swatchOf(family, swatchColourOf(family)) : undefined),
+    () => (isShape(family) ? swatchOf(family, swatchColourOf(family)) : undefined),
     [family],
   )
 

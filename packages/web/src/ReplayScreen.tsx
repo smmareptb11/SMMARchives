@@ -94,6 +94,7 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
           mutesShown={mutesShown}
           onMutesShown={setMutesShown}
           heldBack={heldBack}
+          onOpenReport={open}
         />
       </Suspense>
       <ReplayHeading manifest={manifest} content={content} />

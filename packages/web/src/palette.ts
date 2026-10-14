@@ -23,3 +23,6 @@ export const MUTED = '#5b6b7c'
  * apart at the first change of ramp.
  */
 export const RAIN = SHADES[3].colour
+
+/** `--report`: what an agent reported, on its lane and on the map while under way. */
+export const REPORT = '#2e8540'
