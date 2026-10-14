@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 
+import { api } from '../api.ts'
 import { PHOTO_TYPES } from './draft.ts'
 
 export type PhotoPickerProps = {
   photos: File[]
   onChange: (photos: File[]) => void
+  /** The photos an amended event already holds and keeps, by their paths. */
+  kept: string[]
+  onKeptChange: (kept: string[]) => void
+  replayId: string
   refusal: string | undefined
 }
 
@@ -14,12 +19,26 @@ export type PhotoPickerProps = {
  * Chosen files add up rather than replace one another: a second pick in the
  * gallery of a phone is a second photo, not a change of mind about the first.
  */
-export function PhotoPicker({ photos, onChange, refusal }: PhotoPickerProps) {
+export function PhotoPicker({
+  photos,
+  onChange,
+  kept,
+  onKeptChange,
+  replayId,
+  refusal,
+}: PhotoPickerProps) {
   const previews = usePreviews(photos)
 
   return (
     <fieldset className="photo-picker">
       <legend>Photos</legend>
+      <Thumbnails
+        sources={kept.map((path) => api.mediaUrl(replayId, path))}
+        said="Photo enregistrée"
+        onRemove={(index) => {
+          onKeptChange(kept.filter((_, at) => at !== index))
+        }}
+      />
       <input
         type="file"
         multiple
@@ -30,27 +49,48 @@ export function PhotoPicker({ photos, onChange, refusal }: PhotoPickerProps) {
           event.target.value = ''
         }}
       />
-      {previews.length === 0 ? null : (
-        <ul className="photos">
-          {previews.map((src, index) => (
-            <li key={src}>
-              <img src={src} alt={`Photo ${String(index + 1)}`} />
-              <button
-                type="button"
-                className="quiet"
-                aria-label={`Retirer la photo ${String(index + 1)}`}
-                onClick={() => {
-                  onChange(photos.filter((_, kept) => kept !== index))
-                }}
-              >
-                Retirer
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <Thumbnails
+        sources={previews}
+        said="Photo"
+        onRemove={(index) => {
+          onChange(photos.filter((_, at) => at !== index))
+        }}
+      />
       {refusal === undefined ? null : <span className="refused">{refusal}</span>}
     </fieldset>
+  )
+}
+
+/** Photos in small, each of which can be taken out. */
+function Thumbnails({
+  sources,
+  said,
+  onRemove,
+}: {
+  sources: readonly string[]
+  said: string
+  onRemove: (index: number) => void
+}) {
+  if (sources.length === 0) return null
+
+  return (
+    <ul className="photos">
+      {sources.map((src, index) => (
+        <li key={src}>
+          <img src={src} alt={`${said} ${String(index + 1)}`} />
+          <button
+            type="button"
+            className="quiet"
+            aria-label={`Retirer : ${said.toLowerCase()} ${String(index + 1)}`}
+            onClick={() => {
+              onRemove(index)
+            }}
+          >
+            Retirer
+          </button>
+        </li>
+      ))}
+    </ul>
   )
 }
 

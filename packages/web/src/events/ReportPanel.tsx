@@ -15,8 +15,13 @@ export type ReportPanelProps = {
   manifest: ReplayManifest
   content: ReplayContent
   control: PanelControl
-  /** An event the API has just stored, for the screen to hold without reloading. */
-  onSaved: (event: ReplayEvent) => void
+  changes: ContentChanges
+}
+
+/** What the API has just stored or removed, for the screen to hold without reloading. */
+export type ContentChanges = {
+  saved: (event: ReplayEvent) => void
+  removed: (id: string) => void
 }
 
 /**
@@ -39,35 +44,63 @@ export function ReportPanel(props: ReportPanelProps) {
   )
 }
 
-function PanelContent({ manifest, content, control, onSaved }: ReportPanelProps) {
+function PanelContent({ manifest, content, control, changes }: ReportPanelProps) {
   const { panel } = control
   if (panel === undefined) return null
+  if (panel.kind === 'form') return <FormPanel {...{ manifest, control, changes }} at={panel.at} />
 
-  if (panel.kind === 'form') {
-    return (
-      <ReportForm
-        replayId={manifest.id}
-        period={manifest.period}
-        extent={extentOf(manifest)}
-        at={panel.at}
-        leaving={control.leaving}
-        onLeave={control.leave}
-        onStay={control.stay}
-        onCancel={control.close}
-        onTouched={control.setTouched}
-        onReported={(event) => {
-          onSaved(event)
-          control.show({ kind: 'sheet', id: event.id })
-        }}
-      />
-    )
+  // Looked up in the content rather than held, so the panel shows what the
+  // replay holds under that name now.
+  const event = content.events.find((one) => one.id === panel.id)
+  if (event === undefined) return null
+  if (panel.kind === 'edit') {
+    return <FormPanel {...{ manifest, control, changes }} at={event.from} editing={event} />
   }
 
-  // Looked up in the content rather than held, so the sheet shows what the
-  // replay holds under that name now.
-  const report = content.events.find((one) => one.id === panel.id)
-  if (report === undefined) return null
-  return <ReportSheet report={report} replayId={manifest.id} onClose={control.close} />
+  return (
+    <ReportSheet
+      report={event}
+      replayId={manifest.id}
+      onClose={control.close}
+      onEdit={() => {
+        control.request({ kind: 'edit', id: event.id })
+      }}
+      onRemoved={(id) => {
+        changes.removed(id)
+        control.show(undefined)
+      }}
+    />
+  )
+}
+
+function FormPanel({
+  manifest,
+  control,
+  changes,
+  at,
+  editing,
+}: Omit<ReportPanelProps, 'content'> & { at: Instant; editing?: ReplayEvent }) {
+  return (
+    <ReportForm
+      // A different event is a different form: what was typed for one is not
+      // carried over to the next.
+      key={editing?.id ?? 'new'}
+      replayId={manifest.id}
+      period={manifest.period}
+      extent={extentOf(manifest)}
+      at={at}
+      editing={editing}
+      leaving={control.leaving}
+      onLeave={control.leave}
+      onStay={control.stay}
+      onCancel={control.close}
+      onTouched={control.setTouched}
+      onReported={(saved) => {
+        changes.saved(saved)
+        control.show({ kind: 'sheet', id: saved.id })
+      }}
+    />
+  )
 }
 
 /**

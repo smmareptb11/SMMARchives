@@ -968,3 +968,25 @@ button.quiet {
 .position-actions button {
   padding: 0.3rem 0.7rem;
 }
+
+/* Amending and removing, at the foot of the sheet. */
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e3e8ed;
+}
+
+.sheet-actions p {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* The one button that destroys something, and looks like it. */
+button.danger {
+  background: #b3261e;
+}

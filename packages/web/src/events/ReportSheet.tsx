@@ -3,12 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 
 import { api } from '../api.ts'
+import { describe } from '../problems.ts'
 import { formatInstant } from '../time.ts'
 
 export type ReportSheetProps = {
   report: ReplayEvent
   replayId: string
   onClose: () => void
+  onEdit: () => void
+  /** The API removed it: the screen lets it go, and the sheet with it. */
+  onRemoved: (id: string) => void
 }
 
 /**
@@ -17,7 +21,7 @@ export type ReportSheetProps = {
  * Opened and closed by the reader alone: nothing the cursor or the map does
  * takes it away, so what one is reading stays there while the replay plays.
  */
-export function ReportSheet({ report, replayId, onClose }: ReportSheetProps) {
+export function ReportSheet({ report, replayId, onClose, onEdit, onRemoved }: ReportSheetProps) {
   const closing = useRef<HTMLButtonElement>(null)
 
   // On the button that closes it, so the keyboard lands where the sheet is
@@ -48,7 +52,103 @@ export function ReportSheet({ report, replayId, onClose }: ReportSheetProps) {
       <p className="note">Signalé par : {report.producerKind}</p>
       {report.description === null ? null : <p className="description">{report.description}</p>}
       <Photos key={report.id} paths={report.media} replayId={replayId} title={report.title} />
+      <Actions
+        key={`actions-${report.id}`}
+        report={report}
+        replayId={replayId}
+        onEdit={onEdit}
+        onRemoved={onRemoved}
+      />
     </aside>
+  )
+}
+
+/**
+ * Amending and removing, the second in two steps.
+ *
+ * Removing is for good, photos included, so the button asks again in the
+ * sheet itself rather than in a browser dialog that would stop the whole page.
+ */
+function Actions({
+  report,
+  replayId,
+  onEdit,
+  onRemoved,
+}: {
+  report: ReplayEvent
+  replayId: string
+  onEdit: () => void
+  onRemoved: (id: string) => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const { remove, removing, failure } = useRemoving(replayId, report.id, onRemoved)
+
+  return (
+    <footer className="sheet-actions">
+      {failure === undefined ? null : (
+        <p className="refusal" role="alert">
+          {failure}
+        </p>
+      )}
+      {confirming ? (
+        <Confirm
+          removing={removing}
+          onConfirm={() => void remove()}
+          onCancel={() => setConfirming(false)}
+        />
+      ) : (
+        <>
+          <button type="button" onClick={onEdit}>
+            Modifier
+          </button>
+          <button type="button" className="quiet" onClick={() => setConfirming(true)}>
+            Supprimer
+          </button>
+        </>
+      )}
+    </footer>
+  )
+}
+
+/** Asking the API to remove it, and saying why it would not. */
+function useRemoving(replayId: string, id: string, onRemoved: (id: string) => void) {
+  const [removing, setRemoving] = useState(false)
+  const [failure, setFailure] = useState<string | undefined>(undefined)
+
+  async function remove(): Promise<void> {
+    setRemoving(true)
+    setFailure(undefined)
+    try {
+      await api.removeEvent(replayId, id)
+      onRemoved(id)
+    } catch (error) {
+      setFailure(describe(error))
+      setRemoving(false)
+    }
+  }
+
+  return { remove, removing, failure }
+}
+
+function Confirm({
+  removing,
+  onConfirm,
+  onCancel,
+}: {
+  removing: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <>
+      <p>Supprimer définitivement cet événement et ses photos ?</p>
+      <button type="button" className="danger" disabled={removing} onClick={onConfirm}>
+        {removing ? 'Suppression…' : 'Confirmer la suppression'}
+      </button>
+      <button type="button" className="quiet" disabled={removing} onClick={onCancel}>
+        Annuler
+      </button>
+    </>
   )
 }
 

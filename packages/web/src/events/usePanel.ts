@@ -2,8 +2,12 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 
 import type { Instant } from '@smmarchives/shared/clock.ts'
 
-/** What the left-hand panel shows: an event's sheet, the form, or nothing. */
-export type Panel = { kind: 'sheet'; id: string } | { kind: 'form'; at: Instant } | undefined
+/** What the left-hand panel shows: an event's sheet, the form to report or amend one, or nothing. */
+export type Panel =
+  | { kind: 'sheet'; id: string }
+  | { kind: 'form'; at: Instant }
+  | { kind: 'edit'; id: string }
+  | undefined
 
 export type PanelControl = {
   panel: Panel
@@ -43,7 +47,8 @@ export function usePanel(): PanelControl {
 
   const request = useCallback(
     (next: Panel) => {
-      if (shown.current?.kind === 'form' && touched.current) setWaiting({ next })
+      const kind = shown.current?.kind
+      if ((kind === 'form' || kind === 'edit') && touched.current) setWaiting({ next })
       else show(next)
     },
     [show],

@@ -12,7 +12,7 @@ import { api } from './api.ts'
 import { cursorAt, instantAt } from './transport/reading.ts'
 import { paintedAt } from './map/state.ts'
 import { gaugesOf } from './rain.ts'
-import { ReportButton, ReportPanel } from './events/ReportPanel.tsx'
+import { ReportButton, ReportPanel, type ContentChanges } from './events/ReportPanel.tsx'
 import { usePanel } from './events/usePanel.ts'
 import { describe } from './problems.ts'
 import { Playhead } from './transport/Playhead.tsx'
@@ -38,12 +38,12 @@ const MapView = lazy(async () => ({ default: (await import('./map/MapView.tsx'))
  * draw its segment. Loading them twice would be reading the same thing twice.
  */
 export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
-  const { content, failure, saved } = useContent(manifest)
+  const { content, failure, changes } = useContent(manifest)
 
   if (failure !== undefined) return <p className="refusal">{failure}</p>
   if (content === undefined) return <p>Lecture du rejeu…</p>
 
-  return <Replayed manifest={manifest} content={content} onSaved={saved} />
+  return <Replayed manifest={manifest} content={content} changes={changes} />
 }
 
 /**
@@ -60,11 +60,11 @@ export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
 function Replayed({
   manifest,
   content,
-  onSaved,
+  changes,
 }: {
   manifest: ReplayManifest
   content: ReplayContent
-  onSaved: (event: ReplayEvent) => void
+  changes: ContentChanges
 }) {
   const { reading, seek } = useReading(manifest, content)
   const colours = useMemo(() => paintedAt(content, reading.at), [content, reading.at])
@@ -111,7 +111,7 @@ function Replayed({
           onOpenReport={panel.openReport}
         />
       </div>
-      <ReportPanel manifest={manifest} content={content} control={panel} onSaved={onSaved} />
+      <ReportPanel manifest={manifest} content={content} control={panel} changes={changes} />
     </>
   )
 }
@@ -183,16 +183,26 @@ async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise
  * The rain of the whole parc is among it, being a fortieth of that on the same
  * replay — so are the ladders that say which quantity a station is read on.
  */
-function useContent(manifest: ReplayManifest): Loaded & { saved: (event: ReplayEvent) => void } {
+function useContent(manifest: ReplayManifest): Loaded & { changes: ContentChanges } {
   const [loaded, setLoaded] = useState<Loaded>({ content: undefined, failure: undefined })
-  // What an agent has just saved, held without reloading the replay: the API
-  // answered with the event as a reader will read it, which is all that changed.
-  const saved = useCallback((event: ReplayEvent) => {
-    setLoaded((held) =>
-      held.content === undefined
-        ? held
-        : { ...held, content: { ...held.content, events: withEvent(held.content.events, event) } },
-    )
+  // What an agent changed, held without reloading the replay: the API said what.
+  const changes = useMemo<ContentChanges>(() => {
+    const withEvents = (change: (events: ReplayEvent[]) => ReplayEvent[]) => {
+      setLoaded((held) =>
+        held.content === undefined
+          ? held
+          : { ...held, content: { ...held.content, events: change(held.content.events) } },
+      )
+    }
+    return {
+      // The API answered with the event as a reader will read it.
+      saved: (event) => {
+        withEvents((events) => withEvent(events, event))
+      },
+      removed: (id) => {
+        withEvents((events) => events.filter((one) => one.id !== id))
+      },
+    }
   }, [])
 
   useEffect(() => {
@@ -218,7 +228,7 @@ function useContent(manifest: ReplayManifest): Loaded & { saved: (event: ReplayE
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the fields read, not the manifest
   }, [manifest.id, manifest.datasets, manifest.period])
 
-  return { ...loaded, saved }
+  return { ...loaded, changes }
 }
 
 /** The events with this one in, replacing the one of the same name if there was one. */

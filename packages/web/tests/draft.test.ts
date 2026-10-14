@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   draftAt,
+  draftOf,
   endOnEntry,
   judged,
   PHOTO_COUNT_LIMIT,
@@ -11,7 +12,7 @@ import {
   touched,
   type Draft,
 } from '../src/events/draft.ts'
-import { period } from './support/content.ts'
+import { aReport, period } from './support/content.ts'
 
 /** A draft that holds together, as the form spells it: French wall times. */
 function aDraft(overrides: Partial<Draft> = {}): Draft {
@@ -31,6 +32,46 @@ const JPEG = { size: 1_000, type: 'image/jpeg' }
 describe('a blank form', () => {
   it('starts where the reading stands, in French time', () => {
     expect(draftAt('2019-10-22T06:30:00.000Z')).toMatchObject({ from: '2019-10-22T08:30', to: '' })
+  })
+})
+
+describe('a form opened to amend an event', () => {
+  const event = aReport({
+    id: 'a',
+    title: 'Route coupée',
+    producerKind: 'Commune',
+    description: 'Pont submergé.',
+    from: '2019-10-22T06:00:00.000Z',
+    to: '2019-10-22T08:30:00.000Z',
+    position: { type: 'Point', coordinates: [2.35, 43.21] },
+  })
+
+  it('is filled in with what the event says, in French time', () => {
+    expect(draftOf(event)).toEqual({
+      title: 'Route coupée',
+      producerKind: 'Commune',
+      from: '2019-10-22T08:00',
+      to: '2019-10-22T10:30',
+      description: 'Pont submergé.',
+      position: { type: 'Point', coordinates: [2.35, 43.21] },
+    })
+  })
+
+  it('sends back what the event said when nothing is changed', () => {
+    expect(judged(draftOf(event), period, [])).toEqual({
+      report: {
+        title: event.title,
+        producerKind: event.producerKind,
+        from: event.from,
+        to: event.to,
+        description: event.description,
+        position: event.position,
+      },
+    })
+  })
+
+  it('leaves blank what the event never said', () => {
+    expect(draftOf(aReport({ id: 'b' }))).toMatchObject({ to: '', description: '' })
   })
 })
 
@@ -98,6 +139,13 @@ describe('what a draft amounts to', () => {
       judged(aDraft(), period, [{ size: PHOTO_SIZE_LIMIT + 1, type: 'image/png' }]),
     ).toMatchObject({ refusals: { photos: 'Une photo pèse 15 Mo au plus.' } })
     expect(judged(aDraft(), period, [JPEG])).toHaveProperty('report')
+  })
+
+  it('counts the photos an amended event keeps towards the limit', () => {
+    expect(judged(aDraft(), period, [JPEG], PHOTO_COUNT_LIMIT - 1)).toHaveProperty('report')
+    expect(judged(aDraft(), period, [JPEG], PHOTO_COUNT_LIMIT)).toEqual({
+      refusals: { photos: 'Un événement porte 10 photos au plus.' },
+    })
   })
 })
 

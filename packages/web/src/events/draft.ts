@@ -1,5 +1,5 @@
 import { isWithin, type Instant, type TimeWindow } from '@smmarchives/shared/clock.ts'
-import type { EventPosition } from '@smmarchives/shared/contracts/event.ts'
+import type { EventPosition, ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 
 import { toInstant, toLocalInput } from '../time.ts'
 
@@ -55,6 +55,18 @@ export function draftAt(at: Instant): Draft {
   }
 }
 
+/** The form filled in with what an event says, to amend it: wall times in French time. */
+export function draftOf(event: ReplayEvent): Draft {
+  return {
+    title: event.title,
+    producerKind: event.producerKind ?? '',
+    from: toLocalInput(event.from),
+    to: event.to === null ? '' : toLocalInput(event.to),
+    description: event.description ?? '',
+    position: event.position,
+  }
+}
+
 /**
  * The report a draft amounts to, or what is wrong with it, field by field.
  *
@@ -65,6 +77,8 @@ export function judged(
   draft: Draft,
   period: TimeWindow,
   photos: readonly PhotoFile[],
+  /** Photos the event already holds and keeps, which count towards the limit. */
+  kept = 0,
 ): { report: Report } | { refusals: Refusals } {
   const title = draft.title.trim()
   const producerKind = draft.producerKind.trim()
@@ -88,7 +102,7 @@ export function judged(
       draft.description.length > 5_000 ? 'La description tient en 5 000 caractères.' : undefined,
     from: refusedStart(from, period),
     to: refusedEnd(to, from, period),
-    photos: refusedPhotos(photos),
+    photos: refusedPhotos(photos, kept),
   })
 
   if (from === undefined || to === undefined || Object.keys(refusals).length > 0) {
@@ -128,8 +142,8 @@ function refusedEnd(
     : undefined
 }
 
-function refusedPhotos(photos: readonly PhotoFile[]): string | undefined {
-  if (photos.length > PHOTO_COUNT_LIMIT) {
+function refusedPhotos(photos: readonly PhotoFile[], kept: number): string | undefined {
+  if (photos.length + kept > PHOTO_COUNT_LIMIT) {
     return `Un événement porte ${String(PHOTO_COUNT_LIMIT)} photos au plus.`
   }
   if (photos.some((one) => !PHOTO_TYPES.includes(one.type))) {

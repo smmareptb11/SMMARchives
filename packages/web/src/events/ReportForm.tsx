@@ -6,7 +6,16 @@ import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 
 import { api } from '../api.ts'
 import { ApiError, describe } from '../problems.ts'
-import { draftAt, judged, placed, toCorrect, touched, type Draft, type Refusals } from './draft.ts'
+import {
+  draftAt,
+  draftOf,
+  judged,
+  placed,
+  toCorrect,
+  touched,
+  type Draft,
+  type Refusals,
+} from './draft.ts'
 import { Fields } from './fields.tsx'
 import { PhotoPicker } from './PhotoPicker.tsx'
 
@@ -23,8 +32,10 @@ export type ReportFormProps = {
   period: TimeWindow
   /** Where the event may be placed: the replay's extent, or the territory. */
   extent: BoundingBox
-  /** Where the reading stood when the form was opened, which is where the event starts. */
+  /** Where the reading stood when the form was opened, which is where a new event starts. */
   at: Instant
+  /** The event being amended, or nothing to report a new one. */
+  editing?: ReplayEvent | undefined
   /** Something asked to leave the form while it holds what the agent typed. */
   leaving: boolean
   onLeave: () => void
@@ -35,17 +46,27 @@ export type ReportFormProps = {
   onReported: (event: ReplayEvent) => void
 }
 
-/** Reporting an event, in the panel the sheet opens in. */
+/**
+ * Reporting an event, or amending one, in the panel the sheet opens in.
+ *
+ * One form for both: what an agent writes is the same, and only the start
+ * differs — blank from the reading's instant, or filled in from the event.
+ */
 export function ReportForm(props: ReportFormProps) {
-  const blank = useMemo(() => draftAt(props.at), [props.at])
+  const { editing, at, onTouched } = props
+  const blank = useMemo(
+    () => (editing === undefined ? draftAt(at) : draftOf(editing)),
+    [editing, at],
+  )
   const [draft, setDraft] = useState<Draft>(blank)
-  const [photos, setPhotos] = useState<File[]>([])
-  const sent = useSending(props, draft, photos)
-  const { onTouched } = props
+  const chosen = useChosenPhotos(editing, () => {
+    sent.forget('photos')
+  })
+  const sent = useSending(props, draft, chosen)
 
   useEffect(() => {
-    onTouched(touched(draft, blank, photos.length))
-  }, [draft, blank, photos.length, onTouched])
+    onTouched(touched(draft, blank, chosen.changed))
+  }, [draft, blank, chosen.changed, onTouched])
 
   const place = (position: EventPosition | null) => {
     setDraft((held) => ({ ...held, position }))
@@ -58,7 +79,7 @@ export function ReportForm(props: ReportFormProps) {
 
   return (
     <form className="sheet report-form" onSubmit={(event) => void sent.submit(event)}>
-      <h2>Saisir un événement</h2>
+      <h2>{editing === undefined ? 'Saisir un événement' : 'Modifier l’événement'}</h2>
       {props.leaving ? <Leaving onLeave={props.onLeave} onStay={props.onStay} /> : null}
       <Fields draft={draft} edit={edit} refusals={sent.refusals} />
       <Place
@@ -67,14 +88,7 @@ export function ReportForm(props: ReportFormProps) {
         onChange={place}
         refusal={sent.refusals.position}
       />
-      <PhotoPicker
-        photos={photos}
-        onChange={(next) => {
-          setPhotos(next)
-          sent.forget('photos')
-        }}
-        refusal={sent.refusals.photos}
-      />
+      <PhotoPicker {...chosen.picker} replayId={props.replayId} refusal={sent.refusals.photos} />
       <Ending
         failure={sent.failure}
         uncorrected={toCorrect(sent.refusals)}
@@ -132,12 +146,44 @@ function Place(props: Parameters<typeof PositionPicker>[0]) {
 }
 
 /**
+ * The photos of the form: the event's own that it keeps, and the files added.
+ *
+ * `changed` counts what leaving would lose — a file chosen, or a photo taken out.
+ */
+function useChosenPhotos(editing: ReplayEvent | undefined, onChange: () => void) {
+  const [photos, setPhotos] = useState<File[]>([])
+  const [kept, setKept] = useState<string[]>(editing?.media ?? [])
+
+  return {
+    photos,
+    kept,
+    changed: photos.length + (editing?.media.length ?? 0) - kept.length,
+    picker: {
+      photos,
+      kept,
+      onChange: (next: File[]) => {
+        setPhotos(next)
+        onChange()
+      },
+      onKeptChange: (next: string[]) => {
+        setKept(next)
+        onChange()
+      },
+    },
+  }
+}
+
+/**
  * Judging the draft, sending it, and saying why it was refused.
  *
  * The form's own rules first, in French and beside each field; then the API's,
  * placed beside the field it names.
  */
-function useSending(props: ReportFormProps, draft: Draft, photos: readonly File[]) {
+function useSending(
+  props: ReportFormProps,
+  draft: Draft,
+  { photos, kept }: { photos: readonly File[]; kept: readonly string[] },
+) {
   const [refusals, setRefusals] = useState<Refusals>({})
   const [failure, setFailure] = useState<string[]>([])
   const [sending, setSending] = useState(false)
@@ -145,13 +191,18 @@ function useSending(props: ReportFormProps, draft: Draft, photos: readonly File[
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault()
     setFailure([])
-    const verdict = judged(draft, props.period, photos)
+    const verdict = judged(draft, props.period, photos, kept.length)
     setRefusals('refusals' in verdict ? verdict.refusals : {})
     if ('refusals' in verdict) return
 
     setSending(true)
     try {
-      props.onReported(await api.reportEvent(props.replayId, verdict.report, photos))
+      const { editing, replayId } = props
+      props.onReported(
+        editing === undefined
+          ? await api.reportEvent(replayId, verdict.report, photos)
+          : await api.amendEvent(replayId, editing.id, verdict.report, { kept, added: photos }),
+      )
     } catch (error) {
       const refused = refusalOf(error)
       setRefusals(refused.fields)

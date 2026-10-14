@@ -63,6 +63,30 @@ export const api = {
   reportEvent: (id: string, report: Report, photos: readonly File[]) =>
     ask<ReplayEvent>(`/replays/${id}/events`, { method: 'POST', ...bodyOf(report, photos) }),
 
+  /**
+   * Replaces what an agent reported, whole: the photos it keeps by their paths,
+   * the new ones as files, after them.
+   */
+  amendEvent: (
+    id: string,
+    eventId: string,
+    report: Report,
+    photos: { kept: readonly string[]; added: readonly File[] },
+  ) =>
+    ask<ReplayEvent>(`/replays/${id}/events/${encodeURIComponent(eventId)}`, {
+      method: 'PUT',
+      ...bodyOf({ ...report, media: photos.kept }, photos.added),
+    }),
+
+  /** Removes it for good, its photos with it. */
+  removeEvent: async (id: string, eventId: string): Promise<void> => {
+    const response = await fetch(`/replays/${id}/events/${encodeURIComponent(eventId)}`, {
+      method: 'DELETE',
+    })
+    // A 204 has no body to read, so `ask` would fail on a success.
+    if (!response.ok) throw new ApiError(await problemOf(response))
+  },
+
   /** Where a frozen medium is served from, for an `img` to point at. */
   mediaUrl: (id: string, path: string) => `/replays/${id}/media/${path}`,
 }
