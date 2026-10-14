@@ -5,6 +5,7 @@ import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.t
 import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
 import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
+import { reportsOf, rowsOf } from '../events/reports.ts'
 import { instantOf, viewsOf, type View } from '../pictures.ts'
 import { barSaid, scaleOf, spanSaid, stepsOf, type Gauges, type Step } from '../rain.ts'
 import { instantAt, type Cursor } from '../transport/reading.ts'
@@ -60,6 +61,10 @@ export type Mark = Place & {
   path?: string | undefined
   /** The full image behind a frame, fetched only when someone asks to see it. */
   full?: string | undefined
+  /** The event an agent reported that this mark opens. */
+  report?: string | undefined
+  /** Which row of its lane it is drawn on, when the lane holds several. */
+  row?: number | undefined
 }
 
 export type Lane = {
@@ -70,6 +75,11 @@ export type Lane = {
   filmstrip?: boolean
   /** Its marks are bars standing on the floor of the lane, each one a measure. */
   bars?: boolean
+  /**
+   * How many rows its marks are spread over, so that none covers another.
+   * Every mark is then drawn: thinning one out would hide a fact an agent wrote.
+   */
+  rows?: number
 }
 
 export type Family = {
@@ -78,6 +88,11 @@ export type Family = {
   lanes: Lane[]
   /** How many sources of this family hold no lane, and why there is none. */
   silent?: number
+  /**
+   * What its heading counts, when that is not its lanes: what agents reported
+   * fits on one lane, and « 1 » beside it would read as one report.
+   */
+  count?: number
 }
 
 /**
@@ -172,7 +187,7 @@ function withTheLastOne<T extends { left: number }>(
  * `barsOf` has already laid them widest first, an order they keep.
  */
 export function drawnMarks(lane: Lane, minGap: number): Mark[] {
-  if (lane.bars === true) return lane.marks
+  if (lane.bars === true || lane.rows !== undefined) return lane.marks
   return lane.filmstrip === true ? tiled(lane.marks, minGap) : spacedOut(lane.marks, minGap)
 }
 
@@ -213,6 +228,9 @@ const STATION_FAMILIES = [
  */
 export function lanesOf(content: ReplayContent): Family[] {
   const families: Family[] = []
+
+  // First, being what an agent added to what the sources said.
+  push(families, reportFamily(content))
 
   for (const family of STATION_FAMILIES) {
     const stations = content.stations.filter((one) => one.category === family.id)
@@ -293,6 +311,37 @@ function crossingsOf(content: ReplayContent, sourceId: number): Mark[] {
       ...(one.crossing?.natureIsFallback === true ? { assumed: true } : {}),
       color: one.color ?? undefined,
     }))
+}
+
+/**
+ * What agents reported, on a lane of its own.
+ *
+ * Nothing when they reported nothing: a family of one empty lane would say the
+ * replay holds a kind of source it does not.
+ */
+function reportFamily(content: ReplayContent): Family | undefined {
+  const reports = reportsOf(content.events)
+  if (reports.length === 0) return undefined
+
+  const placed = reports.map((one) => ({
+    one,
+    place: placeOf(content.period, one.from, one.to ?? one.from),
+  }))
+  const rows = rowsOf(placed.map(({ place }) => place))
+  const marks = placed.map(({ one, place }, index) => ({
+    ...place,
+    at: one.from,
+    label: one.title,
+    report: one.id,
+    row: rows[index],
+  }))
+
+  return {
+    id: 'report',
+    label: 'Événements saisis',
+    count: reports.length,
+    lanes: [{ id: 'report', label: 'Saisie manuelle', marks, rows: Math.max(...rows) + 1 }],
+  }
 }
 
 function webcamLanes(content: ReplayContent): Lane[] {

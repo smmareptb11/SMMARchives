@@ -29,6 +29,8 @@ const RESTING_MS = 150
 export type LaneProps = {
   lane: LaneModel
   replayId: string
+  /** Opens what an agent reported, from the mark that stands for it. */
+  onOpenReport: (id: string) => void
 }
 
 /** The full image behind a frame, and the style that pins it where it belongs. */
@@ -38,8 +40,7 @@ type Preview = {
   style: CSSProperties
 }
 
-export function Lane({ lane, replayId }: LaneProps) {
-  const film = lane.filmstrip === true
+export function Lane({ lane, replayId, onOpenReport }: LaneProps) {
   const marks = drawnMarks(lane, MIN_GAP)
   const [preview, setPreview] = useState<Preview | undefined>(undefined)
   const resting = useRef<number | undefined>(undefined)
@@ -61,23 +62,31 @@ export function Lane({ lane, replayId }: LaneProps) {
 
   return (
     <div
-      className={['lane', film ? 'film' : '', lane.bars === true ? 'bars' : '']
-        .filter(Boolean)
-        .join(' ')}
+      className={classOfLane(lane)}
+      style={lane.rows === undefined ? undefined : ({ '--rows': lane.rows } as CSSProperties)}
     >
       <div className="lane-label" title={lane.label}>
         {lane.label}
       </div>
       <div className="lane-track">
-        {marks.map((mark) => (
-          <LaneMark
-            key={`${lane.id}-${mark.at}`}
-            mark={mark}
-            caption={captionOf(lane.label, mark)}
-            replayId={replayId}
-            onPreview={onPreview}
-          />
-        ))}
+        {marks.map((mark) =>
+          mark.report === undefined ? (
+            <LaneMark
+              key={`${lane.id}-${mark.at}`}
+              mark={mark}
+              caption={captionOf(lane.label, mark)}
+              replayId={replayId}
+              onPreview={onPreview}
+            />
+          ) : (
+            <ReportMark
+              key={mark.report}
+              mark={mark}
+              caption={captionOf(lane.label, mark)}
+              onOpen={onOpenReport}
+            />
+          ),
+        )}
         {lane.marks.length === 0 ? <span className="empty">rien à cette période</span> : null}
       </div>
       {preview === undefined ? null : <FullImage preview={preview} />}
@@ -131,6 +140,44 @@ function LaneMark({ mark, caption, replayId, onPreview }: LaneMarkProps) {
 }
 
 /**
+ * What an agent reported, as a mark one clicks to read it.
+ *
+ * A button, so the keyboard reaches it as the pointer does. On the row
+ * `lanes.ts` gave it, which is what keeps two reports of one instant apart.
+ */
+function ReportMark({
+  mark,
+  caption,
+  onOpen,
+}: {
+  mark: Mark
+  caption: string
+  onOpen: (id: string) => void
+}) {
+  const id = mark.report
+  if (id === undefined) return null
+
+  return (
+    <button
+      type="button"
+      className="mark report"
+      title={caption}
+      aria-label={caption}
+      style={
+        {
+          left: `${String(mark.left)}%`,
+          width: `${String(mark.width)}%`,
+          '--row': mark.row ?? 0,
+        } as CSSProperties
+      }
+      onClick={() => {
+        onOpen(id)
+      }}
+    />
+  )
+}
+
+/**
  * Mounted on hover and not before, which is the whole of the lazy load: a full
  * image weighs some six hundred kilobytes against four for the reduction the
  * lane draws, and a lane holds up to seventeen of them.
@@ -142,6 +189,17 @@ function FullImage({ preview }: { preview: Preview }) {
       <figcaption>{preview.caption}</figcaption>
     </figure>
   )
+}
+
+function classOfLane(lane: LaneModel): string {
+  return [
+    'lane',
+    lane.filmstrip === true ? 'film' : '',
+    lane.bars === true ? 'bars' : '',
+    lane.rows === undefined ? '' : 'stacked',
+  ]
+    .filter(Boolean)
+    .join(' ')
 }
 
 function classOf(mark: Mark): string {

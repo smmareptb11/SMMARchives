@@ -6,6 +6,7 @@ import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 import { formatHour, formatInstant } from '../time.ts'
 import { cursorAt, instantAt } from '../transport/reading.ts'
 import { Lane } from './Lane.tsx'
+import { crossingsIn } from '../events/reports.ts'
 import { MUTES } from '../mutes.ts'
 import { assumedCrossings, speaking, type Family, type ReplayContent } from './lanes.ts'
 
@@ -17,6 +18,8 @@ export type TrackListProps = {
   onSeek: (fraction: number) => void
   /** Whether the lanes with nothing on them are asked for. */
   mutesShown: boolean
+  /** Opens what an agent reported. Stable, or every lane re-renders with the cursor. */
+  onOpenReport: (id: string) => void
 }
 
 /**
@@ -32,6 +35,7 @@ export const TrackList = memo(function TrackList({
   families,
   onSeek,
   mutesShown,
+  onOpenReport,
 }: TrackListProps) {
   return (
     <section>
@@ -43,6 +47,7 @@ export const TrackList = memo(function TrackList({
           family={family}
           replayId={manifest.id}
           mutesShown={mutesShown}
+          onOpenReport={onOpenReport}
         />
       ))}
 
@@ -56,10 +61,12 @@ function FamilyLanes({
   family,
   replayId,
   mutesShown,
+  onOpenReport,
 }: {
   family: Family
   replayId: string
   mutesShown: boolean
+  onOpenReport: (id: string) => void
 }) {
   const lanes = mutesShown ? family.lanes : speaking(family)
   const held = family.lanes.length - lanes.length
@@ -67,12 +74,12 @@ function FamilyLanes({
   return (
     <details open>
       <summary>
-        {family.label} <span className="count">{lanes.length}</span>
+        {family.label} <span className="count">{family.count ?? lanes.length}</span>
       </summary>
       {family.silent === undefined ? null : <p className="note">{silenceOf(family.silent)}</p>}
       {held === 0 ? null : <p className="note">{heldSaid(family, held)}</p>}
       {lanes.map((lane) => (
-        <Lane key={lane.id} lane={lane} replayId={replayId} />
+        <Lane key={lane.id} lane={lane} replayId={replayId} onOpenReport={onOpenReport} />
       ))}
     </details>
   )
@@ -98,7 +105,7 @@ export function ReplayHeading({
         Du {formatInstant(manifest.period.from)} au {formatInstant(manifest.period.to)} — heure
         française.
       </p>
-      <Assumed crossings={assumedCrossings(content)} total={content.events.length} />
+      <Assumed crossings={assumedCrossings(content)} total={crossingsIn(content.events)} />
     </>
   )
 }

@@ -121,6 +121,26 @@ export function aCrossing(one: Partial<ReplayEvent> & { sourceId: number }): Rep
   }
 }
 
+/** An event an agent reported, with every field the contract asks for. */
+export function aReport(one: Partial<ReplayEvent> & { id: string }): ReplayEvent {
+  return {
+    origin: 'manual',
+    category: 'field-report',
+    title: 'Route coupée',
+    description: null,
+    producerKind: 'Agent SMMAR',
+    severity: null,
+    color: null,
+    from: '2019-10-22T06:00:00.000Z',
+    to: null,
+    position: null,
+    sourceId: null,
+    media: [],
+    crossing: null,
+    ...one,
+  }
+}
+
 /**
  * What a crossing rests on, with every field the contract asks for.
  *

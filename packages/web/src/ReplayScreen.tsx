@@ -12,6 +12,7 @@ import { api } from './api.ts'
 import { cursorAt } from './transport/reading.ts'
 import { paintedAt } from './map/state.ts'
 import { gaugesOf } from './rain.ts'
+import { ReportSheet } from './events/ReportSheet.tsx'
 import { describe } from './problems.ts'
 import { Playhead } from './transport/Playhead.tsx'
 import { Transport } from './transport/Transport.tsx'
@@ -77,6 +78,7 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
   // is built rather than building it again.
   const families = useMemo(() => lanesOf(content), [content])
   const heldBack = useMemo(() => heldIn(families), [families])
+  const { report, open, close } = useOpenedReport(content)
 
   return (
     <>
@@ -100,10 +102,38 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
           and is the only child of the pair that a tick re-renders. */}
       <div className="tracks">
         <Playhead period={manifest.period} at={reading.at} />
-        <TrackList manifest={manifest} families={families} onSeek={seek} mutesShown={mutesShown} />
+        <TrackList
+          manifest={manifest}
+          families={families}
+          onSeek={seek}
+          mutesShown={mutesShown}
+          onOpenReport={open}
+        />
       </div>
+      {report === undefined ? null : (
+        <ReportSheet report={report} replayId={manifest.id} onClose={close} />
+      )}
     </>
   )
+}
+
+/**
+ * The event an agent reported that the reader opened, if any.
+ *
+ * Held by identifier rather than as the event, so the sheet always shows what
+ * the content holds under that name.
+ */
+function useOpenedReport(content: ReplayContent) {
+  const [opened, setOpened] = useState<string | undefined>(undefined)
+  const close = useCallback(() => {
+    setOpened(undefined)
+  }, [])
+
+  return {
+    report: content.events.find((one) => one.id === opened),
+    open: setOpened,
+    close,
+  }
 }
 
 type Loaded = { content: ReplayContent | undefined; failure: string | undefined }

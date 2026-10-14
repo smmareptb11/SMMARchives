@@ -12,6 +12,8 @@
   /* The lane label column, which the reading bar has to clear to line up. */
   --label-w: 11rem;
   --night: #0b1218;
+  /* What an agent reported, on the lanes and on the map: a colour no threshold uses. */
+  --report: #2e8540;
   --display: 'Barlow Condensed', system-ui, sans-serif;
   --body: system-ui, sans-serif;
 }
@@ -635,6 +637,31 @@ summary .count {
   );
 }
 
+/*
+ * The lane of what agents reported, spread over as many rows as it takes for
+ * no mark to cover another. Each row is a thin band, so a lane of three is no
+ * taller than a webcam strip.
+ */
+.stacked .lane-track {
+  height: calc(var(--rows) * 0.875rem + 0.5rem);
+}
+
+.mark.report {
+  top: calc(0.25rem + var(--row) * 0.875rem);
+  bottom: auto;
+  height: 0.75rem;
+  /* Wide enough to aim at: an event of no duration is a point in time. */
+  min-width: 6px;
+  padding: 0;
+  background: var(--report);
+}
+
+.mark.report:hover,
+.mark.report:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
 .assumed-note {
   border-left: 3px solid #c99a1e;
   padding-left: 0.75rem;
@@ -711,4 +738,83 @@ summary .count {
   border: 2px solid var(--brand);
   background: color-mix(in srgb, var(--brand) 8%, transparent);
   pointer-events: none;
+}
+
+/*
+ * What an agent wrote of an event, beside the replay rather than over its
+ * middle: the map and the lanes stay readable while it is open. On the left,
+ * the right being where the history of the events will go.
+ */
+.sheet {
+  position: fixed;
+  z-index: 20;
+  top: 1rem;
+  left: 1rem;
+  bottom: 1rem;
+  width: min(24rem, calc(100vw - 2rem));
+  overflow-y: auto;
+  padding: 1rem;
+  background: #fff;
+  border-right: 4px solid var(--report);
+  border-radius: 3px;
+  box-shadow: 0 6px 24px rgb(27 39 51 / 25%);
+}
+
+.sheet header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sheet h2 {
+  margin: 0;
+  font-family: var(--display);
+  color: var(--brand);
+}
+
+.sheet header button {
+  padding: 0.1rem 0.6rem;
+  background: none;
+  color: var(--ink-2);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* What the agent typed, paragraphs included. */
+.sheet .description {
+  white-space: pre-line;
+}
+
+.sheet .photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet .photos button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: var(--night);
+}
+
+.sheet .photos button[aria-pressed='true'] {
+  outline: 3px solid var(--report);
+}
+
+.sheet .photos img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.sheet .enlarged {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
 }
