@@ -38,15 +38,45 @@ describe('an area', () => {
     })
   })
 
-  it('needs three distinct vertices to enclose anything', () => {
-    const refused = { refusal: 'Une zone a trois sommets au moins.' }
+  it('needs three distinct vertices, not on one line, to enclose anything', () => {
+    const refused = { refusal: 'Une zone a trois sommets au moins, qui ne sont pas alignés.' }
 
     expect(areaOf(triangle.slice(0, 2), EXTENT)).toEqual(refused)
     expect(areaOf([triangle[0]!, triangle[1]!, triangle[0]!], EXTENT)).toEqual(refused)
+    expect(
+      areaOf(
+        [
+          [2.3, 43.2],
+          [2.35, 43.2],
+          [2.4, 43.2],
+        ],
+        EXTENT,
+      ),
+    ).toEqual(refused)
+  })
+
+  it('is refused when its sides cross, as the API would refuse it', () => {
+    expect(
+      areaOf(
+        [
+          [2.3, 43.2],
+          [2.4, 43.25],
+          [2.4, 43.2],
+          [2.3, 43.25],
+        ],
+        EXTENT,
+      ),
+    ).toEqual({ refusal: 'Les côtés de la zone ne doivent pas se croiser.' })
   })
 
   it('is refused when a vertex lies outside the extent', () => {
-    expect(areaOf([...triangle, [2.6, 43.2]], EXTENT)).toEqual({ refusal: OUTSIDE })
+    const reachingOut: Spot[] = [
+      [2.3, 43.2],
+      [2.4, 43.2],
+      [2.35, 43.35],
+    ]
+
+    expect(areaOf(reachingOut, EXTENT)).toEqual({ refusal: OUTSIDE })
   })
 })
 

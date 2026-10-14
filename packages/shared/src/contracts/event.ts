@@ -23,17 +23,105 @@ export const eventPositionSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('Polygon'),
     coordinates: z
-      .array(z.array(coordinatesSchema).min(4).refine(isClosed, 'is not closed'))
+      .array(
+        z
+          .array(coordinatesSchema)
+          .min(4)
+          .refine(isClosed, 'is not closed')
+          .refine(enclosesSomething, 'encloses nothing')
+          .refine((ring) => !crossesItself(ring), 'crosses itself'),
+      )
       .min(1),
   }),
 ])
 
 export type EventPosition = z.infer<typeof eventPositionSchema>
 
-function isClosed(ring: [number, number][]): boolean {
+type Vertex = [number, number]
+
+function isClosed(ring: Vertex[]): boolean {
   const first = ring[0]
   const last = ring.at(-1)
   return first !== undefined && last !== undefined && first[0] === last[0] && first[1] === last[1]
+}
+
+/**
+ * Whether a closed ring has an area: three distinct vertices that are not all
+ * on one line. Shared so the form judges a traced area as the API will.
+ *
+ * Neither is caught by the closing rule, and PostGIS stores either as a
+ * geometry the map fills with nothing: an event placed, and never seen.
+ */
+export function enclosesSomething(ring: readonly Vertex[]): boolean {
+  return Math.abs(twiceTheArea(ring)) > 0
+}
+
+/** The shoelace formula, over a ring closed on its first vertex. */
+function twiceTheArea(ring: readonly Vertex[]): number {
+  let sum = 0
+  for (let index = 0; index + 1 < ring.length; index += 1) {
+    const [x1, y1] = ring[index]!
+    const [x2, y2] = ring[index + 1]!
+    sum += x1 * y2 - x2 * y1
+  }
+  return sum
+}
+
+/**
+ * Whether two sides of a closed ring meet anywhere but at the vertex they
+ * share — a bow tie, or a side doubling back over another.
+ *
+ * A vertex repeated in a row is a side of no length, and is dropped first.
+ */
+export function crossesItself(ring: readonly Vertex[]): boolean {
+  const vertices = ring.filter(
+    (one, index) => index === 0 || one[0] !== ring[index - 1]![0] || one[1] !== ring[index - 1]![1],
+  )
+  const sides = vertices.length - 1
+  for (let one = 0; one < sides; one += 1) {
+    for (let other = one + 1; other < sides; other += 1) {
+      // Neighbours share a vertex, the first and the last side included.
+      if (other === one + 1 || (one === 0 && other === sides - 1)) continue
+      if (meet(vertices[one]!, vertices[one + 1]!, vertices[other]!, vertices[other + 1]!)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/** Whether two segments touch, an end lying on the other segment included. */
+function meet(a: Vertex, b: Vertex, c: Vertex, d: Vertex): boolean {
+  // Each end of a segment, seen from the line through the other one.
+  const seen: [Vertex, Vertex, Vertex][] = [
+    [a, b, c],
+    [a, b, d],
+    [c, d, a],
+    [c, d, b],
+  ]
+  const [abc, abd, cda, cdb] = seen.map(([p, q, r]) => turn(p, q, r)) as [
+    number,
+    number,
+    number,
+    number,
+  ]
+  if (abc * abd < 0 && cda * cdb < 0) return true
+  return seen.some(([p, q, r]) => turn(p, q, r) === 0 && within(p, q, r))
+}
+
+/** Which way `c` lies from the line through `a` and `b`: left, right, or on it. */
+function turn(a: Vertex, b: Vertex, c: Vertex): number {
+  return Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+}
+
+/** Whether `c`, already on the line through `a` and `b`, lies between them. */
+function within(a: Vertex, b: Vertex, c: Vertex): boolean {
+  return (
+    Math.min(a[0], b[0]) <= c[0] &&
+    c[0] <= Math.max(a[0], b[0]) &&
+    Math.min(a[1], b[1]) <= c[1] &&
+    c[1] <= Math.max(a[1], b[1])
+  )
 }
 
 /**

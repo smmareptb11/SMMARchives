@@ -100,7 +100,7 @@ Tout autre type de corps rend `415`.
 | `producerKind` | Qui l'a rapporté — agent SMMAR, commune, SDIS… Chaîne non vide de 100 caractères au plus, sans caractère de contrôle |
 | `from` | Un instant, dans la période du rejeu |
 | `to` | Un instant, dans la période du rejeu et pas avant `from`. Nullable : l'événement est alors ponctuel |
-| `position` | Un `Point` ou un `Polygon` GeoJSON en WGS84, dans l'emprise du rejeu — le territoire du SMMAR si le rejeu n'en a pas. Nullable |
+| `position` | Un `Point` ou un `Polygon` GeoJSON en WGS84, dans l'emprise du rejeu — le territoire du SMMAR si le rejeu n'en a pas. Une zone est fermée, a une surface — trois sommets distincts, pas tous alignés — et ses côtés ne se croisent pas. Nullable |
 
 Comme pour un rejeu, le schéma est strict : l'identifiant, l'origine et la
 catégorie ne s'envoient pas, ils sont fixés par le stockage.

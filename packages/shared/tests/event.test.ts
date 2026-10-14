@@ -87,6 +87,57 @@ describe('the area of an event', () => {
     expect(eventSchema.safeParse(aReport({ position: closedOnThree })).success).toBe(false)
   })
 
+  /** An area the map would fill with nothing is placed, and never seen. */
+  it('encloses something', () => {
+    const ring = (...points: [number, number][]) => ({
+      type: 'Polygon' as const,
+      coordinates: [[...points, points[0]!]],
+    })
+    const refused = (position: ReturnType<typeof ring>) =>
+      eventSchema.safeParse(aReport({ position })).error?.issues.map((one) => one.message)
+
+    expect(refused(ring([2.35, 43.21], [2.35, 43.21], [2.35, 43.21]))).toContain('encloses nothing')
+    expect(refused(ring([2.3, 43.2], [2.4, 43.2], [2.5, 43.2]))).toContain('encloses nothing')
+    expect(refused(ring([2.3, 43.2], [2.4, 43.2], [2.35, 43.25]))).toBeUndefined()
+  })
+
+  it('does not cross itself', () => {
+    const bowTie = {
+      type: 'Polygon' as const,
+      coordinates: [
+        [
+          [2.3, 43.2],
+          [2.4, 43.25],
+          [2.4, 43.2],
+          [2.3, 43.25],
+          [2.3, 43.2],
+        ] as [number, number][],
+      ],
+    }
+
+    expect(
+      eventSchema.safeParse(aReport({ position: bowTie })).error?.issues.map((one) => one.message),
+    ).toContain('crosses itself')
+  })
+
+  it('keeps an ordinary area, a repeated vertex included', () => {
+    const square = {
+      type: 'Polygon' as const,
+      coordinates: [
+        [
+          [2.3, 43.2],
+          [2.4, 43.2],
+          [2.4, 43.2],
+          [2.4, 43.25],
+          [2.3, 43.25],
+          [2.3, 43.2],
+        ] as [number, number][],
+      ],
+    }
+
+    expect(eventSchema.safeParse(aReport({ position: square })).success).toBe(true)
+  })
+
   it('ends where it starts', () => {
     const open = {
       type: 'Polygon' as const,

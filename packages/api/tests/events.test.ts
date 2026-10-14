@@ -250,3 +250,25 @@ describe('refusing an event', () => {
     })
   })
 })
+
+describe('refusing an area', () => {
+  it('refuses an area that encloses nothing, rather than storing one nobody can see', async () => {
+    const { api, id } = await aReplay()
+    const flat = {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [2.3, 43.2],
+          [2.35, 43.2],
+          [2.4, 43.2],
+          [2.3, 43.2],
+        ],
+      ],
+    }
+
+    await withServer(appOn(api), async (base) => {
+      const refusals = await refusalsOf(await report(base, id, { ...REPORT, position: flat }))
+      expect(refusals).toEqual([{ path: 'position.coordinates.0', message: 'encloses nothing' }])
+    })
+  })
+})
