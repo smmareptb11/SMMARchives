@@ -3,6 +3,7 @@ import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
 import type { ReplayContent } from '../tracks/lanes.ts'
+import { extentOf } from './placing.ts'
 import { ReportForm } from './ReportForm.tsx'
 import { ReportSheet } from './ReportSheet.tsx'
 import type { PanelControl } from './usePanel.ts'
@@ -25,6 +26,7 @@ export function ReportPanel({ manifest, content, control, onSaved }: ReportPanel
       <ReportForm
         replayId={manifest.id}
         period={manifest.period}
+        extent={extentOf(manifest)}
         at={panel.at}
         leaving={control.leaving}
         onLeave={control.leave}

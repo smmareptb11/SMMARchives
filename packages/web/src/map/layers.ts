@@ -1,5 +1,5 @@
 import type { FeatureCollection } from 'geojson'
-import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 
 import { UNION_OUTLINES } from '@smmarchives/shared/reference/perimeters.ts'
 
@@ -180,6 +180,11 @@ export function drawReports(map: MapLibreMap, content: ReplayContent): void {
       paint: { 'icon-color': colour },
     })
   }
+}
+
+/** What agents reported, again: the screen holds one more since the map was drawn. */
+export function redrawReports(map: MapLibreMap, content: ReplayContent): void {
+  void map.getSource<GeoJSONSource>('reports')?.setData(reportsOnTheMap(content.events))
 }
 
 /**

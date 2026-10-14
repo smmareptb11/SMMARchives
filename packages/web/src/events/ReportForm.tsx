@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useState, type FormEvent } from 'react'
+import { Suspense, lazy, useEffect, useId, useMemo, useState, type FormEvent } from 'react'
 
 import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
-import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
+import type { EventPosition, ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
+import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 
 import { api } from '../api.ts'
 import { ApiError, describe } from '../problems.ts'
@@ -18,9 +19,19 @@ import {
 } from './draft.ts'
 import { PhotoPicker } from './PhotoPicker.tsx'
 
+/**
+ * Loaded when the form opens, and not with the screen: MapLibre weighs a
+ * megabyte, and the replay's own map already loads it apart for the same reason.
+ */
+const PositionPicker = lazy(async () => ({
+  default: (await import('./PositionPicker.tsx')).PositionPicker,
+}))
+
 export type ReportFormProps = {
   replayId: string
   period: TimeWindow
+  /** Where the event may be placed: the replay's extent, or the territory. */
+  extent: BoundingBox
   /** Where the reading stood when the form was opened, which is where the event starts. */
   at: Instant
   /** Something asked to leave the form while it holds what the agent typed. */
@@ -45,6 +56,10 @@ export function ReportForm(props: ReportFormProps) {
     onTouched(touched(draft, blank, photos.length))
   }, [draft, blank, photos.length, onTouched])
 
+  const place = (position: EventPosition | null) => {
+    setDraft((held) => ({ ...held, position }))
+    sent.forget('position')
+  }
   const edit = (field: keyof Draft) => (value: string) => {
     setDraft((held) => ({ ...held, [field]: value }))
     sent.forget(field)
@@ -55,6 +70,12 @@ export function ReportForm(props: ReportFormProps) {
       <h2>Saisir un événement</h2>
       {props.leaving ? <Leaving onLeave={props.onLeave} onStay={props.onStay} /> : null}
       <Fields draft={draft} edit={edit} refusals={sent.refusals} />
+      <Place
+        extent={props.extent}
+        value={draft.position}
+        onChange={place}
+        refusal={sent.refusals.position}
+      />
       <PhotoPicker
         photos={photos}
         onChange={(next) => {
@@ -63,66 +84,46 @@ export function ReportForm(props: ReportFormProps) {
         }}
         refusal={sent.refusals.photos}
       />
-      {sent.failure.map((one) => (
+      <Ending failure={sent.failure} sending={sent.sending} onCancel={props.onCancel} />
+    </form>
+  )
+}
+
+/** What the API said against it, and the two ways out of the form. */
+function Ending({
+  failure,
+  sending,
+  onCancel,
+}: {
+  failure: readonly string[]
+  sending: boolean
+  onCancel: () => void
+}) {
+  return (
+    <>
+      {failure.map((one) => (
         <p className="refusal" role="alert" key={one}>
           {one}
         </p>
       ))}
       <footer>
-        <button type="submit" disabled={sent.sending}>
-          {sent.sending ? 'Envoi…' : 'Enregistrer'}
+        <button type="submit" disabled={sending}>
+          {sending ? 'Envoi…' : 'Enregistrer'}
         </button>
-        <button type="button" className="quiet" onClick={props.onCancel}>
+        <button type="button" className="quiet" onClick={onCancel}>
           Annuler
         </button>
       </footer>
-    </form>
+    </>
   )
 }
 
-/** What the agent writes of the event, each field with what was refused of it. */
-function Fields({
-  draft,
-  edit,
-  refusals,
-}: {
-  draft: Draft
-  edit: (field: keyof Draft) => (value: string) => void
-  refusals: Refusals
-}) {
+/** The small map, once it has loaded. */
+function Place(props: Parameters<typeof PositionPicker>[0]) {
   return (
-    <>
-      <TextField
-        label="Titre"
-        value={draft.title}
-        onChange={edit('title')}
-        refusal={refusals.title}
-      />
-      <TextField
-        label="Signalé par"
-        value={draft.producerKind}
-        onChange={edit('producerKind')}
-        refusal={refusals.producerKind}
-        suggestions={PRODUCER_KINDS}
-      />
-      <HourField label="Début" value={draft.from} onChange={edit('from')} refusal={refusals.from} />
-      <HourField
-        label="Fin (facultative)"
-        value={draft.to}
-        onChange={edit('to')}
-        refusal={refusals.to}
-        onClick={() => {
-          edit('to')(endOnEntry(draft))
-        }}
-      />
-      <TextField
-        label="Description"
-        value={draft.description}
-        onChange={edit('description')}
-        refusal={refusals.description}
-        multiline
-      />
-    </>
+    <Suspense fallback={<p className="note">Chargement de la carte…</p>}>
+      <PositionPicker {...props} />
+    </Suspense>
   )
 }
 
@@ -182,6 +183,52 @@ function Leaving({ onLeave, onStay }: { onLeave: () => void; onStay: () => void 
         Continuer la saisie
       </button>
     </div>
+  )
+}
+
+/** What the agent writes of the event, each field with what was refused of it. */
+function Fields({
+  draft,
+  edit,
+  refusals,
+}: {
+  draft: Draft
+  edit: (field: keyof Draft) => (value: string) => void
+  refusals: Refusals
+}) {
+  return (
+    <>
+      <TextField
+        label="Titre"
+        value={draft.title}
+        onChange={edit('title')}
+        refusal={refusals.title}
+      />
+      <TextField
+        label="Signalé par"
+        value={draft.producerKind}
+        onChange={edit('producerKind')}
+        refusal={refusals.producerKind}
+        suggestions={PRODUCER_KINDS}
+      />
+      <HourField label="Début" value={draft.from} onChange={edit('from')} refusal={refusals.from} />
+      <HourField
+        label="Fin (facultative)"
+        value={draft.to}
+        onChange={edit('to')}
+        refusal={refusals.to}
+        onClick={() => {
+          edit('to')(endOnEntry(draft))
+        }}
+      />
+      <TextField
+        label="Description"
+        value={draft.description}
+        onChange={edit('description')}
+        refusal={refusals.description}
+        multiline
+      />
+    </>
   )
 }
 

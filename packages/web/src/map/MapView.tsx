@@ -13,6 +13,7 @@ import {
   drawTerritory,
   paintReports,
   paintSources,
+  redrawReports,
   showFamilies,
   showMutes,
 } from './layers.ts'
@@ -134,6 +135,11 @@ function usePaintedReports(
 ): void {
   const painted = useRef<ReportPainting | undefined>(undefined)
   const painting = useMemo(() => reportPaintingAt(content.events, at), [content.events, at])
+
+  // A report saved while the replay is open: the map was drawn without it.
+  useEffect(() => {
+    if (ready && drawn.current !== undefined) redrawReports(drawn.current, content)
+  }, [ready, drawn, content])
 
   useEffect(() => {
     if (!ready || drawn.current === undefined) return
