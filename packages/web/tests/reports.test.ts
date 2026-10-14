@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { crossingsIn, reportsOf, rowsOf } from '../src/events/reports.ts'
+import { crossingsIn, instantToRead, reportsOf, rowsOf } from '../src/events/reports.ts'
+import { phaseAt } from '../src/map/reports.ts'
 import { drawnMarks, lanesOf } from '../src/tracks/lanes.ts'
 
-import { aCrossing, aReport, aStation, held } from './support/content.ts'
+import { aCrossing, aReport, aStation, held, period } from './support/content.ts'
 
 describe('the events agents reported', () => {
   it('are the manual events, in the order they happened', () => {
@@ -103,5 +104,25 @@ describe('the lane of reports', () => {
     const families = lanesOf(twoAtOnce())
 
     expect(families[1]?.lanes[0]?.marks).toHaveLength(1)
+  })
+})
+
+describe('where the reading goes when a sheet opens', () => {
+  it('is the start of the event, where the map shows it under way', () => {
+    const span = aReport({
+      id: 'a',
+      from: '2019-10-22T06:00:00.000Z',
+      to: '2019-10-22T08:00:00.000Z',
+    })
+    const instant = aReport({ id: 'b', from: '2019-10-22T09:00:00.000Z' })
+
+    expect(phaseAt(span, instantToRead(span, period))).toBe('during')
+    expect(phaseAt(instant, instantToRead(instant, period))).toBe('during')
+  })
+
+  it('stays within the period', () => {
+    const before = aReport({ id: 'c', from: '2019-10-21T23:00:00.000Z' })
+
+    expect(instantToRead(before, period)).toBe(Date.parse(period.from))
   })
 })

@@ -13,11 +13,12 @@ import { cursorAt, instantAt } from './transport/reading.ts'
 import { paintedAt } from './map/state.ts'
 import { gaugesOf } from './rain.ts'
 import { ReportButton, ReportPanel, type ContentChanges } from './events/ReportPanel.tsx'
-import { usePanel } from './events/usePanel.ts'
+import { usePanel, type Panel } from './events/usePanel.ts'
+import { instantToRead } from './events/reports.ts'
 import { describe } from './problems.ts'
 import { Playhead } from './transport/Playhead.tsx'
 import { Transport } from './transport/Transport.tsx'
-import { useCursor } from './transport/useCursor.ts'
+import { useCursor, type Reading } from './transport/useCursor.ts'
 import { ReplayHeading, TrackList } from './tracks/TrackList.tsx'
 import { heldIn, lanesOf, type ReplayContent } from './tracks/lanes.ts'
 
@@ -77,7 +78,7 @@ function Replayed({
   // is built rather than building it again.
   const families = useMemo(() => lanesOf(content), [content])
   const heldBack = useMemo(() => heldIn(families), [families])
-  const panel = usePanel()
+  const panel = usePanelOverTheReading(content, reading)
 
   return (
     <>
@@ -130,6 +131,34 @@ function useReading(manifest: ReplayManifest, content: ReplayContent) {
     [reading.seek, manifest.period],
   )
   return { reading, seek }
+}
+
+/** The left-hand panel, with the reading following the sheet it opens. */
+function usePanelOverTheReading(content: ReplayContent, reading: Reading) {
+  const panel = usePanel()
+  useReadingOnTheSheet(panel.panel, content, reading)
+  return panel
+}
+
+/**
+ * Brings the reading to the event whose sheet opens, and holds it there.
+ *
+ * On the sheet being shown rather than on the click: a click that waits on
+ * « Abandonner la saisie en cours ? » moves nothing until the agent leaves the
+ * form. Paused, so the event stays under way on the map while it is read.
+ * Following the sheet means following it after a save too, which places the
+ * reading on an event whose time was just changed.
+ */
+function useReadingOnTheSheet(panel: Panel, content: ReplayContent, reading: Reading): void {
+  const shown = panel?.kind === 'sheet' ? panel.id : undefined
+  const { pause, seek } = reading
+
+  useEffect(() => {
+    const event = content.events.find((one) => one.id === shown)
+    if (event === undefined) return
+    pause()
+    seek(instantToRead(event, content.period))
+  }, [shown, content.events, content.period, pause, seek])
 }
 
 type Loaded = { content: ReplayContent | undefined; failure: string | undefined }

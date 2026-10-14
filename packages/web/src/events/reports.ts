@@ -1,4 +1,7 @@
+import type { TimeWindow } from '@smmarchives/shared/clock.ts'
 import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
+
+import type { Cursor } from '../transport/reading.ts'
 
 /**
  * The events agents reported, in the order they happened.
@@ -34,4 +37,16 @@ export function rowsOf(spans: readonly { left: number; width: number }[]): numbe
     ends[row] = span.left + span.width
     return row
   })
+}
+
+/**
+ * Where the reading goes when an event's sheet opens: its start, which is the
+ * instant the map shows it under way.
+ *
+ * Held within the period, though the API already keeps an agent's event there:
+ * a reading never stands outside the replay it reads.
+ */
+export function instantToRead(event: ReplayEvent, period: TimeWindow): Cursor {
+  const from = Date.parse(event.from)
+  return Math.min(Math.max(from, Date.parse(period.from)), Date.parse(period.to))
 }
