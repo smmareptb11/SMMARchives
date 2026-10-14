@@ -1,9 +1,11 @@
 import type { TimeWindow } from '@smmarchives/shared/clock.ts'
+import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 import type { Measure } from '@smmarchives/shared/contracts/measure.ts'
 import type { Quantity } from '@smmarchives/shared/contracts/quantity.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
+import type { Report } from './events/draft.ts'
 import { ApiError, problemOf } from './problems.ts'
 
 /**
@@ -54,6 +56,23 @@ export const api = {
   measuresOf: (id: string, sourceId: number, quantity: Quantity, signal?: AbortSignal) =>
     api.datasetOf<Measure[]>(id, 'measures', { source: String(sourceId), quantity }, signal),
 
+  /**
+   * Adds what an agent reported. JSON when there is no photo, a form when there
+   * are: the event first, which the API judges before writing a single photo.
+   */
+  reportEvent: (id: string, report: Report, photos: readonly File[]) =>
+    ask<ReplayEvent>(`/replays/${id}/events`, { method: 'POST', ...bodyOf(report, photos) }),
+
   /** Where a frozen medium is served from, for an `img` to point at. */
   mediaUrl: (id: string, path: string) => `/replays/${id}/media/${path}`,
+}
+
+function bodyOf(event: unknown, photos: readonly File[]): RequestInit {
+  if (photos.length === 0) {
+    return { headers: { 'content-type': 'application/json' }, body: JSON.stringify(event) }
+  }
+  const form = new FormData()
+  form.append('event', JSON.stringify(event))
+  for (const photo of photos) form.append('photo', photo)
+  return { body: form }
 }

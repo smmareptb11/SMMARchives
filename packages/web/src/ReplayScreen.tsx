@@ -9,10 +9,11 @@ import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
 import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
 import { api } from './api.ts'
-import { cursorAt } from './transport/reading.ts'
+import { cursorAt, instantAt } from './transport/reading.ts'
 import { paintedAt } from './map/state.ts'
 import { gaugesOf } from './rain.ts'
-import { ReportSheet } from './events/ReportSheet.tsx'
+import { ReportButton, ReportPanel } from './events/ReportPanel.tsx'
+import { usePanel } from './events/usePanel.ts'
 import { describe } from './problems.ts'
 import { Playhead } from './transport/Playhead.tsx'
 import { Transport } from './transport/Transport.tsx'
@@ -37,12 +38,12 @@ const MapView = lazy(async () => ({ default: (await import('./map/MapView.tsx'))
  * draw its segment. Loading them twice would be reading the same thing twice.
  */
 export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
-  const { content, failure } = useContent(manifest)
+  const { content, failure, saved } = useContent(manifest)
 
   if (failure !== undefined) return <p className="refusal">{failure}</p>
   if (content === undefined) return <p>Lecture du rejeu…</p>
 
-  return <Replayed manifest={manifest} content={content} />
+  return <Replayed manifest={manifest} content={content} onSaved={saved} />
 }
 
 /**
@@ -56,18 +57,16 @@ export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
  * start, its end and its colour, so the same events the lanes draw are what the
  * map paints with.
  */
-function Replayed({ manifest, content }: { manifest: ReplayManifest; content: ReplayContent }) {
-  const marks = useMemo(() => content.events.map((one) => Date.parse(one.from)), [content.events])
-  const reading = useCursor(manifest.period, marks)
-  const seek = useCallback(
-    (fraction: number) => {
-      reading.seek(cursorAt(manifest.period, fraction))
-    },
-    // `reading.seek` is memoised by `useCursor`; `reading` itself is a new object on every
-    // render, so watching it would rebuild this callback sixty times a second.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the stable member, not the object
-    [reading.seek, manifest.period],
-  )
+function Replayed({
+  manifest,
+  content,
+  onSaved,
+}: {
+  manifest: ReplayManifest
+  content: ReplayContent
+  onSaved: (event: ReplayEvent) => void
+}) {
+  const { reading, seek } = useReading(manifest, content)
   const colours = useMemo(() => paintedAt(content, reading.at), [content, reading.at])
   // Above the map and the lanes because it reaches both: a replay keeps the
   // sources that answered nothing, and the reader says when to see them.
@@ -78,7 +77,7 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
   // is built rather than building it again.
   const families = useMemo(() => lanesOf(content), [content])
   const heldBack = useMemo(() => heldIn(families), [families])
-  const { report, open, close } = useOpenedReport(content)
+  const panel = usePanel()
 
   return (
     <>
@@ -94,10 +93,11 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
           mutesShown={mutesShown}
           onMutesShown={setMutesShown}
           heldBack={heldBack}
-          onOpenReport={open}
+          onOpenReport={panel.openReport}
         />
       </Suspense>
       <ReplayHeading manifest={manifest} content={content} />
+      <ReportButton manifest={manifest} at={instantAt(reading.at)} control={panel} />
 
       {/* One positioned wrapper for the two: the bar is laid over the lanes,
           and is the only child of the pair that a tick re-renders. */}
@@ -108,33 +108,28 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
           families={families}
           onSeek={seek}
           mutesShown={mutesShown}
-          onOpenReport={open}
+          onOpenReport={panel.openReport}
         />
       </div>
-      {report === undefined ? null : (
-        <ReportSheet report={report} replayId={manifest.id} onClose={close} />
-      )}
+      <ReportPanel manifest={manifest} content={content} control={panel} onSaved={onSaved} />
     </>
   )
 }
 
-/**
- * The event an agent reported that the reader opened, if any.
- *
- * Held by identifier rather than as the event, so the sheet always shows what
- * the content holds under that name.
- */
-function useOpenedReport(content: ReplayContent) {
-  const [opened, setOpened] = useState<string | undefined>(undefined)
-  const close = useCallback(() => {
-    setOpened(undefined)
-  }, [])
-
-  return {
-    report: content.events.find((one) => one.id === opened),
-    open: setOpened,
-    close,
-  }
+/** The cursor over the replay, and seeking it from a fraction of the period. */
+function useReading(manifest: ReplayManifest, content: ReplayContent) {
+  const marks = useMemo(() => content.events.map((one) => Date.parse(one.from)), [content.events])
+  const reading = useCursor(manifest.period, marks)
+  const seek = useCallback(
+    (fraction: number) => {
+      reading.seek(cursorAt(manifest.period, fraction))
+    },
+    // `reading.seek` is memoised by `useCursor`; `reading` itself is a new object on every
+    // render, so watching it would rebuild this callback sixty times a second.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the stable member, not the object
+    [reading.seek, manifest.period],
+  )
+  return { reading, seek }
 }
 
 type Loaded = { content: ReplayContent | undefined; failure: string | undefined }
@@ -188,8 +183,17 @@ async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise
  * The rain of the whole parc is among it, being a fortieth of that on the same
  * replay — so are the ladders that say which quantity a station is read on.
  */
-function useContent(manifest: ReplayManifest): Loaded {
+function useContent(manifest: ReplayManifest): Loaded & { saved: (event: ReplayEvent) => void } {
   const [loaded, setLoaded] = useState<Loaded>({ content: undefined, failure: undefined })
+  // What an agent has just saved, held without reloading the replay: the API
+  // answered with the event as a reader will read it, which is all that changed.
+  const saved = useCallback((event: ReplayEvent) => {
+    setLoaded((held) =>
+      held.content === undefined
+        ? held
+        : { ...held, content: { ...held.content, events: withEvent(held.content.events, event) } },
+    )
+  }, [])
 
   useEffect(() => {
     const leaving = new AbortController()
@@ -214,5 +218,10 @@ function useContent(manifest: ReplayManifest): Loaded {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the fields read, not the manifest
   }, [manifest.id, manifest.datasets, manifest.period])
 
-  return loaded
+  return { ...loaded, saved }
+}
+
+/** The events with this one in, replacing the one of the same name if there was one. */
+function withEvent(events: readonly ReplayEvent[], event: ReplayEvent): ReplayEvent[] {
+  return [...events.filter((one) => one.id !== event.id), event]
 }

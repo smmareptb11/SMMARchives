@@ -296,7 +296,8 @@ label small {
 }
 
 input,
-select {
+select,
+textarea {
   font: inherit;
   padding: 0.4rem 0.5rem;
   border: 1px solid #c7d0d9;
@@ -817,4 +818,99 @@ summary .count {
   display: block;
   width: 100%;
   border-radius: 3px;
+}
+
+/*
+ * Under the replay's title, on the right: where reporting starts, and why it
+ * cannot — the reason to the left of the button it explains.
+ */
+.report-entry {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+/* The form in the panel: its own grid, and room to scroll. */
+.report-form {
+  align-content: start;
+  max-width: none;
+}
+
+.report-form h2 {
+  margin: 0;
+  font-family: var(--display);
+  color: var(--brand);
+}
+
+.report-form textarea {
+  resize: vertical;
+}
+
+/* What was refused of a field, under it. */
+.refused {
+  font-weight: 400;
+  font-size: 13px;
+  color: #b3261e;
+}
+
+/* The question before what the agent typed is thrown away. */
+.leaving {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid #c99a1e;
+  background: #fdf6e3;
+}
+
+.leaving p {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+.report-form footer {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* A second action beside the main one, which must not look like it. */
+button.quiet {
+  background: none;
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+.photo-picker {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+}
+
+.photo-picker legend {
+  font-weight: 600;
+}
+
+.photo-picker .photos {
+  margin: 0;
+}
+
+.photo-picker li {
+  display: grid;
+  gap: 0.25rem;
+}
+
+/* Over the thumbnail rule of the sheet, which would draw it as a dark tile. */
+.photo-picker .photos button.quiet {
+  width: auto;
+  justify-self: start;
+  padding: 0.15rem 0.4rem;
+  font-size: 12px;
+  background: none;
 }
