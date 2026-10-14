@@ -8,7 +8,7 @@ import type { ReplayContent } from '../tracks/lanes.ts'
 import { extentOf } from './placing.ts'
 import { ReportForm } from './ReportForm.tsx'
 import { ReportSheet } from './ReportSheet.tsx'
-import type { PanelControl } from './usePanel.ts'
+import { formKeyOf, type PanelControl } from './usePanel.ts'
 import { useClickOutside } from './useClickOutside.ts'
 
 export type ReportPanelProps = {
@@ -82,9 +82,7 @@ function FormPanel({
 }: Omit<ReportPanelProps, 'content'> & { at: Instant; editing?: ReplayEvent }) {
   return (
     <ReportForm
-      // A different event is a different form: what was typed for one is not
-      // carried over to the next.
-      key={editing?.id ?? 'new'}
+      key={formKeyOf(at, editing)}
       replayId={manifest.id}
       period={manifest.period}
       extent={extentOf(manifest)}

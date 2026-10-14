@@ -86,3 +86,14 @@ export function usePanel(): PanelControl {
     [panel, request, openReport, show, waiting, setTouched],
   )
 }
+
+/**
+ * Which form a panel holds, as React tells one from another.
+ *
+ * An event amended is its own form, so what was typed for one never carries
+ * over to the next. A new one is the form of the instant it was opened at, so
+ * that it starts where the reading stands.
+ */
+export function formKeyOf(at: Instant, editing: { id: string } | undefined): string {
+  return editing === undefined ? `new-${at}` : `edit-${editing.id}`
+}
