@@ -37,7 +37,7 @@ export type FetchImagesOptions = {
   codes: readonly string[]
   window: TimeWindow
   /** Injected so the retention check is testable without freezing the clock. */
-  now?: Date
+  now?: Date | undefined
 }
 
 export type ImagesResult = {

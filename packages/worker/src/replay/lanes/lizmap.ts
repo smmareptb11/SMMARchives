@@ -35,6 +35,8 @@ export type LizmapLaneOptions = {
   store: ReplayStore
   /** False skips the download, for a quick run; the data set then holds no path. */
   copyMedia: boolean
+  /** What Ceneau's retention is judged against: the real time unless given. */
+  now?: Date | undefined
 }
 
 const IMAGES = z.array(frozenWebcamImageSchema)
@@ -113,6 +115,7 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
     collector: listing,
     codes,
     window: identity.period,
+    now: options.now,
   })
 
   // Its own collector: the failures of a download must not be attributed to the

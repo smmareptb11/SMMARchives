@@ -25,6 +25,12 @@ export type BuildOptions = {
   lizmap?: LizmapSource | undefined
   radarRainfall?: RadarRainfallSource | undefined
   copyMedia: boolean
+  /**
+   * The instant the build judges what its sources still hold against: Ceneau
+   * forgets an image after a month. The real time by default; a test of a fixed
+   * period gives its own, or its result changes with the calendar.
+   */
+  now?: Date | undefined
   /** Where progress goes beside the journal. Silent by default. */
   onProgress?: ((message: string) => void) | undefined
 }
@@ -62,6 +68,7 @@ export async function buildReplay(options: BuildOptions): Promise<BuildResult> {
           identity: options.identity,
           store: options.store,
           copyMedia: options.copyMedia,
+          now: options.now,
         }),
   ])
 

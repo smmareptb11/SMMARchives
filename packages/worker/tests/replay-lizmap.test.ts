@@ -32,9 +32,17 @@ const CONFIG = { baseUrl: 'https://crise.test' }
 
 /**
  * The fixture's three pictures span 2026-09-08 12:03 to 2026-09-09 12:03, so
- * this window holds all three and stays inside Ceneau's one-month retention.
+ * this window holds all three, and lies inside Ceneau's one-month retention
+ * at {@link NOW}.
  */
 const RECENT: TimeWindow = windowOf('2026-09-08T00:00:00Z', '2026-09-10T00:00:00Z')
+
+/**
+ * The instant every build of this file is run at: a few days after
+ * {@link RECENT}, so that window is within Ceneau's retention whatever the
+ * calendar says, and a period of 2018 beyond it.
+ */
+const NOW = new Date('2026-09-15T00:00:00Z')
 
 /**
  * Holds the Mailhac camera (2.8278, 43.3031) and no other of the fixture: Pezens
@@ -114,6 +122,7 @@ async function build({
         }
       : {}),
     copyMedia,
+    now: NOW,
   })
   return { ...result, calls: fetch.calls }
 }
