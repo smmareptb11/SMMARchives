@@ -1,20 +1,26 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, type RefObject } from 'react'
 import uPlot from 'uplot'
 
 import 'uplot/dist/uPlot.min.css'
+
+import type { TimeWindow } from '@smmarchives/shared/clock.ts'
 
 import { BRAND, MUTED } from '../palette.ts'
 import { FRENCH_TIME } from '../time.ts'
 import type { Cursor } from '../transport/reading.ts'
 import {
   CURVE_HEIGHT,
-  CURVE_WIDTH,
   SECOND,
   boundsWith,
   figures,
+  figuresWidth,
+  followSize,
   hours,
+  instantBar,
+  placeInstant,
   plotted,
-  windowAround,
+  windowOf,
+  type Span,
 } from './chart.ts'
 import type { Rung, Series } from './series.ts'
 
@@ -29,58 +35,79 @@ const RUNG = 1
  * thrown away and rebuilt on every tick of the reading would draw nothing but
  * itself.
  *
- * The instant does not move. The window is centred on the cursor, so the curve
- * slides under a bar that stays where it is, and the eye reads the same place
- * for the whole episode. What a tick changes is therefore the window of time,
- * never the drawing.
+ * Over a span, the window is centred on the cursor, so the curve slides under
+ * a bar that stays where it is, and the eye reads the same place for the whole
+ * episode. Over the whole period the curve holds still and the bar walks it.
+ * What a tick changes is therefore the window of time, never the drawing.
  */
 export function StationChart({
   series,
   ladder,
   at,
+  span,
+  period,
 }: {
   series: Series
   ladder: readonly Rung[]
   at: Cursor
+  span: Span
+  period: TimeWindow
 }) {
   const holder = useRef<HTMLDivElement>(null)
   const drawn = useRef<uPlot | undefined>(undefined)
 
+  // Read by the hook that places the bar, on every draw uPlot makes.
+  const reading = useRef<Cursor>(at)
+  reading.current = at
+
   // Built on the window of the instant the series arrives on, so that the first
-  // frame it is painted on is already the right one. `at` and `ladder` are read
-  // here and never watched: the effect below is what follows the reading, and
-  // another station is another chart, which the key on this component makes so.
+  // frame it is painted on is already the right one. The window and `ladder` are
+  // read here and never watched: the effect below is what follows the reading
+  // and the span, and another station is another chart, which the key on this
+  // component makes so.
   useLayoutEffect(() => {
     if (holder.current === null) return
-    const chart = plot(holder.current, series, ladder, windowAround(at))
+    const chart = plot(holder.current, series, ladder, {
+      window: windowOf(span, at, period),
+      reading,
+    })
     drawn.current = chart
+    const unfollow = followSize(chart, holder.current, CURVE_HEIGHT)
 
-    return () => chart.destroy()
-    // Two omissions, two reasons. `at` is followed by the effect below, which is what the comment
-    // above says. `ladder` is a fresh array on every render, and another ladder is another chart:
-    // the key on `StationMeasures` sees to that.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `at` followed below, `ladder` keyed above
+    return () => {
+      unfollow()
+      chart.destroy()
+    }
+    // Two omissions, two reasons. The window is followed by the effect below, which is what the
+    // comment above says. `ladder` is a fresh array on every render, and another ladder is another
+    // chart: the key it is rendered with sees to that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- window followed below, `ladder` keyed above
   }, [series])
 
   // Before the frame is painted: set after it, the window would lag the reading
   // by one frame.
   useLayoutEffect(() => {
-    drawn.current?.setScale('x', windowAround(at))
-  }, [at])
+    drawn.current?.setScale('x', windowOf(span, at, period))
+  }, [at, span, period])
 
-  return <div className="plot" ref={holder} />
+  return <div className="plot" ref={holder} style={{ minHeight: CURVE_HEIGHT }} />
 }
+
+/** The window the chart opens on, and the instant its bar is placed at. */
+type Frame = { window: { min: number; max: number }; reading: RefObject<Cursor> }
 
 /** The curve, over the ladder its values are read against. */
 function plot(
   holder: HTMLDivElement,
   series: Series,
   ladder: readonly Rung[],
-  window: { min: number; max: number },
+  { window, reading }: Frame,
 ): uPlot {
+  const bar = instantBar()
+
   const chart = new uPlot(
     {
-      width: CURVE_WIDTH,
+      width: holder.clientWidth,
       height: CURVE_HEIGHT,
       legend: { show: false },
       // Nothing to hover in a bubble: the value beside the curve is the one
@@ -112,7 +139,7 @@ function plot(
       ],
       axes: [
         { stroke: MUTED, grid: { show: false }, space: 60, size: 28, values: hours },
-        { stroke: MUTED, size: 44, values: figures },
+        { stroke: MUTED, size: figuresWidth, values: figures },
       ],
       // After the grid and before the curve, which is the order uPlot draws in:
       // a threshold is what the curve is read against, never something over it.
@@ -122,17 +149,16 @@ function plot(
             rule(self, ladder)
           },
         ],
+        draw: [
+          (self) => {
+            placeInstant(self, bar, reading.current)
+          },
+        ],
       },
     },
     plotted(series),
     holder,
   )
-
-  // In the layer uPlot lays over the plotting area exactly, rather than over
-  // the whole box: the y axis insets that area, and a bar at the middle of the
-  // box would sit beside the instant it claims to mark.
-  const bar = document.createElement('div')
-  bar.className = 'instant'
   chart.over.append(bar)
 
   return chart

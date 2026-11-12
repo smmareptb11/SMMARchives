@@ -1,5 +1,10 @@
-# La base et le volume des médias, pour le développement.
-# Les images de l'API et du worker ne sont pas encore écrites.
+# La base seule en développement : `docker compose up -d db`.
+# Toute l'application en déploiement : `docker compose up -d --build`.
+
+# Fixé plutôt que tiré du nom du dossier : une nouvelle version décompressée
+# ailleurs retrouve ainsi la base et les médias de la précédente.
+name: smmarchives
+
 services:
   db:
     # Le build multi-architecture de PostGIS : l'image `postgis/postgis` n'est
@@ -13,14 +18,60 @@ services:
       POSTGRES_USER: ${DB_USER:-smmarchives}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-smmarchives}
       POSTGRES_DB: ${DB_NAME:-smmarchives}
-    # Le port publié est réglable : une autre base occupe souvent 5432 sur une
-    # machine de développement. `DB_PORT` se règle dans `.env`.
-    ports: ['${DB_PORT:-5432}:5432']
+    # Publié pour la machine seule : l'API passe par le réseau de Docker, et
+    # aucun autre poste n'a à joindre la base. Le port est réglable, une autre
+    # base occupant souvent 5432 sur une machine de développement.
+    ports: ['127.0.0.1:${DB_PORT:-5432}:5432']
     volumes: ['db:/var/lib/postgresql/data']
+    restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-smmarchives}']
       interval: 5s
       retries: 10
 
+  # Le schéma, appliqué à chaque démarrage : une migration déjà passée ne
+  # repasse pas, et l'API n'attend que la réussite de celle-ci.
+  migrate:
+    build: { context: ., target: app }
+    image: smmarchives-app
+    command: ['node_modules/.bin/tsx', 'packages/worker/src/scripts/migrate.ts']
+    environment:
+      DATABASE_URL: &database postgres://${DB_USER:-smmarchives}:${DB_PASSWORD:-smmarchives}@db:5432/${DB_NAME:-smmarchives}
+    depends_on:
+      db: { condition: service_healthy }
+
+  # L'API, et les constructions qu'elle lance comme processus fils.
+  api:
+    image: smmarchives-app
+    env_file: .env
+    # Ce qui suit l'emporte sur `.env`, dont les valeurs de développement
+    # désignent la machine et non le conteneur.
+    environment:
+      DATABASE_URL: *database
+      API_PORT: 3000
+      MEDIA_PATH: /data/media
+      # Vide quand l'hôte n'a pas de répertoire de livraisons : la voie ne
+      # tourne pas, au lieu de lire un répertoire monté vide.
+      RADAR_RAINFALL_PATH: ${RADAR_HOST_PATH:+/data/radar}
+      # nginx parle à l'API depuis le réseau privé de Docker.
+      TRUST_PROXY: uniquelocal
+    volumes:
+      - media:/data/media
+      - ${RADAR_HOST_PATH:-./data/radar}:/data/radar:ro
+    # Un processus init récupère les constructions détachées une fois finies.
+    init: true
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # L'interface et le relais vers l'API, sur une seule origine. Le reverse
+  # proxy HTTPS de l'hôte vise ce port.
+  web:
+    build: { context: ., target: web }
+    ports: ['127.0.0.1:${HTTP_PORT:-8080}:80']
+    restart: unless-stopped
+    depends_on: [api]
+
 volumes:
   db:
+  media:

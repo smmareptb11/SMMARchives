@@ -10,7 +10,9 @@
     "./replay/postgres/catalog.ts": "./src/replay/postgres/catalog.ts",
     "./replay/postgres/datasets/index.ts": "./src/replay/postgres/datasets/index.ts",
     "./replay/postgres/manifest.ts": "./src/replay/postgres/manifest.ts",
-    "./replay/postgres/store.ts": "./src/replay/postgres/store.ts"
+    "./replay/postgres/store.ts": "./src/replay/postgres/store.ts",
+    "./session/store.ts": "./src/session/store.ts",
+    "./session/postgres.ts": "./src/session/postgres.ts"
   },
   "dependencies": {
     "@smmarchives/shared": "*",

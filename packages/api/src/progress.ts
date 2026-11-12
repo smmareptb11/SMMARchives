@@ -5,7 +5,7 @@ import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 import type { ReplayStore } from '@smmarchives/worker/replay/store.ts'
 
 import { notFound } from './problems.ts'
-import { checkedReplayId } from './replays.ts'
+import { checkedReplayId, isVisible } from './replays.ts'
 
 /** Short enough that no proxy takes a quiet build for a dead connection. */
 const HEARTBEAT_MS = 15_000
@@ -26,7 +26,7 @@ export function registerProgress(
     // Not through `openReplay`, which asks for a manifest: a creation answers
     // before the build publishes one, telling the client to follow this.
     const store = await catalog.open(id)
-    if (store === undefined) {
+    if (store === undefined || !isVisible(res, await store.getManifest())) {
       notFound(res, `no replay ${id}`)
       return
     }

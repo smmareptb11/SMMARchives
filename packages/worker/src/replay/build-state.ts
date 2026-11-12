@@ -58,7 +58,7 @@ export class ReplayBuild {
       state: 'running',
       lanes: {},
       datasets: {},
-      media: { copied: 0, skipped: 0, failed: 0, bytes: 0 },
+      media: { copied: 0, failed: 0, bytes: 0 },
     }
     this.#store = store
     this.#journal = openJournal(store)
@@ -87,6 +87,10 @@ export class ReplayBuild {
    * leaves the manifest frozen mid-transition. Both happened. Wrapped, a lane
    * cannot represent that state — including a lane that dies in `#begin`, whose
    * first act is a disk write.
+   *
+   * A failure that cannot be written either stays inside: the manifest in
+   * memory already says the lane failed, and {@link settle} writes it whole.
+   * Let out, it would skip that very write and leave the replay `running`.
    */
   async runLane<T>(lane: LaneName, collect: () => Promise<T>): Promise<T | undefined> {
     try {
@@ -95,7 +99,9 @@ export class ReplayBuild {
       await this.#done(lane)
       return collected
     } catch (error) {
-      await this.#failed(lane, error)
+      await this.#failed(lane, error).catch((unwritten: unknown) => {
+        this.#echo(`  ${lane}: its failure could not be written yet: ${String(unwritten)}`)
+      })
       return undefined
     }
   }
@@ -167,7 +173,6 @@ export class ReplayBuild {
     const frozen = this.#manifest.media
     this.#manifest.media = {
       copied: frozen.copied + tally.copied,
-      skipped: frozen.skipped + tally.skipped,
       failed: frozen.failed + tally.failed,
       bytes: frozen.bytes + tally.bytes,
     }

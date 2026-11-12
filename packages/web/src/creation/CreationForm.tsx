@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
-import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
-import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
+import type { ReplayAbout, ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
+import { PHENOMENA, SEVERITIES, type Choice } from '../about.ts'
 import { api } from '../api.ts'
 import { ApiError, describe, type ApiProblem } from '../problems.ts'
-import { formatInstant, toInstant } from '../time.ts'
+import { readBack } from '../time.ts'
 import { ExtentPicker } from './ExtentPicker.tsx'
-import { hoursBetween, periodOf } from './period.ts'
+import type { Framing } from './viewfinder.ts'
+import { endOnOpening, hoursBetween, lengthWarning, periodOf } from './period.ts'
 
 export type CreationFormProps = {
   onCreated: (manifest: ReplayManifest) => void
@@ -15,9 +16,11 @@ export type CreationFormProps = {
 
 export function CreationForm({ onCreated }: CreationFormProps) {
   const [label, setLabel] = useState('')
+  const [about, setAbout] = useState<ReplayAbout>({})
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [extent, setExtent] = useState<BoundingBox | null>(null)
+  const end = useProposedEnd(from, to, setTo)
+  const [framing, setFraming] = useState<Framing>({ extent: null })
   const [moving, setMoving] = useState(false)
   const [refusal, setRefusal] = useState<string | undefined>(undefined)
   const [refusals, setRefusals] = useState<ApiProblem['refusals']>(undefined)
@@ -34,8 +37,7 @@ export function CreationForm({ onCreated }: CreationFormProps) {
 
     setSending(true)
     try {
-      const creation = { label: label.trim(), extent, ...asked }
-      onCreated(await api.createReplay(creation))
+      onCreated(await api.createReplay({ label: label.trim(), ...framing, ...asked, ...about }))
     } catch (error) {
       setRefusal(describe(error))
       // What the API refused, field by field, rather than one sentence for all.
@@ -44,8 +46,6 @@ export function CreationForm({ onCreated }: CreationFormProps) {
       setSending(false)
     }
   }
-
-  const hours = hoursBetween(from, to)
 
   return (
     <form onSubmit={(event) => void submit(event)}>
@@ -58,20 +58,100 @@ export function CreationForm({ onCreated }: CreationFormProps) {
         Titre
         <input value={label} onChange={(event) => setLabel(event.target.value)} />
       </label>
+      <AboutFields about={about} onChange={setAbout} />
 
       <div className="period">
         <HourField label="Début" value={from} onChange={setFrom} />
-        <HourField label="Fin" value={to} onChange={setTo} />
+        <HourField label="Fin" value={to} min={from} {...end} />
       </div>
 
-      {hours !== undefined && hours > 0 ? <p className="note">Durée : {hours} heures.</p> : null}
+      <Length from={from} to={to} />
 
-      <ExtentPicker onChange={setExtent} onMoving={setMoving} />
+      <ExtentPicker onChange={setFraming} onMoving={setMoving} />
 
       <Refusal said={refusal} fields={refusals} />
 
       <Submit sending={sending} moving={moving} />
     </form>
+  )
+}
+
+/**
+ * What the administrator says of the replay, each optional: an empty choice
+ * or an empty description is left out of the request rather than sent.
+ */
+function AboutFields({
+  about,
+  onChange,
+}: {
+  about: ReplayAbout
+  onChange: (about: ReplayAbout) => void
+}) {
+  const { description, phenomenon, severity } = about
+  const set = <K extends keyof ReplayAbout>(key: K, value: NonNullable<ReplayAbout[K]> | '') => {
+    const next = { ...about }
+    if (value === '') delete next[key]
+    else next[key] = value
+    onChange(next)
+  }
+
+  return (
+    <>
+      <div className="choices">
+        <ChoiceField
+          label="Type de phénomène"
+          choices={PHENOMENA}
+          value={phenomenon}
+          onChange={(value) => set('phenomenon', value)}
+        />
+        <ChoiceField
+          label="Gravité"
+          choices={SEVERITIES}
+          value={severity}
+          onChange={(value) => set('severity', value)}
+        />
+      </div>
+      <label>
+        <span>
+          Description <small>facultatif</small>
+        </span>
+        <textarea
+          rows={4}
+          maxLength={2000}
+          value={description ?? ''}
+          onChange={(event) => set('description', event.target.value)}
+        />
+      </label>
+    </>
+  )
+}
+
+/** One optional choice in a closed list: the empty option is no choice at all. */
+function ChoiceField<T extends string>({
+  label,
+  choices,
+  value,
+  onChange,
+}: {
+  label: string
+  choices: readonly Choice<T>[]
+  value: T | undefined
+  onChange: (value: T | '') => void
+}) {
+  return (
+    <label>
+      <span>
+        {label} <small>facultatif</small>
+      </span>
+      <select value={value ?? ''} onChange={(event) => onChange(event.target.value as T | '')}>
+        <option value="">—</option>
+        {choices.map((one) => (
+          <option key={one.value} value={one.value}>
+            {one.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
@@ -91,28 +171,55 @@ type HourFieldProps = {
   label: string
   value: string
   onChange: (value: string) => void
+  /** The earliest hour the picker offers: an end never comes before its start. */
+  min?: string
+  onClick?: () => void
+  onBlur?: () => void
 }
 
 /**
- * An hour of the French clock, and the instant it names said back underneath.
+ * The end proposed as it is opened, and taken back if it is left as proposed.
  *
- * That last line is the one place the change of clock becomes visible: two
- * o'clock on the last Sunday of October names two instants, and this says
- * which of them was taken.
+ * Proposed so the picker opens on the start rather than on today; taken back
+ * so a field the agent only opened is not one they filled.
  */
-function HourField({ label, value, onChange }: HourFieldProps) {
-  const instant = toInstant(value)
+function useProposedEnd(from: string, to: string, setTo: (value: string) => void) {
+  const proposed = useRef<string | undefined>(undefined)
+
+  return {
+    onChange: (value: string) => {
+      proposed.current = undefined
+      setTo(value)
+    },
+    onClick: () => {
+      const opening = endOnOpening(from, to)
+      if (opening === to) return
+      proposed.current = opening
+      setTo(opening)
+    },
+    onBlur: () => {
+      if (proposed.current !== undefined && proposed.current === to) setTo('')
+      proposed.current = undefined
+    },
+  }
+}
+
+/** An hour of the French clock, and what it is read as when that is not what was typed. */
+function HourField({ label, value, onChange, min, onClick, onBlur }: HourFieldProps) {
+  const said = readBack(value)
 
   return (
     <label>
       {label}
       <input
         type="datetime-local"
-        step={3600}
         value={value}
+        min={min === '' ? undefined : min}
         onChange={(event) => onChange(event.target.value)}
+        onClick={onClick}
+        onBlur={onBlur}
       />
-      <small>{instant === undefined ? null : formatInstant(instant)}</small>
+      {said === undefined ? null : <small>{said}</small>}
     </label>
   )
 }
@@ -134,5 +241,19 @@ function Refusal({ said, fields }: { said: string | undefined; fields: ApiProble
         </ul>
       )}
     </p>
+  )
+}
+
+/** How long the replay would cover, and a word when that is long. */
+function Length({ from, to }: { from: string; to: string }) {
+  const hours = hoursBetween(from, to)
+  const warning = lengthWarning(from, to)
+  if (hours === undefined || hours <= 0) return null
+
+  return (
+    <>
+      <p className="note">Durée : {hours} heures.</p>
+      {warning === undefined ? null : <p className="note warning">{warning}</p>}
+    </>
   )
 }

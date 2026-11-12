@@ -1,5 +1,5 @@
 import { Marker, type Map as MapLibreMap } from 'maplibre-gl'
-import { useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 
 import type { Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
@@ -8,7 +8,9 @@ import { webcamsWithoutPicture } from '../mutes.ts'
 import { viewAt, type Views } from '../pictures.ts'
 import type { Cursor } from '../transport/reading.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
-import type { Bubble } from './useCallout.ts'
+import { PointerContext, type Pointed } from './pointed.ts'
+import type { Detail } from './useWindows.ts'
+import type { Spot } from '../events/placing.ts'
 
 type Framed = { camera: Webcam; element: HTMLElement; image: HTMLImageElement; marker: Marker }
 
@@ -24,7 +26,10 @@ export function WebcamMarkers({
   content,
   replayId,
   at,
-  bubble,
+  detail,
+  selected,
+  placing,
+  onSpot,
   shown,
   mutesShown,
   views,
@@ -33,7 +38,13 @@ export function WebcamMarkers({
   content: ReplayContent
   replayId: string
   at: Cursor
-  bubble: Bubble
+  detail: Detail
+  /** The cameras whose details are open, which their frames say. */
+  selected: ReadonlySet<string>
+  /** The report form placing an event: a camera then opens nothing. */
+  placing: boolean
+  /** Where a click on a camera goes while the form places an event: its own spot. */
+  onSpot: ((spot: Spot) => void) | undefined
   shown: boolean
   mutesShown: boolean
   views: Views
@@ -60,7 +71,9 @@ export function WebcamMarkers({
   }, [map, content.webcams])
 
   useDrawn(map, framed, shown, held)
-  useClicks(framed, bubble)
+  useClicks(framed, detail, { placing, onSpot })
+  useSelected(framed, selected)
+  usePointed(framed)
   usePictures({ framed, views, replayId, at, shown, held })
 
   return null
@@ -93,23 +106,65 @@ function useDrawn(
 }
 
 /**
- * What a camera answers to a click: the bubble, on where it is.
+ * What a camera answers to a click: its detail.
  *
- * Set here rather than when the marker is built, so that a bubble replaced
+ * Set here rather than when the marker is built, so that a detail replaced
  * between two replays does not cost five markers torn down and drawn again.
  */
-function useClicks(framed: Framed[], bubble: Bubble): void {
+function useClicks(
+  framed: Framed[],
+  detail: Detail,
+  { placing, onSpot }: { placing: boolean; onSpot: ((spot: Spot) => void) | undefined },
+): void {
   useEffect(() => {
     for (const { camera, element } of framed) {
-      element.onclick = (event) => {
+      const activate = (event: Event) => {
         // Never let up to the map: a marker sits inside the map's own
-        // container, and the map's click handler closes the bubble when it
-        // finds no measuring source under the pointer — which is the case here.
+        // container, and the map's click handler would look for a measuring
+        // source under it — a report's area, there, would open its sheet too.
         event.stopPropagation()
-        bubble.open([camera.position.lon, camera.position.lat], { kind: 'camera', camera })
+        // Placing, the camera's spot is the spot clicked: where a camera
+        // stands is a likely place for what it watched.
+        if (onSpot !== undefined) onSpot([camera.position.lon, camera.position.lat])
+        else if (!placing) detail.open({ kind: 'camera', camera })
+      }
+      element.onclick = activate
+      // A button's keys, for a marker that is one: the map reaches its
+      // stations through the lanes, and its cameras through these alone.
+      element.onkeydown = (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        activate(event)
       }
     }
-  }, [framed, bubble])
+  }, [framed, detail, placing, onSpot])
+}
+
+/** The frame of the camera the pointer rests on in the lanes, lit up while it does. */
+function usePointed(framed: Framed[]): void {
+  const pointer = useContext(PointerContext)
+
+  useEffect(() => {
+    const light = (pointed: Pointed | undefined) => {
+      for (const { camera, element } of framed) {
+        element.classList.toggle(
+          'pointed',
+          pointed !== undefined && 'camera' in pointed && pointed.camera === camera.code,
+        )
+      }
+    }
+    light(pointer.get())
+    return pointer.subscribe(light)
+  }, [framed, pointer])
+}
+
+/** The frames of the cameras whose details are open, outlined as the mockup does. */
+function useSelected(framed: Framed[], selected: ReadonlySet<string>): void {
+  useEffect(() => {
+    for (const { camera, element } of framed) {
+      element.classList.toggle('selected', selected.has(camera.code))
+    }
+  }, [framed, selected])
 }
 
 /**
@@ -159,11 +214,15 @@ function usePictures({
 function framedOn(camera: Webcam): Framed {
   const element = document.createElement('div')
   element.className = 'camera'
+  // On the frame, which is what the keyboard reaches and what a press opens;
+  // the picture inside it, which comes and goes, names nothing of its own.
+  element.tabIndex = 0
+  element.setAttribute('role', 'button')
+  element.setAttribute('aria-label', `Webcam de ${camera.commune}`)
+  element.title = `Webcam de ${camera.commune}`
 
-  // On the image and not on the frame around it: one name to announce.
   const image = document.createElement('img')
-  image.alt = `Webcam de ${camera.commune}`
-  image.title = image.alt
+  image.alt = ''
   image.hidden = true
   // Off the main thread: the picture changes while the reading runs, and the
   // map is repainting its three hundred sources on the same frames.

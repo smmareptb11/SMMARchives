@@ -25,7 +25,7 @@ function aManifest(): ReplayManifest {
     state: 'running',
     lanes: {},
     datasets: {},
-    media: { copied: 0, skipped: 0, failed: 0, bytes: 0 },
+    media: { copied: 0, failed: 0, bytes: 0 },
   }
 }
 

@@ -7,7 +7,7 @@
 | Node.js | **24 ou plus récent** — `fetch`, `parseArgs` et `--env-file` viennent du runtime |
 | npm | Les paquets sont des *workspaces* npm : une seule installation, à la racine |
 | PostgreSQL | **17**, avec l'extension **PostGIS** |
-| Docker et Docker Compose | Pour la base de développement |
+| Docker et Docker Compose | Facultatifs : pour la base de développement, et pour le déploiement par conteneurs |
 
 Rien n'est compilé côté serveur : l'API et le worker s'exécutent par `tsx`,
 directement depuis les sources TypeScript. `npm run typecheck` ne produit aucun
@@ -19,18 +19,22 @@ du conteneur de développement le permet ; une base gérée peut le refuser.
 
 ## La base de développement
 
-`docker-compose.yml` ne porte qu'un service, `db` :
+En développement, seul le service `db` de `docker-compose.yml` est lancé :
 
 | Élément | Valeur |
 |---|---|
 | Image | `imresamu/postgis:17-3.5-alpine` — un build multi-architecture, l'image officielle n'étant publiée qu'en amd64 |
 | Compte, mot de passe, base | `DB_USER`, `DB_PASSWORD`, `DB_NAME` |
-| Port publié | `DB_PORT`, par défaut `5432` |
+| Port publié | `DB_PORT`, par défaut `5432`, sur `127.0.0.1` seulement |
 | Volume | `db`, sur le répertoire de données de PostgreSQL |
 | Sonde | `pg_isready`, toutes les 5 secondes |
 
-Les images de l'API et du worker ne sont pas écrites : en développement comme
-aujourd'hui en production, les deux tournent sur l'hôte.
+L'API et le worker tournent alors sur l'hôte. Les autres services du fichier
+servent au [déploiement](#déployer-avec-docker).
+
+Un PostgreSQL 17 avec PostGIS déjà installé sur la machine convient aussi : il
+suffit que `DATABASE_URL` le désigne, et `docker compose up -d db` est alors
+inutile.
 
 ### Choisir les identifiants
 
@@ -78,17 +82,21 @@ est refusée de la même façon.
 | `MEDIA_PATH` | obligatoire | — | API, `build:replay` |
 | `ACYCLIQ_API_URL` | obligatoire | — | `build:replay` |
 | `ACYCLIQ_TOKEN` | obligatoire | — | idem |
-| `AQUASYS_TIME_ZONE` | optionnelle | `UTC` | idem |
 | `LIZMAP_BASE_URL` | obligatoire | — | `build:replay` |
 | `RADAR_RAINFALL_PATH` | optionnelle : vide, un rejeu se construit sans les lames d'eau | — | `build:replay`, et donc l'API |
 | `RADAR_RAINFALL_BBOX` | optionnelle | une emprise fixée dans le code | idem |
 | `API_PORT` | optionnelle | `3000` | API, et le serveur de développement pour savoir où relayer |
+| `ADMIN_PASSWORD_HASH` | obligatoire | — | API |
+| `SESSION_SECRET` | obligatoire, 32 caractères au moins | — | API |
 | `WEB_PORT` | optionnelle | `5180` | Serveur de développement |
 | `DATABASE_URL_TEST` | obligatoire pour `npm test` | — | Suites de stockage et de routes |
 | `DB_USER`, `DB_PASSWORD`, `DB_NAME` | optionnelles | `smmarchives` | **Docker Compose seul** |
 | `DB_PORT` | optionnelle | `5432` | **Docker Compose seul** |
+| `TRUST_PROXY` | optionnelle | `loopback` | API : le proxy dont l'en-tête `X-Forwarded-Proto` est cru |
+| `HTTP_PORT` | optionnelle | `8080` | **Docker Compose seul** : le port de l'interface déployée |
+| `RADAR_HOST_PATH` | optionnelle : vide, un rejeu se construit sans les lames d'eau | — | **Docker Compose seul** : le répertoire des livraisons sur l'hôte |
 
-Trois précisions que le tableau ne peut pas porter.
+Quatre précisions que le tableau ne peut pas porter.
 
 - **Les quatre variables `DB_*` n'ont aucun effet sur l'applicatif.** Elles ne
   règlent que le conteneur de développement. L'application ne lit que
@@ -97,11 +105,15 @@ Trois précisions que le tableau ne peut pas porter.
 - **Une valeur invalide est refusée par qui la lit, jamais corrigée.** Un
   `API_PORT` qui n'est pas un entier de 1 à 65535 arrête l'API à son démarrage,
   en se nommant : un port coercé en `NaN` donnerait une API qui écoute ailleurs
-  et ne dit pas pourquoi. Un `AQUASYS_TIME_ZONE` qui n'est pas un fuseau IANA et
-  un `RADAR_RAINFALL_BBOX` malformé arrêtent de même la construction qui les
-  lit — mais **pas** le démarrage de l'API, qui ne les lit pas : l'erreur se
-  voit alors au premier rejeu lancé, sous la forme d'une construction qui n'a
-  pas pu démarrer.
+  et ne dit pas pourquoi. Un `RADAR_RAINFALL_BBOX` malformé arrête de même la
+  construction qui le lit — mais **pas** le démarrage de l'API, qui ne le lit
+  pas : l'erreur se voit alors au premier rejeu lancé, sous la forme d'une
+  construction qui n'a pas pu démarrer.
+- **Le mot de passe administrateur n'est écrit nulle part en clair.**
+  `ADMIN_PASSWORD_HASH` en tient l'empreinte, que `npm run hash-password`
+  imprime après avoir demandé le mot de passe deux fois, sans l'afficher.
+  `SESSION_SECRET` est distinct, propre à chaque déploiement, et le changer
+  ferme toutes les sessions.
 - **Les adresses des sources ne sont pas versionnées.** `ACYCLIQ_API_URL` et
   `LIZMAP_BASE_URL` se renseignent auprès de l'exploitant des services
   concernés. Le jeton Aquasys est un secret : ni versionné, ni journalisé, ni
@@ -113,17 +125,19 @@ Trois précisions que le tableau ne peut pas porter.
 git clone <dépôt> && cd SMMARchives
 npm install
 cp .env.sample .env
+npm run hash-password   # coller la ligne dans ADMIN_PASSWORD_HASH
+openssl rand -base64 48 # coller la ligne dans SESSION_SECRET
 docker compose up -d db
 npm run migrate
 npm run dev:api      # port 3000
 npm run dev:web      # port 5180, dans un second terminal
 ```
 
-**Ces six commandes se suivent telles quelles** : `.env.sample` porte déjà, pour
-`DATABASE_URL` et `MEDIA_PATH`, des valeurs qui s'accordent avec le conteneur de
-développement. Il n'y a rien à renseigner avant d'obtenir une interface qui
-s'affiche. Les variables des sources ne sont exigées qu'au moment de constituer
-un rejeu, et elles sont à renseigner avant le premier.
+`.env.sample` porte déjà, pour `DATABASE_URL` et `MEDIA_PATH`, des valeurs qui
+s'accordent avec le conteneur de développement. Les deux secrets de l'API sont
+les seules valeurs à renseigner avant d'obtenir une interface qui s'affiche.
+Les variables des sources ne sont exigées qu'au moment de constituer un rejeu,
+et elles sont à renseigner avant le premier.
 
 Le répertoire des médias est créé à la demande ; le chemin est résolu en absolu.
 
@@ -162,15 +176,17 @@ rend 0. Le retour arrière d'une migration n'est pas écrit.
 vit l'API. Le reverse proxy a donc trois obligations, sur une seule origine :
 
 1. servir `dist/` ;
-2. relayer `/replays` et `/health` vers l'API ;
+2. relayer `/replays`, `/session` et `/health` vers l'API, en lui transmettant
+   `X-Forwarded-Proto` depuis l'hôte même — c'est ce qui marque le cookie de
+   session `Secure` ;
 3. **rendre `index.html` pour tout chemin qui ne correspond à aucun fichier.**
 
 La troisième est celle qu'on oublie, et elle ne se voit pas tout de suite.
-L'interface tient trois adresses — `/` la liste des rejeux, `/nouveau` la
-création, `/rejeux/<identifiant>` un rejeu — et elle passe de l'une à l'autre
-sans demander la page au serveur. Le serveur ne voit `/nouveau` et
-`/rejeux/<identifiant>` qu'au rechargement et sur un lien partagé : sans ce
-repli, ce sont exactement ces deux cas qui rendent 404, alors que tout paraît
+L'interface tient quatre adresses — `/` la liste des rejeux, `/nouveau` la
+création, `/connexion` la connexion de l'administrateur, `/rejeux/<identifiant>`
+un rejeu — et elle passe de l'une à l'autre sans demander la page au serveur. Le
+serveur ne voit les trois dernières qu'au rechargement et sur un lien partagé :
+sans ce repli, ce sont exactement ces cas qui rendent 404, alors que tout paraît
 fonctionner par ailleurs. Sous nginx :
 
 ```nginx
@@ -190,9 +206,8 @@ L'API ne porte aucun en-tête CORS et n'a pas à en porter. Servir l'interface
 depuis un autre hôte demanderait de l'ouvrir à une origine tierce, ce qu'il n'y
 a aucune raison de faire.
 
-> [!WARNING]
-> L'avertissement d'exposition vaut aussi pour l'interface : elle n'ajoute
-> aucune protection, elle appelle les mêmes routes, ouvertes.
+L'interface n'ajoute aucune protection : ce qu'elle montre, l'API l'a déjà
+réservé ou non à l'administrateur.
 
 ## Faire tourner l'API
 
@@ -218,6 +233,59 @@ Deux autres propriétés à connaître avant de déployer :
   collecte qui dure des minutes ; sa trace est le journal du rejeu, pas ce
   processus.
 
+## Déployer avec Docker
+
+`docker compose up -d --build` lance toute l'application depuis le dépôt. La
+même procédure, détaillée, est dans [`lancer-avec-docker.md`](lancer-avec-docker.md).
+
+| Service | Rôle |
+|---|---|
+| `db` | La base, sur le volume `db` |
+| `migrate` | Applique le schéma à chaque démarrage, puis s'arrête ; l'API ne démarre qu'après sa réussite |
+| `api` | L'API, et les constructions qu'elle lance comme processus fils ; les médias sur le volume `media` |
+| `web` | L'interface et le relais vers l'API, sur une seule origine, publiés sur `127.0.0.1:${HTTP_PORT}` |
+
+Les images se construisent sur la machine qui les lance : aucun registre, et
+aucune question d'architecture entre un poste Apple Silicon et un serveur amd64.
+
+```bash
+git clone <dépôt> && cd SMMARchives
+cp .env.sample .env      # sources, identifiants de la base, SESSION_SECRET
+docker compose build
+docker compose run --rm --no-deps api node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+                         # coller la ligne dans SESSION_SECRET
+docker compose run --rm --no-deps api node_modules/.bin/tsx packages/api/src/hash-password.ts
+                         # coller la ligne dans ADMIN_PASSWORD_HASH
+docker compose up -d
+```
+
+Ce que le conteneur de l'API lit de `.env`, et ce qu'il n'en lit pas :
+
+- **Il en lit les sources et l'authentification** : `ACYCLIQ_*`,
+  `LIZMAP_BASE_URL`, `RADAR_RAINFALL_BBOX`, `ADMIN_PASSWORD_HASH`,
+  `SESSION_SECRET`.
+- **Le reste est fixé par `docker-compose.yml`**, parce que les valeurs de
+  développement désignent la machine et non le conteneur : `DATABASE_URL` est
+  composée des trois variables `DB_*` vers le service `db`, `MEDIA_PATH` est le
+  volume `media`, `RADAR_RAINFALL_PATH` le répertoire `RADAR_HOST_PATH` monté en
+  lecture seule — vide quand `RADAR_HOST_PATH` l'est —, et `TRUST_PROXY` le réseau privé de Docker.
+- **Un mot de passe de base qui contient `@`, `:` ou `/`** casse la chaîne de
+  connexion composée : en choisir un sans ces caractères.
+
+Le reverse proxy HTTPS de l'hôte vise `127.0.0.1:${HTTP_PORT}` et transmet
+`X-Forwarded-Proto` ; le service `web` le relaie à l'API, qui marque alors le
+cookie de session `Secure`. Il accepte un envoi de dix photos de 15 Mo, et ne
+retient pas le flux de progression d'une construction.
+
+Une mise à jour reconstruit les images, et `migrate` applique ce qui manque :
+
+```bash
+git pull && docker compose up -d --build
+```
+
+`docker compose down` arrête tout et garde les volumes ; `docker compose down -v`
+efface la base **et les médias**, rejeux compris.
+
 ## Hébergement
 
 L'application se déploie sur un hôte dont l'exploitant garde la maîtrise. Elle
@@ -226,7 +294,8 @@ n'appelle aucun service d'hébergement tiers, à l'exception du fond de carte.
 Prérequis sur l'hôte cible :
 
 - Linux ;
-- Docker et Docker Compose ;
+- Docker et Docker Compose, ou Node 24 et nginx — l'installation sans Docker
+  est décrite pas à pas dans [`lancer-sans-docker.md`](lancer-sans-docker.md) ;
 - un reverse proxy HTTPS, avec nom de domaine et certificat ;
 - un volume persistant pour les médias et les rasters ;
 - une base PostgreSQL avec l'extension PostGIS.
@@ -280,11 +349,7 @@ résumé les compte : **un run en conteneur root n'est pas un run complet.**
 
 ## Ce qui n'est pas écrit
 
-- Les images Docker de l'API et du worker, et la procédure de déploiement qui
-  irait avec.
 - La supervision, l'arrêt propre et le redémarrage de l'API : il n'y a ni
   gestion de `SIGTERM`, ni sonde applicative autre que `GET /health`.
 - La procédure de sauvegarde et de restauration, le retour arrière d'une
   migration, la rotation des journaux.
-- Toute protection d'accès. Ni administration, ni authentification, ni
-  publication.

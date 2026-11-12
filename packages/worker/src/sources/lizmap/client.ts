@@ -41,8 +41,8 @@ export class LizmapClient {
    * Reads a layer as GeoJSON, repairing the response before returning it.
    *
    * Layer names come from the WMS `GetCapabilities`, never the WFS one, which
-   * declares ten layers and lists neither `webcam` nor `ouvrage_hydraulique`
-   * although both answer a `GetFeature` perfectly.
+   * declares ten layers and does not list `webcam`, although it answers a
+   * `GetFeature` perfectly.
    */
   async getFeature(layer: string): Promise<FeatureCollection> {
     const url = this.#serviceUrl(layer)

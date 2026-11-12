@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { access, mkdir, open, rename, rm, writeFile, type FileHandle } from 'node:fs/promises'
+import { mkdir, open, rename, rm, rmdir, writeFile, type FileHandle } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 
 import { relativeMediaPath, type MediaBody, type ReplayStore, type StoredBlob } from '../store.ts'
@@ -23,26 +23,13 @@ export type MediaDirectoryOptions = {
  */
 export function openMediaDirectory(
   options: MediaDirectoryOptions,
-): Pick<ReplayStore, 'hasMedia' | 'openMedia' | 'putMedia'> {
+): Pick<ReplayStore, 'openMedia' | 'putMedia' | 'removeMedia'> {
   // Resolved, not joined: a relative MEDIA_PATH would leave every target
   // relative while the containment check resolves its argument, and every copy
   // would fail with a message about traversal.
   const directory = resolve(options.root, options.replayId)
 
   return {
-    async hasMedia(path: string): Promise<boolean> {
-      // Checked outside the catch: a refused path is not an absence. Reported
-      // as one, the caller reads the source file and only fails on the write,
-      // which puts the failure far from its cause.
-      const target = join(directory, relativeMediaPath(path))
-      try {
-        await access(target)
-        return true
-      } catch {
-        return false
-      }
-    },
-
     async openMedia(path: string): Promise<StoredBlob | undefined> {
       return openBlob(join(directory, relativeMediaPath(path)))
     },
@@ -50,7 +37,27 @@ export function openMediaDirectory(
     async putMedia(path: string, body: MediaBody): Promise<void> {
       await writeAtomically(join(directory, relativeMediaPath(path)), body)
     },
+
+    async removeMedia(path: string): Promise<void> {
+      const target = join(directory, relativeMediaPath(path))
+      await rm(target, { force: true })
+      await removeIfEmpty(dirname(target), directory)
+    },
   }
+}
+
+/**
+ * The folder a medium was taken out of, once nothing is left in it: each
+ * sending of photos has one of its own, and emptied it would stay on the
+ * volume for good. Never the replay's own folder, and never one still holding
+ * something, which `rmdir` refuses.
+ */
+async function removeIfEmpty(folder: string, replay: string): Promise<void> {
+  if (folder === replay) return
+  await rmdir(folder).catch((error: unknown) => {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== 'ENOTEMPTY' && code !== 'EEXIST' && code !== 'ENOENT') throw error
+  })
 }
 
 /** Where a replay's bytes live, for the one caller that removes them all. */
@@ -58,7 +65,7 @@ export function mediaDirectoryOf(root: string, replayId: string): string {
   return resolve(root, replayId)
 }
 
-/** Measures the handle, never the path: a re-run renames between the two. */
+/** Measures the handle, never the path: a write renames between the two. */
 async function openBlob(path: string): Promise<StoredBlob | undefined> {
   let handle: FileHandle
   try {
@@ -98,9 +105,9 @@ export function isAbsence(error: unknown): boolean {
  * previous file or the new one, never half of either. `rename` is atomic within
  * a directory, which is why the temporary sits next to its target.
  *
- * The temporary is named per write rather than per target: two runs on the same
- * replay — which a re-run makes ordinary — would otherwise share one temporary
- * and rename a file the other was still writing.
+ * The temporary is named per write rather than per target: two writes to the
+ * same target would otherwise share one temporary and rename a file the other
+ * was still writing.
  */
 async function writeAtomically(path: string, body: MediaBody): Promise<void> {
   await mkdir(dirname(path), { recursive: true })

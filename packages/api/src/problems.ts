@@ -38,17 +38,23 @@ export function badRequest(res: Response, detail: string, refusals?: unknown): v
 /**
  * Which field a schema refused, and why — never the value it was sent, which
  * is the rule above applied to the one place a request's own text would slip
- * through.
+ * through. Nor the name of a field the request is not to send: that name is
+ * the client's own text too, and the refusal says only that there is one.
  */
 export function refusalsIn(error: ZodError): { path: string; message: string }[] {
   return error.issues.flatMap((issue) =>
-    // A field nobody may send has no path of its own — the issue sits on the
-    // object — and a refusal that named no field would leave a client guessing
-    // which of its own it should drop.
     issue.code === 'unrecognized_keys'
-      ? issue.keys.map((key) => ({ path: key, message: 'is not a field of this request' }))
+      ? [{ path: issue.path.join('.'), message: 'holds a field this request does not take' }]
       : [{ path: issue.path.join('.'), message: issue.message }],
   )
+}
+
+export function unauthorized(res: Response, detail: string): void {
+  sendProblem(res, { type: 'unauthorized', title: 'Unauthorized', status: 401, detail })
+}
+
+export function forbidden(res: Response, detail: string): void {
+  sendProblem(res, { type: 'forbidden', title: 'Forbidden', status: 403, detail })
 }
 
 export function notFound(res: Response, detail: string): void {
@@ -57,6 +63,19 @@ export function notFound(res: Response, detail: string): void {
 
 export function conflict(res: Response, detail: string): void {
   sendProblem(res, { type: 'conflict', title: 'Conflict', status: 409, detail })
+}
+
+export function contentTooLarge(res: Response, detail: string): void {
+  sendProblem(res, { type: 'content-too-large', title: 'Content too large', status: 413, detail })
+}
+
+export function unsupportedMediaType(res: Response, detail: string): void {
+  sendProblem(res, {
+    type: 'unsupported-media-type',
+    title: 'Unsupported media type',
+    status: 415,
+    detail,
+  })
 }
 
 export function internalError(res: Response, detail: string): void {
@@ -88,6 +107,10 @@ export function errorHandler(log: (message: string) => void): ErrorRequestHandle
     // client would wait on forever.
     if (res.headersSent) {
       res.destroy()
+      return
+    }
+    if (status === 413) {
+      contentTooLarge(res, 'the request weighs more than this route takes')
       return
     }
     if (status !== undefined) {

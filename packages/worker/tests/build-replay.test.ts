@@ -21,6 +21,7 @@ import {
   aStoredReplay,
   cleanMedia,
   frozenBytes,
+  storedDataset,
   type StoredReplay,
 } from './support/replay-store.ts'
 
@@ -32,8 +33,9 @@ import {
 function emptyFleet() {
   return {
     client: new AquasysClient({
-      config: { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' },
+      config: { baseUrl: 'https://api.test/api', token: 'jeton' },
       fetch: fetchStub({ '/hydrologicalStation/': { json: [] }, '/pluviometer/': { json: [] } }),
+      minIntervalMs: 0,
     }),
   }
 }
@@ -42,7 +44,7 @@ function emptyFleet() {
 const FRAMES = [1593102683, 1593103282, 1593103583, 1593103881]
 
 let deliveries: string
-/** The replay the builds of one test write into, so a re-run finds the first. */
+/** The replay a test builds into, created on its first build. */
 let replay: StoredReplay | undefined
 
 beforeEach(async () => {
@@ -114,7 +116,7 @@ describe('a replay that builds', () => {
   it('stores the index the interface will read', async () => {
     await build()
 
-    const series = (await stored().store.getDataset('radar-rainfall')) as RadarRainfallSeries[]
+    const series = (await storedDataset(stored().store, 'radar-rainfall')) as RadarRainfallSeries[]
     expect(series.map((one: { product: string }) => one.product).sort()).toEqual([
       'pluvio1h',
       'pluvio5mn',
@@ -126,6 +128,27 @@ describe('a replay that builds', () => {
     const { manifest } = await build()
 
     expect(manifest.datasets['radar-rainfall']?.report.sourcesWithoutData).toEqual(['20036'])
+  })
+
+  it('says when the extent of the rasters is the one in the code, which no delivery confirms', async () => {
+    const { manifest } = await build({
+      radarRainfall: {
+        root: deliveries,
+        extent: DEFAULT_RADAR_RAINFALL_EXTENT,
+        extentIsDefault: true,
+      },
+    })
+
+    expect(manifest.datasets['radar-rainfall']?.report.fallbacks).toContainEqual(
+      expect.objectContaining({ subject: 'radar rainfall extent' }),
+    )
+    expect(manifest.state).toBe('complete')
+  })
+
+  it('says nothing of an extent the configuration gave', async () => {
+    const { manifest } = await build()
+
+    expect(manifest.datasets['radar-rainfall']?.report.fallbacks).toEqual([])
   })
 
   it('leaves a journal of what happened, for the administration to show', async () => {
@@ -183,14 +206,6 @@ describe('the media of a replay', () => {
     expect(manifest.media.copied).toBe(FRAMES.length * 2)
   })
 
-  it('are not fetched again by a second run', async () => {
-    await build()
-    const { manifest } = await build()
-
-    expect(manifest.media.copied).toBe(0)
-    expect(manifest.media.skipped).toBe(FRAMES.length * 2)
-  })
-
   it('are left alone when the run asks for no media', async () => {
     const { manifest } = await build({ copyMedia: false })
 
@@ -207,7 +222,7 @@ describe('a period no delivery covers', () => {
 
     expect(manifest.state).toBe('complete')
     expect(exitCode).toBe(ExitCode.success)
-    expect(await stored().store.getDataset('radar-rainfall')).toEqual([])
+    expect(await storedDataset(stored().store, 'radar-rainfall')).toEqual([])
   })
 })
 
@@ -327,8 +342,9 @@ describe('a lane that cannot run', () => {
       radarRainfall: { root: join(deliveries, 'nowhere') },
       aquasys: {
         client: new AquasysClient({
-          config: { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' },
+          config: { baseUrl: 'https://api.test/api', token: 'jeton' },
           fetch: fetchStub({ '/hydrologicalStation/': { status: 500 } }),
+          minIntervalMs: 0,
         }),
       },
     })

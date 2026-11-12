@@ -3,7 +3,7 @@ import type { Express } from 'express'
 import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 
 import { notFound } from './problems.ts'
-import { checkedReplayId } from './replays.ts'
+import { checkedReplayId, isVisible } from './replays.ts'
 
 export function registerJournal(app: Express, catalog: ReplayCatalog): void {
   app.get('/replays/:id/journal', async (req, res) => {
@@ -13,7 +13,7 @@ export function registerJournal(app: Express, catalog: ReplayCatalog): void {
     // Not through `openReplay`, which asks for a manifest: a build that died
     // before publishing one is the case this route exists for.
     const store = await catalog.open(id)
-    if (store === undefined) {
+    if (store === undefined || !isVisible(res, await store.getManifest())) {
       notFound(res, `no replay ${id}`)
       return
     }

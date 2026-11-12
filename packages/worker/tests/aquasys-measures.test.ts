@@ -10,7 +10,7 @@ import {
   type StubbedResponse,
 } from './support/fixtures.ts'
 
-const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
+const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton' }
 
 const LEVELS = fixture('aquasys/measures-84-level.json')
 
@@ -23,7 +23,7 @@ async function collect(
 ) {
   const collector = new ReportCollector({})
   const fetch = fetchStub(routes)
-  const client = new AquasysClient({ config: CONFIG, fetch })
+  const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
   const result = await fetchMeasures({
     client,
     collector,
@@ -40,6 +40,7 @@ describe('decoding the positional response', () => {
     const { measures } = await collect()
 
     expect(measures[0]).toEqual({
+      family: 'hydro',
       sourceId: 84,
       quantity: 'level',
       at: '2018-10-15T00:05:00.000Z',
@@ -70,6 +71,23 @@ describe('decoding the positional response', () => {
 
     expect(measures).toHaveLength(1)
     expect(rowsDropped).toBe(2)
+  })
+
+  it('keeps one measure per instant, and says how many it dropped', async () => {
+    const { measures, report } = await collect(WHOLE, {
+      '/chronic/measures': {
+        json: [
+          [84, 4, 1539561900000, 0.206, 0.206],
+          [84, 4, 1539561900000, 0.31, 0.31],
+          [84, 4, 1539562200000, 0.4, 0.4],
+        ],
+      },
+    })
+
+    expect(measures.map((measure) => measure.value)).toEqual([0.206, 0.4])
+    expect(report.fallbacks).toMatchObject([
+      { subject: 'source 84 level', rule: 'one measure per instant' },
+    ])
   })
 
   /** One bad row must not take the 899 good ones around it down with it. */
@@ -110,7 +128,7 @@ describe('the rain gauge path', () => {
     const fetch = fetchStub({
       '/pluviometer/chartMeasures': { json: [[4, 1, 1539561900000, 12.5, 12.5]] },
     })
-    const client = new AquasysClient({ config: CONFIG, fetch })
+    const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
 
     const { measures } = await fetchMeasures({
       client,
@@ -123,14 +141,20 @@ describe('the rain gauge path', () => {
 
     expect(new URL(fetch.calls[0]!).searchParams.get('dataType')).toBe('1')
     expect(measures).toEqual([
-      { sourceId: 4, quantity: 'rainfall', at: '2018-10-15T00:05:00.000Z', value: 12.5 },
+      {
+        family: 'rain-gauge',
+        sourceId: 4,
+        quantity: 'rainfall',
+        at: '2018-10-15T00:05:00.000Z',
+        value: 12.5,
+      },
     ])
   })
 
   it('refuses a quantity the family does not carry rather than reading another', async () => {
     const collector = new ReportCollector({})
     const fetch = fetchStub({ '/pluviometer/chartMeasures': { json: [] } })
-    const client = new AquasysClient({ config: CONFIG, fetch })
+    const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
 
     const { measures } = await fetchMeasures({
       client,
@@ -189,6 +213,7 @@ describe('the density a replay actually obtained', () => {
     const client = new AquasysClient({
       config: CONFIG,
       fetch: fetchStub({ '/chronic/measures': { json: LEVELS } }),
+      minIntervalMs: 0,
     })
     const { density } = await fetchMeasures({
       client,

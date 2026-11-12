@@ -1,19 +1,35 @@
-/* What it takes to read, and no more. The mockup's own palette comes with the map. */
+/* The mockup's palette and type, the map's own colours apart. */
 :root {
-  --ink: #1b2733;
-  --ink-2: #5b6b7c;
-  --paper: #f6f7f9;
-  --brand: #14496b;
+  --ink: #1c2833;
+  --ink-2: #536372;
+  --paper: #f6f8fa;
+  --paper-2: #eaeff3;
+  --line: #d5dde4;
+  --brand: #004a73;
+  /* The montage's dark ground, from the deepest to the lightest, and what is written on it. */
+  --night: #14202b;
+  --night-2: #1d2b38;
+  --night-3: #27384a;
+  --night-ink: #dfe7ee;
+  --night-ink-2: #8fa3b4;
+  /* Behind a webcam image, wherever one is drawn. */
+  --film: #0b1218;
   /* The reading bar: the one over the lanes, and the one on a station's chart. */
   --reading: #e8002a;
   --rail: #f2f5f8;
   /* The blue a rain gauge's bars are drawn in, taken from the map's own ramp. */
   --rain: #2171b5;
+  /* The running total over a rain gauge's bars, the Acycliq widget's orange. */
+  --cumul: #ea580c;
   /* The lane label column, which the reading bar has to clear to line up. */
-  --label-w: 11rem;
-  --night: #0b1218;
-  --display: 'Barlow Condensed', system-ui, sans-serif;
-  --body: system-ui, sans-serif;
+  --label-w: 210px;
+  /* What an agent reported, on the lanes and on the map: a colour no threshold uses. */
+  --report: #2e8540;
+  /* What the pointer rests on in the lanes or the history, on the map. */
+  --pointed: #14212b;
+  --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --body: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 }
 
 body {
@@ -36,6 +52,542 @@ main:has(.map) {
   max-width: 82rem;
 }
 
+/*
+ * A replay holds the window under the band and never scrolls as a page: the
+ * map and the history side by side, the montage under them scrolling alone.
+ * The montage is as tall as what it shows, up to a cap: its families folded,
+ * the rest of the height is the map's.
+ */
+main:has(> .replay) {
+  max-width: none;
+  padding: 0;
+}
+
+.replay {
+  --montage-h: 38vh;
+
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: calc(100dvh - 48px);
+}
+
+.replay-map {
+  position: relative;
+  min-height: 0;
+}
+
+.replay-map .map {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+.replay-map > .note.refusal {
+  position: absolute;
+  z-index: 5;
+  left: 12px;
+  bottom: 12px;
+  margin: 0;
+}
+
+/* What floats over the map: white, rounded, lifted off it. */
+.map-legend {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+}
+
+/* The fold sits on the title's line, and folded the title is all there is. */
+.map-legend .fold {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.map-legend.folded .layers > :not(legend),
+.map-legend.folded .silences {
+  display: none;
+}
+
+.map-legend.folded .layers legend {
+  margin-bottom: 0;
+}
+
+.map-legend {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  right: 12px;
+  box-sizing: border-box;
+  width: 220px;
+  /* Clear of the zoom and the attribution, in the corner under it. */
+  max-height: calc(100% - 160px);
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+/* The column of what happened, beside the map. */
+.history {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.history header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.history h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.history .count {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* The events begun by the instant read, oldest first, as the mockup's feed. */
+.history .feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  margin: 0;
+  padding: 12px 16px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.history .feed > .note {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* An event, edged in its threshold's colour or in the brand's. */
+.history .card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--c, var(--brand));
+  border-radius: 5px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    opacity 0.4s;
+}
+
+.history .card:hover {
+  box-shadow: 0 3px 10px rgb(0 0 0 / 12%);
+}
+
+.history .card.report {
+  --c: var(--report);
+}
+
+/* Over by the instant read, as the mockup fades what has passed. */
+.history .card.over {
+  opacity: 0.78;
+}
+
+/* The event last begun, set apart for a little while. */
+.history .card.latest {
+  box-shadow: 0 0 0 2px var(--c, var(--brand));
+  animation: card-in 0.5s ease-out;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history .card.latest {
+    animation: none;
+  }
+}
+
+.history .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.history .badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.history .badge.time {
+  background: var(--brand);
+  color: #fff;
+}
+
+.history .badge.kind {
+  background: #dff3e8;
+  color: #14532d;
+}
+
+/* A threshold whose nature was assumed, striped as its lane is. */
+.history .badge.assumed {
+  background-image: repeating-linear-gradient(45deg, rgb(0 0 0 / 25%) 0 3px, transparent 3px 6px);
+}
+
+.history .card .title {
+  font-weight: 500;
+}
+
+.history .card .text {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: pre-line;
+}
+
+.history .card .who {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.history .card .body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A report's photo beside its words, as tall as they are and never shorter than square. */
+.history .card .thumb {
+  flex: none;
+  align-self: stretch;
+  width: 64px;
+  min-height: 64px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--paper-2);
+}
+
+.replay-montage {
+  /* The seam between two marks, in the colour of the ground they stand on. */
+  --rail: var(--night);
+  /* What the ruler and its handle stay under. */
+  --transport-h: 46px;
+
+  grid-column: 1 / -1;
+  box-sizing: border-box;
+  min-height: 0;
+  max-height: var(--montage-h);
+  overflow-y: auto;
+  /* Its own stacking, so the hour grid can lie under the lanes and over its ground. */
+  isolation: isolate;
+  padding: 0 0 1.5rem;
+  border-top: 3px solid var(--brand);
+  background: var(--night);
+  color: var(--night-ink);
+  scrollbar-color: var(--night-3) var(--night);
+}
+
+.replay-montage .note {
+  color: var(--night-ink-2);
+}
+
+.replay-montage .refusal {
+  color: #ff8a80;
+}
+
+/* One band a family, folded by its title. */
+.replay-montage details {
+  margin: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.replay-montage summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 12px;
+  list-style: none;
+  background: var(--night-3);
+  font-size: 15px;
+  color: var(--night-ink);
+  user-select: none;
+}
+
+.replay-montage summary::-webkit-details-marker {
+  display: none;
+}
+
+.replay-montage summary::before {
+  content: '▾';
+  font-size: 12px;
+  color: var(--night-ink-2);
+  transition: transform 0.15s;
+}
+
+.replay-montage details:not([open]) > summary::before {
+  transform: rotate(-90deg);
+}
+
+.replay-montage summary .count {
+  font-size: 11px;
+  color: var(--night-ink-2);
+}
+
+/* A count with more to say on hovering it. */
+.replay-montage summary .count[title] {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.replay-montage details > .note {
+  padding: 0.3rem 12px;
+  font-size: 12px;
+}
+
+.replay-montage .quiet-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  cursor: pointer;
+}
+
+/*
+ * The rule between the labels and the lanes is drawn on the lane's ground, at
+ * the column's edge: a border on the label would only be as tall as its text,
+ * and a label made a flex box to stretch it loses its ellipsis.
+ */
+.replay-montage .lane {
+  border-bottom: 1px solid rgb(255 255 255 / 5%);
+  background: linear-gradient(var(--night-3), var(--night-3)) no-repeat calc(var(--label-w) - 1px)
+    0 / 1px 100%;
+}
+
+/* A lane is clicked to read its instant, as the ruler is: a selection would end in a click. */
+.replay-montage .lane-track {
+  cursor: pointer;
+  user-select: none;
+}
+
+.replay-montage .lane-label {
+  font-size: 12.5px;
+  color: var(--night-ink);
+}
+
+/* A faint line on every hour of the ruler, under the lanes. */
+.hour-grid {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 var(--label-w);
+  pointer-events: none;
+}
+
+.hour-grid i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--at) * 100%);
+  width: 1px;
+  background: rgb(255 255 255 / 4%);
+}
+
+/* The mark of the lane's family, in the montage's grey. */
+/* The way back to the view the map opened on, beside the zoom: four corners, a frame. */
+.overview .maplibregl-ctrl-icon {
+  background-color: #333;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5'/%3E%3C/svg%3E")
+    center / 18px no-repeat;
+}
+
+.export .maplibregl-ctrl-icon {
+  background-color: #333;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpath d='M7 10l5 5 5-5M12 15V3'/%3E%3C/svg%3E")
+    center / 18px no-repeat;
+}
+
+/* A lane's name, which opens its detail: a button that reads as the name. */
+.lane-name {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lane-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lane-name:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.lane-label .glyph {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  vertical-align: -1px;
+  background: var(--night-ink-2);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.lane-label .glyph.webcam {
+  width: 12px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.replay-montage .mark.report:hover,
+.replay-montage .mark.report:focus-visible {
+  outline-color: var(--night-ink);
+}
+
+/* The transport and the ruler stay at the top while the lanes scroll under them. */
+.replay-montage .transport {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: var(--transport-h);
+  padding: 0 12px;
+  background: var(--night);
+  border-bottom: 1px solid var(--night-3);
+}
+
+.replay-montage .ruler {
+  position: sticky;
+  top: var(--transport-h);
+  z-index: 3;
+  background: var(--night-2);
+  border-bottom: 1px solid var(--night-3);
+}
+
+.replay-montage .ruler .lane-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--night-ink-2);
+}
+
+.replay-montage .tick {
+  color: var(--night-ink-2);
+  border-left-color: var(--night-3);
+  padding-top: 6px;
+}
+
+.replay-montage .tick.odd {
+  border-left-color: rgb(255 255 255 / 6%);
+}
+
+/*
+ * One tick in two keeps its name where the ruler is too narrow for all of
+ * them, one in four where it is narrower still: measured on the ruler itself,
+ * which is what the names have to share.
+ */
+.ruler .lane-track {
+  container-type: inline-size;
+}
+
+@container (max-width: 1000px) {
+  .tick.odd span {
+    display: none;
+  }
+}
+
+@container (max-width: 500px) {
+  .tick.minor span {
+    display: none;
+  }
+}
+
+/*
+ * An event on the ruler, under the hours. Ringed in the ruler's own ground, so
+ * two that touch stay two. The ruler is what is dragged, not the dot.
+ */
+.replay-montage .ruler .dot,
+.scrub .dot {
+  position: absolute;
+  bottom: 3px;
+  width: 7px;
+  height: 7px;
+  margin-left: -4.5px;
+  border: 1px solid var(--night-2);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* The handle on the ruler: it stays at the top with it while the lanes scroll. */
+.replay-montage .playhead::before {
+  content: '';
+  position: sticky;
+  top: var(--transport-h);
+  display: block;
+  width: 0;
+  margin-left: -6px;
+  border: 7px solid transparent;
+  border-top: 11px solid var(--reading);
+}
+
+/* Over the ruler that stays, under the transport. */
+.replay-montage .playhead {
+  z-index: 4;
+}
+
+.replay-montage .assumed-note {
+  margin: 0.75rem 0 0;
+}
+
 .map {
   height: 26rem;
   border: 1px solid #e3e8ed;
@@ -43,50 +595,25 @@ main:has(.map) {
 }
 
 /*
- * The bubble may leave the map, and nothing else may.
- *
- * MapLibre clips the map's box, which is what a marker at the edge wants. A
- * bubble carrying a curve is taller than the room a source in the middle of a
- * 26rem map leaves above or below it, and MapLibre picks a side without ever
- * asking whether the bubble fits there: clipped, the curve is simply not
- * shown. The clipping moves one box in, where the canvas and the markers are.
- */
-.map.maplibregl-map {
-  overflow: visible;
-}
-
-/*
- * Positioned, and as large as the map: the markers are absolute, and a box
- * that is not their containing block clips none of them.
- */
-.map .maplibregl-canvas-container {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-/*
- * Under the map, never over it: the map opens on the extent of what it holds,
- * so a panel laid over a corner would hide the outermost sources, and hide that
- * it hides them.
+ * One family a line, in the panel over the map. The map opens on what it holds
+ * with room left under this panel, so it hides none of the outermost sources.
  */
 .layers {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.25rem;
-  margin: 0.6rem 0 0.5rem;
-  padding: 0.35rem 0.75rem 0.5rem;
-  border: 1px solid #e3e8ed;
-  border-radius: 3px;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
   font-size: 12px;
 }
 
 .layers legend {
-  padding: 0 0.25rem;
+  padding: 0;
+  margin-bottom: 0.4rem;
   font-family: var(--display);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-2);
+  font-size: 16px;
+  font-weight: 600;
 }
 
 /* The form's own rules are written for text fields, and reach here otherwise. */
@@ -123,14 +650,17 @@ main:has(.map) {
  * the perimeters with. A swatch given its own values drifts from what it shows.
  */
 /*
- * The frame of the marker, at the size of a swatch and in its proportions.
+ * The frame of the marker, at the size of a swatch and in its proportions, and
+ * flat: the shadow lifts a marker off the map, and a legend has no map to lift
+ * it off.
  *
- * Inside the panel, so that it wins over the frame's own size: the two rules
- * carry the same weight, and the marker's is the one written last.
+ * Inside the panel, so that it wins over the frame's own rules: the two carry
+ * the same weight, and the marker's is the one written last.
  */
 .layers .swatch.webcam {
   width: 16px;
   height: 11px;
+  box-shadow: none;
 }
 
 .swatch.territory {
@@ -152,57 +682,268 @@ main:has(.map) {
   width: 100%;
 }
 
-.mutes .mutes-scope {
-  color: var(--ink-2);
-}
-
-/*
- * The scale a rain gauge's blue is read on, under the families rather than
- * beside them: it names one family's colour, where the row above it names a
- * shape, and a sixth item on that row would read as a sixth family.
- */
-.ramp {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.2rem 0.6rem;
-  width: 100%;
-  color: var(--ink-2);
-}
-
-.ramp span {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.ramp .ramp-name {
-  color: var(--ink);
-}
-
-/* An edge, because the palest of the blues is all but the page's own white. */
-.ramp .swatch {
-  width: 12px;
-  height: 12px;
-  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
-}
-
-/* What the map does not show, under the map rather than over it. */
+/* What the map does not show, under the legend that says what it does. */
 .silences {
-  margin: 0 0 1rem;
-  padding-left: 1rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0 0 1rem;
+  border-top: 1px dashed var(--line);
   font-size: 12px;
   color: var(--ink-2);
+}
+
+.silences:empty {
+  display: none;
 }
 
 .silences li {
   margin: 0.15rem 0;
 }
 
-.callout strong {
+/*
+ * The open sources' windows, stacked among themselves and together over the
+ * map. Letting the pointer through wherever no window is.
+ */
+.callouts {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* A source's detail, opened in the map's top-left corner, never past its edge. */
+.callout {
+  pointer-events: auto;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(560px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+  color: var(--ink);
+  transform: translate(var(--callout-x, 0), var(--callout-y, 0));
+}
+
+/* What an agent wrote, in a narrower window: words and photos, no curve. */
+.callout.report {
+  width: min(380px, calc(100% - 24px));
+}
+
+/*
+ * Sized by the reader's hand: the body takes the room left under the title bar,
+ * and a curve, a chart of rain or a camera's view takes the room left in it.
+ */
+.callout.sized {
+  width: var(--callout-w);
+  height: var(--callout-h);
+  max-height: none;
+}
+
+.callout.sized .callout-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.callout.sized .callout-body > .plot,
+.callout.sized .callout-body > .awaited,
+.callout.sized .callout-body > .view {
+  flex: 1 1 0;
+}
+
+.callout.sized .callout-body > .view {
+  min-height: 120px;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+/* The corner a window is resized by, drawn as the two strokes such a corner has. */
+.callout .resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(
+    135deg,
+    transparent 45%,
+    var(--line) 45%,
+    var(--line) 55%,
+    transparent 55%,
+    transparent 70%,
+    var(--line) 70%,
+    var(--line) 80%,
+    transparent 80%
+  );
+}
+
+/* Lifted off the map while it is carried. */
+.callout.moving {
+  box-shadow: 0 12px 32px rgb(0 0 0 / 28%);
+}
+
+/*
+ * The window's title bar, the hold that moves it. One height whatever the name
+ * it carries, which is the step the cascade in `map/windows.ts` opens by.
+ */
+.callout header {
+  /* The cross on the line of the name, whether a line comes under it or not. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: center;
+  column-gap: 10px;
+  box-sizing: border-box;
+  height: 56px;
+  /* The scrolling body gives way when the window reaches the map's height, never the bar. */
+  flex-shrink: 0;
+  /* The cross's ink as far from the right as the name is from the left. */
+  padding: 0 6px 0 14px;
+  border-radius: 5px 5px 0 0;
+  background: var(--brand);
+  color: #fff;
+  /* By a finger as well: the page does not scroll from it. */
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.callout.moving header {
+  cursor: grabbing;
+}
+
+.callout header > div {
+  display: contents;
+}
+
+.callout h3 {
+  grid-column: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: 19px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.callout .family {
+  grid-column: 1;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: rgb(255 255 255 / 75%);
+}
+
+/* The way out, a cross in the bar's corner. */
+.callout header .close {
+  position: relative;
+  grid-row: 1;
+  grid-column: 2;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #fff;
+}
+
+/* Two strokes crossed in the middle of the button, where a glyph sits wherever its font puts it. */
+.callout header .close::before,
+.callout header .close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.callout header .close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.callout header .close:hover,
+.callout header .close:focus-visible {
+  background: rgb(255 255 255 / 18%);
+}
+
+.callout-body {
+  padding: 10px 14px 12px;
+  overflow-y: auto;
+  /* Its end is not the page's: scrolling past it does not carry on with the replay underneath. */
+  overscroll-behavior: contain;
+}
+
+/*
+ * What a camera showed, in the shape of most of them, and no taller than the
+ * map leaves the panel room for: the rest of the panel stays in sight. Fitted
+ * rather than cropped, so a view keeps all it shows.
+ */
+.callout .view {
   display: block;
-  font-family: var(--display);
-  color: var(--brand);
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: calc(100dvh - 48px - var(--montage-h) - 190px);
+  object-fit: contain;
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  background: var(--film);
+}
+
+/* When the view shown was taken: a camera gone dark keeps showing its last one. */
+.callout .taken {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* Stepping from view to view, under the image. */
+.callout .steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.callout .steps button {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+/* The camera whose detail is open, outlined as the drawn sources are. */
+.camera.selected {
+  outline: 3px solid #ffb400;
+  outline-offset: 1px;
+}
+
+/* The camera the pointer rests on in the lanes, larger and over its neighbours. */
+.camera.pointed {
+  z-index: 1;
+  width: 66px;
+  height: 45px;
+  outline: 3px solid var(--pointed);
+  outline-offset: 1px;
 }
 
 /* The last value measured, which is what the map's colour leaves unsaid. */
@@ -223,17 +964,153 @@ main:has(.map) {
   margin-top: 0.4rem;
 }
 
-/*
- * Where the bar of the instant stands on a station's curve: its window is
- * centred on the cursor, so the instant is the middle of the plotting area and
- * the bar never has to move. A rain gauge's bars are scaled on the whole period
- * instead, and their chart sets its own `left` over this one.
- */
-.plot .instant {
-  left: 50%;
+/* Laid out as if it were not there: it only marks where a chart's drawing is to be found. */
+.exported {
+  display: contents;
 }
 
-/* The room the curve will take, held while a station's measures are read. */
+/* Saving a chart as an image, the Acycliq widget's control. */
+button.export-png {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: center;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 0.72rem;
+}
+
+button.export-png:hover:not([disabled]) {
+  color: var(--ink);
+}
+
+button.export-png svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A station's two pickers, side by side over its value and its curve. */
+.pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.pickers .pills {
+  margin-top: 0;
+}
+
+/* One choice among a few, as a pill of joined buttons: the Acycliq widget's control. */
+.pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-2);
+}
+
+.pills button {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+/* A disabled button takes no pointer, so the hover reaches the pill and its title, which says why. */
+.pills button[disabled] {
+  pointer-events: none;
+}
+
+.pills button:hover {
+  color: var(--ink);
+}
+
+.pills button[aria-pressed='true'] {
+  background: var(--brand);
+  color: #fff;
+}
+
+.pills button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(0 74 115 / 35%);
+}
+
+/* What a rain gauge's bars and its running total stand for, under them, as the widget's. */
+.rain-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1.5rem;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.rain-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rain-legend .swatch.bars {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--rain);
+}
+
+.rain-legend .swatch.total {
+  width: 25px;
+  height: 2px;
+  background: var(--cumul);
+}
+
+/* A threshold, dashed in its colour as the chart rules it. */
+.threshold-legend .swatch.rung {
+  width: 25px;
+  border-top: 2px dashed var(--rung);
+}
+
+/*
+ * Too narrow for one line, the rungs wrap: centred line by line, their dashes
+ * would no longer fall under one another. One column instead, centred as a
+ * block under the chart.
+ */
+@media (max-width: 700px) {
+  .threshold-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    width: fit-content;
+    margin-inline: auto;
+  }
+}
+
+/* The stripes of a crossing whose threshold type was deduced, on a colour of its own. */
+.assumed-note .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  border-radius: 2px;
+  background: #ffff00 repeating-linear-gradient(45deg, rgb(0 0 0 / 25%) 0 3px, transparent 3px 6px);
+}
+
+/* The room the curve takes, held while a station's measures are read or when a quantity has none. */
 .awaited {
   display: flex;
   align-items: center;
@@ -241,16 +1118,16 @@ main:has(.map) {
 }
 
 /*
- * The colour is the bubble's rather than its paragraphs': written on every `p`,
+ * The colour is the panel's rather than its paragraphs': written on every `p`,
  * it would beat any rule for one line written with a single class, and a value
  * or a refusal would lose its own.
  */
-.callout {
-  color: var(--ink);
+.callout-body p {
+  margin: 0.25rem 0 0;
 }
 
-.callout p {
-  margin: 0.25rem 0 0;
+.callout-body > p:first-child {
+  margin-top: 0;
 }
 
 /* A camera carries its picture, where every other source is a symbol. */
@@ -265,7 +1142,7 @@ main:has(.map) {
   height: 30px;
   border: 2px solid #fff;
   border-radius: 3px;
-  background: var(--night);
+  background: var(--film);
   box-shadow: 0 2px 6px rgb(0 0 0 / 40%);
   overflow: hidden;
 }
@@ -277,9 +1154,111 @@ main:has(.map) {
   object-fit: cover;
 }
 
-h1 {
+h1,
+h2,
+h3 {
   font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+h1 {
   color: var(--brand);
+}
+
+:focus-visible {
+  outline: 2px solid #ffb400;
+  outline-offset: 2px;
+}
+
+/* The band over every screen: the tool's name, and the replay open. */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 48px;
+  padding: 0 1rem;
+  background: var(--brand);
+  color: #fff;
+}
+
+.topbar .brand {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: inherit;
+  text-decoration: none;
+}
+
+.topbar p {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar p strong {
+  font-weight: 600;
+}
+
+.topbar p span {
+  opacity: 0.85;
+}
+
+.topbar p span::before {
+  content: ' · ';
+}
+
+.topbar .session {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  white-space: nowrap;
+  color: inherit;
+}
+
+/* The phone's way home from a replay; the tool's name is that way everywhere else. */
+.topbar .home {
+  display: none;
+}
+
+/* Pushed right, and the session after it rather than pushed again. */
+.topbar .publication {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.topbar .publication + .session {
+  margin-left: 0;
+}
+
+.topbar .publication button {
+  padding: 0.3rem 0.75rem;
+  background: #fff;
+  color: var(--brand);
+}
+
+.topbar .publication-failure {
+  max-width: 20rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The link signing in and the button signing out, drawn alike. */
+.topbar a.session,
+.topbar .session button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.6);
+  border-radius: 3px;
+  font-weight: 600;
+  text-decoration: none;
+  background: transparent;
 }
 
 form {
@@ -300,8 +1279,11 @@ label small {
 }
 
 input,
-select {
+select,
+textarea {
   font: inherit;
+  /* What is typed or chosen is not the label around it, set heavier. */
+  font-weight: 400;
   padding: 0.4rem 0.5rem;
   border: 1px solid #c7d0d9;
   border-radius: 3px;
@@ -313,6 +1295,13 @@ select {
   gap: 0.75rem;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   align-items: start;
+}
+
+/* The phenomenon and the severity, side by side where the form is wide enough. */
+.choices {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
 }
 
 /* Held open while empty, so choosing an hour does not push the form down. */
@@ -330,6 +1319,44 @@ select {
   border-left: 3px solid #b3261e;
   padding-left: 0.75rem;
   color: #b3261e;
+}
+
+/* A fold inside a message, which neither a family's band nor a form's box. */
+.lane-failure details,
+.replay-montage .lane-failure details {
+  margin: 0.2rem 0 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: 12px;
+}
+
+.lane-failure summary,
+.replay-montage .lane-failure summary {
+  position: static;
+  display: inline-flex;
+  height: auto;
+  padding: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.lane-failure code {
+  display: block;
+  margin-top: 0.2rem;
+  opacity: 0.8;
+}
+
+.note.warning {
+  border-left: 3px solid #b26a00;
+  padding-left: 0.75rem;
+  color: #8a5300;
 }
 
 button {
@@ -359,57 +1386,300 @@ a.action {
   text-decoration: none;
 }
 
+.home-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* A card per replay, the whole of it a way into the replay. */
 .replays {
   list-style: none;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
-  max-width: 48rem;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1rem;
 }
 
-.replays li {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.15rem 1rem;
-  padding: 0.5rem 0.75rem;
-  border-left: 3px solid var(--brand);
+.replays > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem 0.75rem;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--brand);
+  border-radius: 4px;
+  background: #fff;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
 }
 
-.replays li[data-state='failed'] {
-  border-left-color: #b3261e;
+.replays > li:hover {
+  border-color: var(--brand);
+  box-shadow: 0 4px 14px rgb(0 74 115 / 0.12);
 }
 
-.replays a {
+.replays > li:has(a:focus-visible) {
+  outline: 2px solid #ffb400;
+  outline-offset: 2px;
+}
+
+.replays > li[data-state='failed'] {
+  border-top-color: #b3261e;
+}
+
+/* Apart from what everyone sees: only the administrator is shown these. */
+.replays.preparing > li {
+  border-style: dashed;
+  border-top-style: solid;
+  background: var(--paper-2);
+}
+
+.replays p {
+  margin: 0;
+}
+
+.replays .title {
+  font-family: var(--display);
+  font-size: 1.35rem;
   font-weight: 600;
+  line-height: 1.15;
 }
 
-.replays small {
-  grid-column: 1 / -1;
+.replays .title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* The title's link stretched over the card, which keeps one name for it. */
+.replays .title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.replays .title a:focus-visible {
+  outline: none;
+}
+
+.replays .period {
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.replays .scope {
   color: var(--ink-2);
 }
 
-.lanes,
+.replays .figures {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.replays footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  color: var(--ink-2);
+}
+
+/* What the administrator said of the replay: its phenomenon and its severity. */
+.replays .about {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.replays .about span {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+/* The SMMAR's ladder, from its lowest rank to its highest. */
+.replays .about [data-severity='vigilance'] {
+  background: #fdf3c4;
+  color: #6b5200;
+}
+
+.replays .about [data-severity='alert'] {
+  background: #fde2c8;
+  color: #8a3f00;
+}
+
+.replays .about [data-severity='reinforced-alert'] {
+  background: #fbd5d2;
+  color: #b3261e;
+}
+
+.replays .about [data-severity='crisis'] {
+  background: #b3261e;
+  color: #fff;
+}
+
+.replays .description {
+  display: -webkit-box;
+  margin-top: 0.5rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  white-space: pre-line;
+}
+
+/* The state and the bin, together at the end of the footer's line. */
+.replays footer .ends {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Above the title's stretched link, which would otherwise take its clicks. */
+.replays button.trash {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  padding: 0.3rem;
+  background: none;
+  color: var(--ink-2);
+}
+
+.replays button.trash:hover {
+  color: #b3261e;
+}
+
+.replays button.trash svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.replays .state {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--paper-2);
+  color: var(--brand);
+}
+
+.replays [data-state='partial'] .state {
+  background: #fdf0d5;
+  color: #8a5300;
+}
+
+.replays [data-state='failed'] .state {
+  background: #fbe4e2;
+  color: #b3261e;
+}
+
+.stages,
 .journal {
   list-style: none;
   padding: 0;
 }
 
-.lanes li {
-  padding: 0.35rem 0;
-  border-bottom: 1px solid #e3e8ed;
+/* One card a strand of the build, its state on the right. */
+.stages {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
 }
 
-.lanes li[data-state='failed'] {
-  color: #b3261e;
+.stage {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.6rem 0.8rem;
+  background: #fff;
+  border: 1px solid #e3e8ed;
+  border-left: 4px solid var(--line);
+  border-radius: 3px;
 }
 
-.lanes li[data-state='done'] strong::after {
-  content: ' ✓';
+.stage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.stage-state {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.stage[data-state='running'] {
+  border-left-color: var(--brand);
+}
+
+.stage[data-state='running'] .stage-state {
+  color: var(--brand);
+}
+
+.stage[data-state='done'] {
+  border-left-color: #2e7d32;
+}
+
+.stage[data-state='done'] .stage-state {
   color: #2e7d32;
 }
 
+.stage[data-state='done'] .stage-state::before {
+  content: '✓ ';
+}
+
+.stage[data-state='failed'] {
+  border-left-color: #b3261e;
+  color: #b3261e;
+}
+
+.stage[data-state='failed'] .stage-state {
+  color: #b3261e;
+}
+
+.stage-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  font-size: 14px;
+}
+
+.stage-step .count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.stage-step progress {
+  flex: 1 1 8rem;
+  height: 6px;
+  accent-color: var(--brand);
+}
+
 .journal {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--ink-2);
   max-height: 18rem;
@@ -446,7 +1716,7 @@ summary {
 }
 
 summary .count {
-  font-family: ui-monospace, monospace;
+  font-family: var(--mono);
   font-weight: 400;
   color: var(--ink-2);
   text-transform: none;
@@ -455,11 +1725,10 @@ summary .count {
 /*
  * The reading bar, laid over the column of lanes rather than inside each one.
  *
- * Its offset repeats a lane's own paddings instead of sharing its grid: the
- * ruler sits directly here while the lanes sit inside the `details` that fold
- * them, so no single column contains both. The figures were measured against
- * the ruler and are accurate to the pixel; a lane's shape and this line change
- * together.
+ * Its offset repeats the lanes' label column instead of sharing their grid:
+ * the ruler sits directly here while the lanes sit inside the `details` that
+ * fold them, so no single column contains both. A lane's shape and this line
+ * change together.
  */
 .tracks {
   position: relative;
@@ -482,7 +1751,7 @@ summary .count {
 }
 
 .playhead {
-  left: calc(1rem + var(--label-w) + (100% - var(--label-w) - 1.5rem) * var(--frac));
+  left: calc(var(--label-w) + (100% - var(--label-w)) * var(--frac));
   z-index: 2;
   box-shadow: 0 0 6px color-mix(in srgb, var(--reading) 70%, transparent);
 }
@@ -491,42 +1760,117 @@ summary .count {
 .transport {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 4px;
 }
 
 .transport button {
-  padding: 0.35rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  min-width: 34px;
+  padding: 0 8px;
+  background: var(--night-2);
+  color: var(--night-ink);
+  border: 1px solid var(--night-3);
+  border-radius: 4px;
+}
+
+.transport button:hover:not([disabled]) {
+  background: var(--night-3);
+}
+
+.transport button svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.transport button.play {
+  width: 46px;
+  background: var(--brand);
+  border-color: var(--brand);
 }
 
 .transport .speed {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 8px;
+  margin-left: 8px;
+  font-size: 11px;
   font-weight: 400;
-  font-size: 12px;
-  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--night-ink-2);
+}
+
+.transport select {
+  height: 30px;
+  padding: 0 6px;
+  background: var(--night-2);
+  color: var(--night-ink);
+  border: 1px solid var(--night-3);
+  border-radius: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
 }
 
 .transport .clock {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   margin-left: auto;
   font-family: var(--display);
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 600;
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
-  color: var(--brand);
+  color: #fff;
+}
+
+.transport .clock .date {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--night-ink-2);
+}
+
+/* Lit while the replay plays. */
+.transport .clock .live {
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--reading);
+  opacity: 0.25;
+}
+
+.transport.playing .clock .live {
+  opacity: 1;
+  animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transport.playing .clock .live {
+    animation: none;
+  }
 }
 
 .lane {
   display: grid;
   grid-template-columns: var(--label-w) 1fr;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0 0.5rem;
-  min-height: 2rem;
+  min-height: 26px;
 }
 
 .lane-label {
+  padding: 0 12px;
   font-size: 12px;
   color: var(--ink-2);
   overflow: hidden;
@@ -536,9 +1880,7 @@ summary .count {
 
 .lane-track {
   position: relative;
-  height: 1.75rem;
-  background: var(--rail);
-  border-radius: 2px;
+  height: 26px;
 }
 
 .mark,
@@ -569,28 +1911,35 @@ summary .count {
 .bars .mark {
   top: auto;
   bottom: 0;
-  /* A measure with no step to its name is an instant wide, and four pixels is
-     what it takes for that instant to read as a bar rather than a hairline. */
-  min-width: 4px;
+  /* As wide as its step and no wider: bars follow each other edge to edge, and
+     a floor would have each cover the next ones. */
+  min-width: 0;
   min-height: 2px;
-  border-radius: 2px 2px 0 0;
+  border-radius: 0;
   background: var(--rain);
-  /* The seam between two steps, in the colour of the lane beneath them. */
+}
+
+/* A measure with no step to its name is an instant wide, and four pixels is
+   what it takes for that instant to read as a bar rather than a hairline. */
+.bars .mark.instant {
+  min-width: 4px;
+}
+
+/* The seam between two steps, in the colour of the lane beneath them, and the
+   rounded top: both would notch a bar a pixel or two wide. */
+.bars .mark.seam {
   border-right: 1px solid var(--rail);
+  border-radius: 2px 2px 0 0;
 }
 
 /* A webcam lane is a strip: each view holds until the next one is taken. */
-.film {
-  min-height: 4rem;
-}
-
 .film .lane-track {
   height: 3.5rem;
 }
 
 .frame {
   border-radius: 0;
-  background: var(--night);
+  background: var(--film);
   /* The seam between two views, in the colour of the lane beneath them. */
   border-right: 1px solid var(--rail);
 }
@@ -616,15 +1965,24 @@ summary .count {
   color: #9fb0bf;
 }
 
+/* Nothing was measured or copied: a gap in the data, fainter than a finding. */
+.empty.gap {
+  font-style: italic;
+  opacity: 0.6;
+}
+
 .ruler .lane-track {
-  background: none;
-  height: 1.25rem;
+  height: 36px;
+  /* Dragged rather than selected, by a mouse or a finger alike. */
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
 }
 
 .tick {
   position: absolute;
   top: 0;
-  font-family: ui-monospace, monospace;
+  font-family: var(--mono);
   font-size: 10px;
   color: var(--ink-2);
   border-left: 1px solid #d7dee5;
@@ -632,13 +1990,39 @@ summary .count {
   height: 100%;
 }
 
-/* A crossing whose threshold nature was assumed rather than read. */
+/*
+ * A crossing whose threshold nature was assumed rather than read.
+ *
+ * Dark stripes rather than light ones: a threshold's colour can be a bright
+ * yellow, on which a pale stripe is all but the colour itself.
+ */
 .mark.assumed {
-  background-image: repeating-linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.55) 0 3px,
-    transparent 3px 6px
-  );
+  background-image: repeating-linear-gradient(45deg, rgb(0 0 0 / 25%) 0 3px, transparent 3px 6px);
+}
+
+/*
+ * The lane of what agents reported, spread over as many rows as it takes for
+ * no mark to cover another. Each row is a thin band, so a lane of three is no
+ * taller than a webcam strip.
+ */
+.stacked .lane-track {
+  height: calc(var(--rows) * 0.875rem + 0.5rem);
+}
+
+.mark.report {
+  top: calc(0.25rem + var(--row) * 0.875rem);
+  bottom: auto;
+  height: 0.75rem;
+  /* Wide enough to aim at: an event of no duration is a point in time. */
+  min-width: 6px;
+  padding: 0;
+  background: var(--report);
+}
+
+.mark.report:hover,
+.mark.report:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
 .assumed-note {
@@ -655,7 +2039,7 @@ summary .count {
   position: fixed;
   z-index: 10;
   margin: 0;
-  background: var(--night);
+  background: var(--film);
   border-radius: 3px;
   box-shadow: 0 6px 24px rgb(27 39 51 / 35%);
   overflow: hidden;
@@ -677,7 +2061,7 @@ summary .count {
 
 .preview figcaption {
   padding: 0.3rem 0.6rem;
-  font-family: ui-monospace, monospace;
+  font-family: var(--mono);
   font-size: 11px;
   color: #cfdae4;
 }
@@ -717,4 +2101,1038 @@ summary .count {
   border: 2px solid var(--brand);
   background: color-mix(in srgb, var(--brand) 8%, transparent);
   pointer-events: none;
+}
+
+/* What the agent typed, paragraphs included. */
+.sheet .description {
+  white-space: pre-line;
+}
+
+/*
+ * In small, in an event's sheet as in the form that reports it: a phone's photo
+ * is thousands of pixels wide.
+ */
+.sheet .photos,
+.photo-picker .photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet .photos button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: var(--film);
+}
+
+.sheet .photos button[aria-pressed='true'] {
+  outline: 3px solid var(--report);
+}
+
+.sheet .photos img,
+.photo-picker .photos img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.sheet .enlarged {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
+}
+
+/*
+ * In the heading of the history, on its right: where reporting starts, and
+ * why it cannot — the reason under the button it explains.
+ */
+.report-entry {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+  margin: 0 0 0 auto;
+}
+
+.report-entry button {
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.report-entry .note {
+  font-size: 12px;
+  text-align: right;
+}
+
+/*
+ * The form in the right-hand column, in place of the history: it scrolls in
+ * the column, under a heading that stays.
+ */
+.report-form {
+  align-content: start;
+  max-width: none;
+  min-height: 0;
+  overflow-y: auto;
+  /* Its end is not the page's: scrolling past it does not carry on with the replay underneath. */
+  overscroll-behavior: contain;
+  padding: 0 16px;
+  border-left: 1px solid var(--line);
+  background: #fff;
+}
+
+.report-form h2 {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  margin: 0 -16px;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  font-size: 20px;
+}
+
+.report-form textarea {
+  resize: vertical;
+}
+
+/* What was refused of a field, under it. */
+.refused {
+  font-weight: 400;
+  font-size: 13px;
+  color: #b3261e;
+}
+
+/*
+ * The way out, held at the foot of the column while the form scrolls above it:
+ * saving or giving up never takes scrolling down first.
+ */
+.report-form footer {
+  position: sticky;
+  z-index: 1;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 -16px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+/* The question before what the agent typed is thrown away, over its answers. */
+.report-form footer p {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Brought into view, it keeps the panel's own margin rather than touching its edge. */
+.report-form footer button {
+  scroll-margin-block: 1rem;
+}
+
+/* A second action beside the main one, which must not look like it. */
+button.quiet {
+  background: none;
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+.photo-picker {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid #e3e8ed;
+  border-radius: 3px;
+}
+
+.photo-picker legend {
+  font-weight: 600;
+}
+
+.photo-picker .photos {
+  margin: 0;
+}
+
+.photo-picker li {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.photo-picker .photos button.quiet {
+  padding: 0.15rem 0.4rem;
+  font-size: 12px;
+}
+
+/*
+ * The start and the end side by side, each half the row; until an end is asked
+ * for, the way to ask for one stands in its place.
+ *
+ * The fields share their rows with the row — label, field, the instant said
+ * back, a refusal — so the button can stand in the field's own row, centred
+ * on it, whatever height the browser draws a date field at.
+ */
+.hour-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(4, auto);
+  gap: 0 0.5rem;
+  align-items: start;
+}
+
+.hour-row > label {
+  grid-row: 1 / 5;
+  grid-template-rows: subgrid;
+}
+
+.hour-row > button {
+  grid-row: 2;
+  grid-column: 2;
+  align-self: center;
+  justify-self: start;
+}
+
+.hour-row .end {
+  grid-row: 1 / 5;
+  grid-column: 2;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.hour-row button {
+  padding: 0.35rem 0.7rem;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hour-row .end button {
+  justify-self: start;
+  padding: 0.15rem 0.5rem;
+  font-size: 12px;
+}
+
+/* Where the event happened: placed on the replay's map, said here. */
+.place-choice {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+
+.place-choice legend {
+  font-weight: 600;
+}
+
+.place-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.place-actions button {
+  padding: 0.3rem 0.7rem;
+}
+
+/* The way being placed, pressed while the map listens for it. */
+.place-actions button[aria-pressed='true'] {
+  outline: 2px solid #ffb400;
+  outline-offset: 1px;
+}
+
+/* What the agent is placing on the map, at its top, as the mockup says it. */
+.placing {
+  position: absolute;
+  z-index: 7;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 4px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.placing button {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.placing button.quiet {
+  color: #fff;
+  border-color: rgb(255 255 255 / 40%);
+}
+
+/* Amending and removing, at the foot of the sheet, on the right as the mockup's actions. */
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.sheet-actions p {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Asking before a replay is removed, over the dimmed page. */
+.removal-dialog {
+  box-sizing: border-box;
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.25rem 1.5rem;
+  border: 0;
+  border-top: 4px solid #b3261e;
+  border-radius: 3px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgb(20 32 43 / 30%);
+}
+
+.removal-dialog::backdrop {
+  background: rgb(20 32 43 / 45%);
+}
+
+.removal-dialog h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+}
+
+.removal-dialog p {
+  margin: 0 0 0.75rem;
+}
+
+.removal-dialog .named {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--paper-2);
+  border-radius: 3px;
+}
+
+.removal-dialog .named span {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
+.removal-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+/* The one button that destroys something, and looks like it. */
+button.danger {
+  background: #b3261e;
+}
+
+/*
+ * A phone is for reading a replay, not for administering one: within a replay
+ * the band keeps its name alone, and drops the tool's name and what only the
+ * administrator uses. Both stay on the screens a replay does not fill.
+ */
+@media (max-width: 700px) {
+  .topbar {
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  .topbar .brand {
+    font-size: 18px;
+  }
+
+  .topbar p {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.2;
+  }
+
+  .topbar p strong,
+  .topbar p span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar p span {
+    font-family: var(--mono);
+    font-size: 10.5px;
+  }
+
+  .topbar p span::before {
+    content: none;
+  }
+
+  .topbar .publication,
+  .topbar.replaying .brand,
+  .topbar.replaying .session {
+    display: none;
+  }
+
+  /* The way home from a replay, where the tool's name gave way to the replay's. */
+  .topbar .home {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-left: -6px;
+    color: #fff;
+    font-size: 30px;
+    line-height: 1;
+    text-decoration: none;
+  }
+}
+
+/* What a screen puts in the band lays out as the band's own. */
+.topbar .slot {
+  display: contents;
+}
+
+/* The map or the history, on a screen too narrow for both. */
+.view-switch {
+  display: none;
+}
+
+/*
+ * On a phone the map and the history take the screen in turn, the history laid
+ * over the map rather than removed, so it keeps where it was scrolled to.
+ */
+@media (max-width: 700px) {
+  .view-switch {
+    display: flex;
+    flex: none;
+    padding: 3px;
+    border-radius: 9px;
+    background: rgb(0 0 0 / 25%);
+  }
+
+  .view-switch button {
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #fff;
+    font-size: 13px;
+  }
+
+  .view-switch button[aria-pressed='true'] {
+    background: #fff;
+    color: var(--brand);
+    font-weight: 600;
+  }
+
+  .replay {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .replay > .replay-map,
+  .replay > .history {
+    grid-area: 1 / 1;
+  }
+
+  .replay > .history {
+    z-index: 8;
+    border-left: 0;
+  }
+
+  .replay[data-view='map'] > .history {
+    visibility: hidden;
+  }
+
+  .replay-montage {
+    --label-w: 108px;
+  }
+}
+
+/* The whole period on one bar, where a phone seeks: hidden where the ruler is wide enough. */
+.scrub {
+  display: none;
+  position: relative;
+  height: 30px;
+  border: 1px solid var(--night-3);
+  border-radius: 5px;
+  background: var(--night-2);
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  container-type: inline-size;
+}
+
+.scrub .tick {
+  padding-top: 3px;
+  font-size: 9.5px;
+}
+
+.scrub .head {
+  position: absolute;
+  top: -4px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--reading);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--reading) 70%, transparent);
+  pointer-events: none;
+}
+
+.scrub .head::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -6px;
+  border: 7px solid transparent;
+  border-top: 10px solid var(--reading);
+}
+
+/* On a phone the bar takes a row of its own, over the buttons. */
+@media (max-width: 700px) {
+  .replay-montage {
+    --transport-h: 112px;
+  }
+
+  .replay-montage .transport {
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 8px;
+  }
+
+  .scrub {
+    display: block;
+    flex-basis: 100%;
+  }
+}
+
+/*
+ * A phone's transport, as the mockup lays it out: the instant first and
+ * large, then the speed, then buttons sized for a finger.
+ */
+@media (max-width: 700px) {
+  .transport .clock {
+    order: 1;
+    display: grid;
+    flex: 1;
+    grid-template-columns: auto 1fr;
+    column-gap: 7px;
+    align-items: center;
+    min-width: 0;
+    margin-left: 0;
+  }
+
+  .transport .clock .live {
+    grid-row: 1 / span 2;
+  }
+
+  .transport .clock .hour {
+    grid-row: 1;
+    grid-column: 2;
+    font-size: 30px;
+    line-height: 1;
+  }
+
+  .transport .clock .date {
+    grid-row: 2;
+    grid-column: 2;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+
+  .transport .speed {
+    order: 2;
+    flex-direction: column-reverse;
+    gap: 2px;
+    margin-left: 0;
+    font-size: 9px;
+  }
+
+  .transport select {
+    height: 36px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .transport button {
+    order: 3;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 11px;
+  }
+
+  .transport button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .transport button.play {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+  }
+
+  .transport button.play svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/*
+ * On a phone the lanes are drawn as wide as the period asks and scrolled
+ * across, under the transport: the labels, the families' titles and the ruler
+ * stay where they are while the lanes pass under them.
+ */
+@media (max-width: 700px) {
+  .replay-montage {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .replay-montage .transport {
+    flex: none;
+  }
+
+  .lanes-scroller {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    container-type: inline-size;
+    padding-bottom: 1.5rem;
+  }
+
+  .replay-montage .tracks {
+    width: calc(var(--label-w) + var(--track-w));
+    min-width: 100%;
+  }
+
+  /*
+   * The lanes' labels pass over the reading bar and under the ruler, as the
+   * mockup stacks them. The bar's handle would be lost under the ruler: it is
+   * drawn apart, over it.
+   */
+  .replay-montage .ruler {
+    top: 0;
+    z-index: 6;
+  }
+
+  .replay-montage .playhead::before {
+    display: none;
+  }
+
+  /* As tall as the lane, so nothing passing under it shows above or below. */
+  .replay-montage .lane-label {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    align-self: stretch;
+    line-height: 26px;
+    background: var(--night);
+    border-right: 1px solid var(--night-3);
+  }
+
+  .replay-montage .ruler .lane-label {
+    background: var(--night-2);
+  }
+
+  /* As wide as the screen and held at its left, so the title is always read. */
+  .replay-montage summary,
+  .replay-montage details > .note,
+  .replay-montage .tracks .refusal {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    box-sizing: border-box;
+    width: 100cqi;
+  }
+}
+
+/* The handle that folds the lanes, and the transport it pulls: only a phone folds them. */
+.player {
+  display: contents;
+}
+
+.grab {
+  display: none;
+}
+
+/*
+ * On a phone the lanes fold under the transport, which stays at the foot of
+ * the screen: pulled up, they and the transport take the lower half of what
+ * the band leaves, and the map the upper half, as the mockup's sheet does.
+ */
+@media (max-width: 700px) {
+  .replay {
+    /* The handle's 34px and the transport's 112px, as a length the script reads to fold by. */
+    --player-h: 146px;
+    --panel-h: calc((100dvh - 48px) / 2 - var(--player-h));
+
+    position: relative;
+    overflow: hidden;
+    grid-template-rows: minmax(0, 1fr) var(--player-h);
+  }
+
+  .replay-montage {
+    position: absolute;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-sizing: content-box;
+    height: calc(var(--player-h) + var(--panel-h));
+    max-height: none;
+    transform: translateY(var(--panel-h));
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .replay-montage[data-open='true'] {
+    transform: none;
+    box-shadow: 0 -10px 30px rgb(0 0 0 / 25%);
+  }
+
+  .replay-montage.dragging {
+    transition: none;
+  }
+
+  .player {
+    display: block;
+    flex: none;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .grab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    background: var(--night);
+    color: var(--night-ink-2);
+    font-size: 11px;
+    line-height: 1;
+    cursor: grab;
+  }
+
+  .grab .grip {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+}
+
+@media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+  .replay-montage {
+    transition: none;
+  }
+}
+
+/*
+ * On a phone a detail takes the map's whole room, as the mockup's panes do:
+ * the window in front alone, standing still, and the others behind it until
+ * it is closed. Nothing there amends a report, as nothing there administers.
+ */
+@media (max-width: 700px) {
+  /* Over the history as well, which a detail opened from it closes back onto. */
+  .callouts {
+    z-index: 9;
+  }
+
+  .callout {
+    inset: 0;
+    width: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .callout.report,
+  .callout.sized {
+    width: 100%;
+    height: auto;
+  }
+
+  .callout:not(.front),
+  .callout .resize,
+  .callout header .close,
+  .callout .sheet-actions {
+    display: none;
+  }
+
+  .callout header {
+    border-radius: 0;
+    cursor: default;
+  }
+
+  .callout .view {
+    max-height: 50dvh;
+  }
+}
+
+/* The way out of a phone's detail, in the band: the window's own cross does it elsewhere. */
+.band-close {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .band-close {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border: 1px solid rgb(255 255 255 / 45%);
+    border-radius: 9px;
+    background: rgb(255 255 255 / 12%);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .band-close::before {
+    content: '×';
+    font-size: 16px;
+    line-height: 1;
+  }
+}
+
+/* The reading bar's handle, drawn apart from it where the bar passes under the ruler. */
+.playhead-handle {
+  display: none;
+}
+
+/*
+ * With the lanes open, their ruler is the one a phone reads and drags: the
+ * transport's own bar would only say it again, and gives the lanes its room.
+ */
+@media (max-width: 700px) {
+  .replay-montage[data-open='true'] {
+    --transport-h: 74px;
+  }
+
+  .replay-montage[data-open='true'] .scrub {
+    display: none;
+  }
+
+  .replay-montage .playhead-handle {
+    display: block;
+    position: absolute;
+    z-index: 7;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--label-w) + (100% - var(--label-w)) * var(--frac));
+    width: 0;
+    pointer-events: none;
+  }
+
+  .replay-montage .playhead-handle::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    display: block;
+    width: 0;
+    margin-left: -7px;
+    border: 7px solid transparent;
+    border-top: 11px solid var(--reading);
+  }
+}
+
+/* Narrower phones: the controls give up some room so the instant keeps all its figures. */
+@media (max-width: 380px) {
+  .replay-montage .transport {
+    gap: 6px;
+    padding: 0 8px;
+  }
+
+  .transport .clock {
+    column-gap: 5px;
+  }
+
+  .transport .clock .hour {
+    font-size: 26px;
+  }
+
+  .transport select {
+    padding: 0 2px;
+    font-size: 11px;
+  }
+
+  .transport button {
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .transport button.play {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* The narrowest: the controls closer together. */
+@media (max-width: 340px) {
+  .replay-montage .transport {
+    gap: 4px;
+  }
+}
+
+/* What only a phone's speed button says. */
+.speed-shown {
+  display: none;
+}
+
+/*
+ * A phone's transport on one line and one rhythm: the instant on its left,
+ * then the speed drawn as a button like its neighbours, its list laid over it
+ * unseen. The play button says whether the replay plays.
+ */
+@media (max-width: 700px) {
+  .transport .clock {
+    grid-template-columns: auto;
+    column-gap: 0;
+  }
+
+  .transport .clock .live {
+    display: none;
+  }
+
+  .transport .clock .hour,
+  .transport .clock .date {
+    grid-column: 1;
+  }
+
+  .transport .speed {
+    position: relative;
+    justify-content: center;
+    gap: 1px;
+    height: 44px;
+    min-width: 76px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    border: 1px solid var(--night-3);
+    border-radius: 11px;
+    background: var(--night-2);
+    flex-direction: column;
+  }
+
+  .transport .speed-shown {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--night-ink);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .transport .speed-name {
+    order: 1;
+    font-size: 9px;
+  }
+
+  .transport .speed select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .transport .speed {
+    height: 40px;
+    min-width: 68px;
+    padding: 0 6px;
+  }
+
+  .transport .speed-shown {
+    font-size: 11px;
+  }
+}
+
+/*
+ * Reporting places an event on the map from the column beside it, which a
+ * phone shows in turn rather than side by side: it is left to wider screens.
+ */
+@media (max-width: 700px) {
+  .history .report-entry {
+    display: none;
+  }
+}
+
+/*
+ * A phone's layers: folded, a button over the map's corner, as the mockup's
+ * legend is; unfolded, the panel under the same title row. That row is the
+ * fold, sized for a finger, its word left to the screen reader and an arrow
+ * shown in its place.
+ */
+@media (max-width: 700px) {
+  .map-legend {
+    width: min(300px, calc(100% - 24px));
+    max-height: calc(100% - 24px);
+    padding: 0 14px 12px;
+  }
+
+  .map-legend .layers legend {
+    height: 44px;
+    margin-bottom: 0;
+    line-height: 44px;
+  }
+
+  /* Across the whole row: a positioned button keeps its own width between its offsets. */
+  .map-legend .fold {
+    top: 0;
+    right: 0;
+    left: 0;
+    box-sizing: border-box;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: 44px;
+    padding: 0 14px;
+    font-size: 0;
+  }
+
+  .map-legend .fold::after {
+    content: '▴';
+    font-size: 14px;
+  }
+
+  .map-legend.folded {
+    width: auto;
+    padding: 0 40px 0 14px;
+    border-radius: 9px;
+  }
+
+  .map-legend.folded .fold::after {
+    content: '▾';
+  }
 }

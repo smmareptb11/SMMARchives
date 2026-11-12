@@ -6,7 +6,6 @@ import { formatValue } from './detail/series.ts'
 import { lastBefore, type Cursor } from './transport/reading.ts'
 
 const HOUR = 60
-const DAY = 24 * HOUR
 
 /** How much had fallen by one of a gauge's instants, counting from the start. */
 type Fallen = { at: Cursor; millimetres: number }
@@ -35,7 +34,6 @@ export type Rain = {
   millimetres: number
   /** When the last measure counted was taken; nothing before the first. */
   last: Cursor | undefined
-  stepMinutes: number | undefined
 }
 
 /**
@@ -78,7 +76,6 @@ export function rainAt(gauge: Gauge, at: Cursor): Rain {
   return {
     millimetres: reached?.millimetres ?? 0,
     last: reached?.at,
-    stepMinutes: gauge.stepMinutes,
   }
 }
 
@@ -128,7 +125,7 @@ type Shade = { from: number; colour: string }
  * tell which one a marker speaks without remembering a table.
  */
 export const SHADES = [
-  { from: 0, colour: '#dce9f6' },
+  { from: 0, colour: '#bfd7ed' },
   { from: 10, colour: '#a9cce5' },
   { from: 50, colour: '#5ba3d0' },
   { from: 100, colour: '#2171b5' },
@@ -147,33 +144,6 @@ export const UNMEASURED = '#9aa7b2'
 /** Which class a total falls in, a bound belonging to the class it opens. */
 export function shadeOf(millimetres: number): string {
   return (SHADES.findLast((one) => millimetres >= one.from) ?? SHADES[0]).colour
-}
-
-/**
- * How often a gauge measured, as the bubble says it.
- *
- * Said rather than sorted into « hourly » or « daily ». Aquasys gives those two
- * steps on the floods measured, but also event-driven series whose gaps are
- * five, twenty-five and a hundred and twenty minutes inside the same two days:
- * two classes would have to call one of those a lie, and this is the sentence
- * whose whole job is to stop the figure above it being misread.
- */
-export function stepSaid(stepMinutes: number | undefined): string {
-  if (stepMinutes === undefined) return 'Une seule mesure sur la période.'
-  // Its own sentence rather than the one above: several measures were taken,
-  // and what cannot be said is how far apart — not how many there were.
-  if (!readable(stepMinutes)) return 'Plusieurs mesures au même instant : pas de pas lisible.'
-  if (stepMinutes >= DAY) return every(stepMinutes / DAY, 'tous les', 'jour')
-  if (stepMinutes >= HOUR) return every(stepMinutes / HOUR, 'toutes les', 'heure')
-
-  return every(stepMinutes, 'toutes les', 'minute')
-}
-
-/** « Une mesure par heure. », or « Une mesure toutes les 2,5 heures. » */
-function every(count: number, each: string, unit: string): string {
-  return rounded(count) === 1
-    ? `Une mesure par ${unit}.`
-    : `Une mesure ${each} ${counted(count, unit)}.`
 }
 
 /** What one measure of a gauge added, and the span it is read over. */

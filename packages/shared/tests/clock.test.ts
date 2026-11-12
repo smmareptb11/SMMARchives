@@ -7,6 +7,7 @@ import {
   isWithin,
   medianStepMinutes,
   parseInstant,
+  periodOf,
   windowOf,
 } from '../src/clock.ts'
 
@@ -34,10 +35,32 @@ describe('normalising a source onto the single clock', () => {
   it('refuses an unparsable date rather than yielding an invalid instant', () => {
     expect(() => parseInstant('hier')).toThrow(/Unparsable/)
   })
+
+  it('reads an offset onto the single clock', () => {
+    expect(parseInstant('2020-01-21T10:00+01:00')).toBe('2020-01-21T09:00:00.000Z')
+  })
+
+  it('refuses a wall time that names no zone', () => {
+    expect(() => parseInstant('2020-01-21T10:00')).toThrow(/Unparsable/)
+  })
+
+  it('refuses a bare date, which names no instant', () => {
+    expect(() => parseInstant('2020-01-21')).toThrow(/Unparsable/)
+  })
 })
 
 describe('cropping to the requested window', () => {
   const window = windowOf('2018-10-15T06:00:00Z', '2018-10-15T12:00:00Z')
+
+  it('takes a window of one instant, which a filter may ask for', () => {
+    expect(windowOf('2018-10-15T06:00:00Z', '2018-10-15T06:00:00Z').from).toBe(
+      '2018-10-15T06:00:00.000Z',
+    )
+  })
+
+  it('refuses a replay period of one instant', () => {
+    expect(() => periodOf('2018-10-15T06:00:00Z', '2018-10-15T06:00:00.000Z')).toThrow(/no time/)
+  })
 
   it('refuses a window that ends before it starts', () => {
     expect(() => windowOf('2018-10-15T12:00:00Z', '2018-10-15T06:00:00Z')).toThrow(/ends before/)

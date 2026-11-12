@@ -42,6 +42,11 @@ export class ApiError extends Error {
  * saying so is better than showing the raw message of a `TypeError`.
  */
 export function describe(error: unknown): string {
+  // The one refusal the interface words itself: its only cause here is a
+  // session that has run out, and the reader is owed what to do about it.
+  if (error instanceof ApiError && error.problem.status === 401) {
+    return 'Votre session a expiré : reconnectez-vous.'
+  }
   if (error instanceof ApiError) return error.problem.detail
   return "L'API n'a pas répondu."
 }

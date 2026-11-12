@@ -276,3 +276,37 @@ describe('everything the map paints at an instant', () => {
     expect(painted.get('rain-gauge:4')).toBe(SHADES[3].colour)
   })
 })
+
+describe('the colour of a station the replay holds no measure of', () => {
+  const stations = [aStation(9, 'Trèbes'), aStation(3, 'Restitution-Marseillette')]
+
+  it('is the grey of a gauge that measured nothing, where a quiet station stays neutral', () => {
+    const painted = paintedAt(
+      held({ stations, measuredStations: new Set([9]) }),
+      at('2019-10-22T08:00:00.000Z'),
+    )
+
+    expect(painted.get('watercourse:3')).toBe(UNMEASURED)
+    expect(painted.has('watercourse:9')).toBe(false)
+  })
+
+  it('is nothing of its own when the replay does not say which stations measured', () => {
+    const painted = paintedAt(held({ stations }), at('2019-10-22T08:00:00.000Z'))
+
+    expect(painted.size).toBe(0)
+  })
+
+  it('never reaches the rain gauge that carries its number', () => {
+    const content = held({
+      stations: [aStation(4, 'Trèbes')],
+      measuredStations: new Set(),
+      rainGauges: [aGauge(4, 'Trèbes P', 2.4)],
+      rain: gaugesOf([aMeasure(4, '2019-10-22T06:00:00.000Z', 120, 'rainfall')]),
+    })
+
+    const painted = paintedAt(content, at('2019-10-22T08:00:00.000Z'))
+
+    expect(painted.get('watercourse:4')).toBe(UNMEASURED)
+    expect(painted.get('rain-gauge:4')).toBe(SHADES[3].colour)
+  })
+})

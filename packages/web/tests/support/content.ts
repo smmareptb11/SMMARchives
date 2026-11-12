@@ -27,6 +27,7 @@ export function held(content: Partial<ReplayContent> = {}): ReplayContent {
     events: [],
     thresholds: [],
     rain: undefined,
+    measuredStations: undefined,
     webcams: [],
     images: [],
     series: [],
@@ -50,6 +51,8 @@ export function aStation(
     position,
     category,
     quantities: null,
+    ngfDatum: null,
+    levelDatum: 'gauge',
   }
 }
 
@@ -108,11 +111,35 @@ export function aCrossing(one: Partial<ReplayEvent> & { sourceId: number }): Rep
     origin: 'automatic',
     category: 'threshold-crossing',
     title: 'Vigilance',
+    description: null,
+    producerKind: null,
+    link: null,
     severity: 1,
     color: '#ffff00',
     from: '2019-10-22T06:00:00.000Z',
     to: '2019-10-22T12:00:00.000Z',
     position: null,
+    media: [],
+    crossing: null,
+    ...one,
+  }
+}
+
+/** An event an agent reported, with every field the contract asks for. */
+export function aReport(one: Partial<ReplayEvent> & { id: string }): ReplayEvent {
+  return {
+    origin: 'manual',
+    category: 'field-report',
+    title: 'Route coupée',
+    description: null,
+    producerKind: 'Agent SMMAR',
+    link: null,
+    severity: null,
+    color: null,
+    from: '2019-10-22T06:00:00.000Z',
+    to: null,
+    position: null,
+    sourceId: null,
     media: [],
     crossing: null,
     ...one,
@@ -182,7 +209,7 @@ export function aMeasure(
   value: number,
   quantity: Measure['quantity'] = 'flow',
 ): Measure {
-  return { sourceId, quantity, at, value }
+  return { family: quantity === 'rainfall' ? 'rain-gauge' : 'hydro', sourceId, quantity, at, value }
 }
 
 /**

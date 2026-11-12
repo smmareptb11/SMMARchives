@@ -37,9 +37,21 @@ export function fromEpochSeconds(value: number): Instant {
   return toInstant(value * 1000, 'epoch seconds')
 }
 
-/** Normalises any parsable date string onto the single clock. */
+/**
+ * A date and a time, then `Z` or an offset: what names one instant whatever
+ * the zone of the process reading it.
+ */
+const ZONED = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/i
+
+/**
+ * Normalises a date string naming its zone onto the single clock.
+ *
+ * Refused without one: `Date.parse` reads a wall time in the zone of the
+ * process and a bare date as UTC, so the same text would name an instant that
+ * shifts with the host.
+ */
 export function parseInstant(value: string, subject = 'date'): Instant {
-  const milliseconds = Date.parse(value)
+  const milliseconds = ZONED.test(value) ? Date.parse(value) : Number.NaN
   if (Number.isNaN(milliseconds)) {
     throw new RangeError(`Unparsable ${subject}: ${JSON.stringify(value)}`)
   }
@@ -54,6 +66,20 @@ export function windowOf(from: string, to: string): TimeWindow {
   const window = { from: parseInstant(from, 'window start'), to: parseInstant(to, 'window end') }
   if (toEpochMilliseconds(window.from) > toEpochMilliseconds(window.to)) {
     throw new RangeError(`Window ends before it starts: ${window.from} → ${window.to}`)
+  }
+  return window
+}
+
+/**
+ * A replay's period: a window that lasts.
+ *
+ * Stricter than {@link windowOf}, which a filter on one instant needs: a replay
+ * of no duration replays nothing, and the database refuses to store one.
+ */
+export function periodOf(from: string, to: string): TimeWindow {
+  const window = windowOf(from, to)
+  if (toEpochMilliseconds(window.from) === toEpochMilliseconds(window.to)) {
+    throw new RangeError(`Period lasts no time: ${window.from} → ${window.to}`)
   }
   return window
 }

@@ -1,0 +1,26 @@
+[
+ {
+  "id": 1,
+  "code": "22",
+  "name": "Autre (Crue du 15/10/2018)",
+  "value": 6.96,
+  "isOverrunThreshold": "1",
+  "dataType": "4"
+ },
+ {
+  "id": 2,
+  "code": "22",
+  "name": "Autre (Crue du 30/11/2014)",
+  "value": 4.05,
+  "isOverrunThreshold": "1",
+  "dataType": "4"
+ },
+ {
+  "id": 3,
+  "code": "22",
+  "name": "Autre (Crue du 13/11/1999)",
+  "value": 5.26,
+  "isOverrunThreshold": "1",
+  "dataType": "4"
+ }
+]

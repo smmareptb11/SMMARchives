@@ -2,7 +2,6 @@ import { z } from 'zod'
 
 import {
   frozenWebcamImageSchema,
-  referenceLayerSchema,
   webcamSchema,
   type FrozenWebcamImage,
   type ReportCollector,
@@ -15,10 +14,8 @@ import type { Fetch } from '../../http.ts'
 import { fetchWebcamImages } from '../../sources/ceneau/images.ts'
 import { fetchWebcamPositions } from '../../sources/ceneau/webcams.ts'
 import { LizmapClient } from '../../sources/lizmap/client.ts'
-import { REFERENCE_LAYERS, fetchReferenceLayers } from '../../sources/lizmap/layers.ts'
 import type { ReplayBuild } from '../build-state.ts'
 import { downloadMedia } from '../media.ts'
-import { withPreserved } from '../preserve.ts'
 import type { ReplayStore } from '../store.ts'
 
 export type LizmapSource = {
@@ -42,9 +39,9 @@ export type LizmapLaneOptions = {
 const IMAGES = z.array(frozenWebcamImageSchema)
 
 /**
- * Collects the reference layers, the exploitable cameras and their images.
+ * Collects the exploitable cameras and their images.
  *
- * One lane for the three because they go through one host and one client: the
+ * One lane for the two because they go through one host and one client: the
  * Lizmap is a crisis tool in production whose calls stay spaced, and splitting
  * them would space each data set on its own.
  *
@@ -55,22 +52,6 @@ export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
   const { build, source, identity } = options
 
   await build.runLane('lizmap', async () => {
-    const layers = build.collectorFor('lizmap', {
-      layers: [...REFERENCE_LAYERS],
-    })
-    const collected = await fetchReferenceLayers({
-      client: source.client,
-      collector: layers,
-      layers: REFERENCE_LAYERS,
-    })
-    // No extent here: the structures are frozen whole, whatever the replay's extent.
-    await build.stored(
-      'reference-layers',
-      z.array(referenceLayerSchema),
-      { data: collected, report: layers.seal() },
-      collected.length,
-    )
-
     const positions = build.collectorFor('lizmap', {
       extent: identity.extent,
     })
@@ -97,8 +78,6 @@ export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
  * copies, and an image whose fetch failed must say so rather than name a file
  * that is not there.
  */
-/* eslint-disable-next-line max-lines-per-function -- lists, downloads and stores in one pass,
-   because the index must point at the copies */
 async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam[]): Promise<void> {
   const { build, source, identity } = options
   const codes = webcams.map((one) => one.code)
@@ -137,25 +116,15 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
     sayWhichViewsHaveNoReduction(listing, frozen.images, frozen.thumbnailProblems)
   }
 
-  const kept = await withPreserved({
-    store: options.store,
-    collector: listing,
-    dataset: 'webcam-images',
-    contract: IMAGES,
-    collected: listed,
-    keyOf: (image) => `${image.code} ${image.at}`,
-    isStillHeld: async (image) =>
-      image.storedPath !== null && (await options.store.hasMedia(image.storedPath)),
-    groupOf: (image) => `webcam ${image.code}`,
-    rule: 'the data set holds what the listing offers',
-  })
-  kept.sort((a, b) => (a.at === b.at ? a.code.localeCompare(b.code) : a.at < b.at ? -1 : 1))
+  const byInstant = [...listed].sort((a, b) =>
+    a.at === b.at ? a.code.localeCompare(b.code) : a.at < b.at ? -1 : 1,
+  )
 
   await build.stored(
     'webcam-images',
     IMAGES,
-    { data: kept, report: listing.seal({ beyondRetention }) },
-    kept.length,
+    { data: byInstant, report: listing.seal({ beyondRetention }) },
+    byInstant.length,
   )
   if (media !== undefined && frozen !== undefined) {
     await build.copied(frozen.tally)

@@ -1,5 +1,5 @@
 import type { FeatureCollection } from 'geojson'
-import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 
 import { UNION_OUTLINES } from '@smmarchives/shared/reference/perimeters.ts'
 
@@ -7,33 +7,54 @@ import { BRAND } from '../palette.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import type { Shown } from './families.ts'
 import { KINDS, sourcesOf, type Kind } from './sources.ts'
+import { reportColourOf, reportFilterOf, reportsOnTheMap, type ReportPainting } from './reports.ts'
 import { NEUTRAL, paintingOf } from './state.ts'
-import { imageOf, widthOf } from './symbols.ts'
+import { haloImageOf, imageOf, ringImageOf, shadowImageOf } from './symbols.ts'
 
 /**
- * The shape of a family, and the white ring behind it.
+ * The shape of a family, the white ring behind it, and the shadow under both.
  *
  * The ring is a layer rather than the icon's halo. A halo grows into the
  * distance an SDF encodes around its edge, and the shapes are drawn as plain
  * masks, which encode none: `icon-halo-width` has nothing to bite into. The
- * same shape drawn slightly larger in white underneath gives the outline the
- * mockup puts around every marker, and it is what keeps two markers apart when
- * three hundred of them crowd one valley.
+ * same shape grown all round and drawn in white underneath gives the outline the
+ * crisis tool puts around every symbol, and it is what keeps two markers
+ * apart when three hundred of them crowd one valley. The shadow lifts each one
+ * off the ground, as the mockup's do.
  */
 export const shapeLayerOf = (kind: Kind): string => `sources-${kind}`
 const ringLayerOf = (kind: Kind): string => `${shapeLayerOf(kind)}-ring`
+const shadowLayerOf = (kind: Kind): string => `${shapeLayerOf(kind)}-shadow`
+
+/**
+ * The outline of the source whose detail is open, under its ring, in the
+ * source's own colour: one colour of its own would read as one more threshold.
+ */
+const selectedLayerOf = (kind: Kind): string => `${shapeLayerOf(kind)}-selected`
+
+/** The shape of the source the pointer rests on, which `pointing.ts` draws and the tick repaints. */
+export const pointedShapeOf = (kind: Kind): string => `${shapeLayerOf(kind)}-pointed`
+
+/**
+ * The families from the one drawn underneath to the one on top: a rain gauge's
+ * triangle is wider than a station's circle, and the rain gauges outnumber the
+ * stations three to one, so drawn over them they hide the stations a replay
+ * is about.
+ */
+export const DRAWN: readonly Kind[] = ['rain-gauge', 'structure', 'watercourse']
+
+/** A filter nothing passes: no source is open. */
+export const NO_SOURCE: ExpressionSpecification = ['==', ['get', 'kind'], '']
+
+/** Every layer that draws a family, which is what showing or thinning it reaches. */
+const layersOf = (kind: Kind): string[] => [
+  shapeLayerOf(kind),
+  ringLayerOf(kind),
+  shadowLayerOf(kind),
+]
 
 export const TERRITORY_LAYER = 'syndicats'
 const lineLayerOf = (layer: string): string => `${layer}-line`
-
-/**
- * How thick the white ring is, in pixels of the drawn shape.
- *
- * A width and not a scale: scaled, a ring would be thicker around the triangle
- * of a rain gauge than around the square of a structure, for no reason a reader
- * could name.
- */
-const RING = 1.5
 
 /**
  * The perimeters of the seven basin unions, which are the replay's ground.
@@ -74,35 +95,80 @@ export function drawTerritory(map: MapLibreMap): void {
 export function drawSources(map: MapLibreMap, content: ReplayContent): void {
   map.addSource('sources', { type: 'geojson', data: sourcesOf(content).geojson })
 
-  // Every ring first, every shape after, and not ring-then-shape per family:
-  // a rain gauge's ring is wider than a station's circle, and drawn over it it
-  // would rub the station out wherever the two stand side by side.
-  for (const kind of KINDS) {
-    addFamily(map, { kind, id: ringLayerOf(kind), size: ringScaleOf(kind), colour: '#ffffff' })
+  // Every shadow first, every ring next, every shape last, and not one family
+  // after the other: a shadow or a ring is wider than the shape it backs, and
+  // drawn over a neighbour of another family it would rub it out.
+  for (const kind of DRAWN) {
+    addFamily(map, { kind, id: shadowLayerOf(kind), image: shadowImageOf(kind) })
   }
-  for (const kind of KINDS) {
-    addFamily(map, { kind, id: shapeLayerOf(kind), size: 1, colour: NEUTRAL })
+  for (const kind of DRAWN) {
+    addFamily(map, {
+      kind,
+      id: selectedLayerOf(kind),
+      image: haloImageOf(kind),
+      colour: NEUTRAL,
+      filter: NO_SOURCE,
+    })
+  }
+  for (const kind of DRAWN) {
+    addFamily(map, { kind, id: ringLayerOf(kind), image: ringImageOf(kind), colour: '#ffffff' })
+  }
+  for (const kind of DRAWN) {
+    addFamily(map, { kind, id: shapeLayerOf(kind), image: imageOf(kind), colour: NEUTRAL })
   }
 }
 
-type Drawn = { kind: Kind; id: string; size: number; colour: string }
+/** A layer of the parc; a shadow is an image of its own and takes no colour. */
+type Drawn = {
+  kind: Kind
+  id: string
+  image: string
+  colour?: string
+  filter?: ExpressionSpecification
+}
 
-function addFamily(map: MapLibreMap, { kind, id, size, colour }: Drawn): void {
+function addFamily(map: MapLibreMap, { kind, id, image, colour, filter }: Drawn): void {
   map.addLayer({
     id,
     type: 'symbol',
     source: 'sources',
     // Hidden from the first frame: `showMutes` reposes this the moment the map
     // is ready, and starting shown would flash two hundred grey triangles.
-    filter: filterOf(kind, false),
+    filter: filter ?? filterOf(kind, false),
     layout: {
-      'icon-image': imageOf(kind),
+      'icon-image': image,
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
-      'icon-size': size,
     },
-    paint: { 'icon-color': colour },
+    paint: colour === undefined ? {} : { 'icon-color': colour },
   })
+}
+
+/**
+ * Outlines the sources whose details are open.
+ *
+ * Only while the source itself is drawn: an outline around a family cut off,
+ * or around a source the switch holds back, would be a blot where
+ * nothing is. A station and a rain gauge can share an identifier, so the
+ * family is part of what names it.
+ */
+export function selectSource(
+  map: MapLibreMap,
+  selected: readonly { kind: Kind; id: number }[],
+  shown: Shown,
+  mutesShown: boolean,
+): void {
+  for (const kind of KINDS) {
+    const layer = selectedLayerOf(kind)
+    if (map.getLayer(layer) === undefined) continue
+    const ids = selected.filter((one) => one.kind === kind).map((one) => one.id)
+    map.setFilter(
+      layer,
+      ids.length === 0 || !shown[kind]
+        ? NO_SOURCE
+        : ['all', filterOf(kind, mutesShown), ['in', ['get', 'id'], ['literal', ids]]],
+    )
+  }
 }
 
 /**
@@ -119,9 +185,95 @@ export function filterOf(kind: Kind, mutesShown: boolean): ExpressionSpecificati
   return mutesShown ? family : ['all', family, ['!=', ['get', 'mute'], true]]
 }
 
-/** The scale that adds `RING` pixels on each side of a shape of this width. */
-function ringScaleOf(kind: Kind): number {
-  return 1 + (2 * RING) / widthOf(kind)
+const REPORT_AREA = 'reports-area'
+const REPORT_OUTLINE = 'reports-area-line'
+const REPORT_SHADOW = 'reports-shadow'
+const REPORT_RING = 'reports-ring'
+const REPORT_POINT = 'reports-point'
+/** The diamond of the report the pointer rests on, which `pointing.ts` draws. */
+export const REPORT_POINTED = 'reports-pointed'
+
+/** Where a click lands on a report placed on a spot, and on one covering an area. */
+export const REPORT_SPOTS = [REPORT_POINT]
+export const REPORT_AREAS = [REPORT_AREA]
+
+/** Nothing reported yet: the first repaint says what the cursor has reached. */
+const NOTHING_YET: ReportPainting = { during: [], after: [] }
+
+/**
+ * What agents reported, over the sources: a diamond on a spot, an area
+ * otherwise.
+ *
+ * Above the parc, because a report placed on a station is what the agent came
+ * to say about it, and the station is still there once the report is cut off.
+ * The area is light, so the ground and the sources under it stay legible.
+ */
+export function drawReports(map: MapLibreMap, content: ReplayContent): void {
+  map.addSource('reports', { type: 'geojson', data: reportsOnTheMap(content.events) })
+
+  map.addLayer({
+    id: REPORT_AREA,
+    type: 'fill',
+    source: 'reports',
+    filter: reportFilterOf(NOTHING_YET, 'Polygon'),
+    paint: { 'fill-color': reportColourOf(NOTHING_YET), 'fill-opacity': 0.25 },
+  })
+  map.addLayer({
+    id: REPORT_OUTLINE,
+    type: 'line',
+    source: 'reports',
+    filter: reportFilterOf(NOTHING_YET, 'Polygon'),
+    paint: { 'line-color': reportColourOf(NOTHING_YET), 'line-width': 2 },
+  })
+  for (const [id, image, colour] of [
+    [REPORT_SHADOW, shadowImageOf('report'), undefined],
+    [REPORT_RING, ringImageOf('report'), '#ffffff'],
+    [REPORT_POINT, imageOf('report'), reportColourOf(NOTHING_YET)],
+  ] as const) {
+    map.addLayer({
+      id,
+      type: 'symbol',
+      source: 'reports',
+      filter: reportFilterOf(NOTHING_YET, 'Point'),
+      layout: {
+        'icon-image': image,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: colour === undefined ? {} : { 'icon-color': colour },
+    })
+  }
+}
+
+/** What agents reported, again: the screen holds one more since the map was drawn. */
+export function redrawReports(map: MapLibreMap, content: ReplayContent): void {
+  void map.getSource<GeoJSONSource>('reports')?.setData(reportsOnTheMap(content.events))
+}
+
+/**
+ * Shows what has been reported by the instant read, in the colour of whether
+ * it is still under way. A filter and a paint property: the reports themselves
+ * do not change, only which of them the cursor has reached.
+ */
+export function paintReports(map: MapLibreMap, painting: ReportPainting): void {
+  const colour = reportColourOf(painting)
+  for (const [layer, shape] of [
+    [REPORT_AREA, 'Polygon'],
+    [REPORT_OUTLINE, 'Polygon'],
+    [REPORT_SHADOW, 'Point'],
+    [REPORT_RING, 'Point'],
+    [REPORT_POINT, 'Point'],
+  ] as const) {
+    if (map.getLayer(layer) === undefined) continue
+    map.setFilter(layer, reportFilterOf(painting, shape))
+  }
+  if (map.getLayer(REPORT_POINT) === undefined) return
+  map.setPaintProperty(REPORT_AREA, 'fill-color', colour)
+  map.setPaintProperty(REPORT_OUTLINE, 'line-color', colour)
+  map.setPaintProperty(REPORT_POINT, 'icon-color', colour)
+  if (map.getLayer(REPORT_POINTED) !== undefined) {
+    map.setPaintProperty(REPORT_POINTED, 'icon-color', colour)
+  }
 }
 
 /**
@@ -136,11 +288,12 @@ function ringScaleOf(kind: Kind): number {
  */
 export function showFamilies(map: MapLibreMap, shown: Shown): void {
   for (const kind of KINDS) {
-    // A shape and the white ring that backs it: a ring left alone would leave
-    // a white blot where the source it backed used to be.
-    show(map, [shapeLayerOf(kind), ringLayerOf(kind)], shown[kind])
+    // A shape and what backs it: a ring or a shadow left alone would leave a
+    // blot where the source it backed used to be.
+    show(map, layersOf(kind), shown[kind])
   }
   show(map, [TERRITORY_LAYER, lineLayerOf(TERRITORY_LAYER)], shown.territory)
+  show(map, [REPORT_AREA, REPORT_OUTLINE, REPORT_SHADOW, REPORT_RING, REPORT_POINT], shown.report)
 }
 
 /**
@@ -152,7 +305,7 @@ export function showFamilies(map: MapLibreMap, shown: Shown): void {
  */
 export function showMutes(map: MapLibreMap, mutesShown: boolean): void {
   for (const kind of KINDS) {
-    for (const layer of [shapeLayerOf(kind), ringLayerOf(kind)]) {
+    for (const layer of layersOf(kind)) {
       if (map.getLayer(layer) === undefined) continue
       map.setFilter(layer, filterOf(kind, mutesShown))
     }
@@ -167,18 +320,31 @@ function show(map: MapLibreMap, layers: string[], shown: boolean): void {
 }
 
 /**
- * Repaints the whole parc at a tick, in one call per family.
+ * Repaints the whole parc at a tick: one expression per family, for its shapes
+ * and for the outline of the one selected.
  *
  * One paint property rather than a rewrite of three hundred features: what the
  * cursor changes is not the data but what it is painted with. What to paint
  * with is `map/state.ts`'s business; this turns it into an expression.
  */
-export function paintSources(map: MapLibreMap, colours: Map<string, string>): void {
+export function paintSources(map: Painted, colours: Map<string, string>): void {
   for (const kind of KINDS) {
-    const layer = shapeLayerOf(kind)
-    if (map.getLayer(layer) === undefined) continue
-    map.setPaintProperty(layer, 'icon-color', expressionFor(paintingOf(kind, colours)))
+    const painting = expressionFor(paintingOf(kind, colours))
+    for (const layer of [shapeLayerOf(kind), selectedLayerOf(kind), pointedShapeOf(kind)]) {
+      if (map.getLayer(layer) === undefined) continue
+      map.setPaintProperty(layer, 'icon-color', painting)
+    }
   }
+}
+
+/** What repainting asks of a map, and nothing more. */
+type Painted = {
+  getLayer: (id: string) => unknown
+  setPaintProperty: (
+    layer: string,
+    property: 'icon-color',
+    value: string | ExpressionSpecification,
+  ) => unknown
 }
 
 /**

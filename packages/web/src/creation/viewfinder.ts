@@ -2,7 +2,15 @@ import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 import { Map as MapLibreMap, NavigationControl, type StyleSpecification } from 'maplibre-gl'
 import type { RefObject } from 'react'
 
-import { cornersOf, extentBetween, FRAME, paddingOf, reachOf, type Size } from './extent.ts'
+import {
+  cornersOf,
+  extentBetween,
+  FRAME,
+  lonLatAt,
+  paddingOf,
+  reachOf,
+  type Size,
+} from './extent.ts'
 
 /**
  * The map and whether a rectangle narrows it.
@@ -14,22 +22,30 @@ import { cornersOf, extentBetween, FRAME, paddingOf, reachOf, type Size } from '
 export type Picker = {
   map: MapLibreMap
   narrowed: boolean
-  framed: (extent: BoundingBox | null) => void
+  /** The union the rectangle was framed on, until the reader moves it off. */
+  territory: string | undefined
+  framed: Framed
   moving: (moving: boolean) => void
 }
+
+/** What the rectangle frames, and the union that names it if one does. */
+export type Framing = { extent: BoundingBox | null; territory?: string }
+
+export type Framed = (framing: Framing) => void
 
 /** The whole fleet, on a map smaller than a replay's, hence a centre and zoom of its own. */
 const OPENING = { center: [2.55, 43.0] as [number, number], zoom: 7.3 }
 
 export function pickerOn(
   map: MapLibreMap,
-  change: RefObject<(extent: BoundingBox | null) => void>,
+  change: RefObject<Framed>,
   move: RefObject<(moving: boolean) => void>,
 ): Picker {
   return {
     map,
     narrowed: false,
-    framed: (extent) => change.current(extent),
+    territory: undefined,
+    framed: (framing) => change.current(framing),
     moving: (moving) => move.current(moving),
   }
 }
@@ -54,11 +70,19 @@ export function basinMap(container: HTMLElement, style: string | StyleSpecificat
     touchPitch: false,
     maxPitch: 0,
   })
-  const reach = reachOf(FRAME, sizeOf(map))
-  map.setMaxBounds([
-    map.unproject([reach.southWest.x, reach.southWest.y]),
-    map.unproject([reach.northEast.x, reach.northEast.y]),
-  ])
+  // Again whenever the map is resized — a window narrowed, a phone turned:
+  // bounds held for the size it opened at would leave the frame short of an
+  // edge, or let it past one.
+  const holdWithin = () => {
+    const size = sizeOf(map)
+    const reach = reachOf(FRAME, size)
+    map.setMaxBounds([
+      lonLatAt(OPENING.center, OPENING.zoom, size, reach.southWest),
+      lonLatAt(OPENING.center, OPENING.zoom, size, reach.northEast),
+    ])
+  }
+  holdWithin()
+  map.on('resize', holdWithin)
   map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
   map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right')
@@ -73,7 +97,10 @@ export function basinMap(container: HTMLElement, style: string | StyleSpecificat
  * hears that a narrowed map is moving.
  */
 export function listen(picker: Picker): void {
-  picker.map.on('movestart', () => {
+  picker.map.on('movestart', (event) => {
+    // Moved by the reader rather than framed on a union: the union no longer
+    // names what the rectangle holds.
+    if (event.originalEvent !== undefined) picker.territory = undefined
     if (picker.narrowed) picker.moving(true)
   })
   picker.map.on('moveend', () => {
@@ -87,10 +114,11 @@ export function listen(picker: Picker): void {
  *
  * The frame keeps its proportions, so what it frames holds the bounds and
  * meets them on one axis only. The move ends like any other, which is when the
- * form hears of the extent.
+ * form hears of the extent, named after the union it was framed on.
  */
-export function frameOn(picker: Picker, bounds: BoundingBox): void {
+export function frameOn(picker: Picker, bounds: BoundingBox, territory: string): void {
   picker.narrowed = true
+  picker.territory = territory
   picker.map.fitBounds(
     [
       [bounds.minLon, bounds.minLat],
@@ -108,7 +136,7 @@ export function frameOn(picker: Picker, bounds: BoundingBox): void {
  */
 export function settle(picker: Picker): void {
   if (!picker.narrowed) {
-    picker.framed(null)
+    picker.framed({ extent: null })
     return
   }
 
@@ -120,7 +148,9 @@ export function settle(picker: Picker): void {
     { lon: southWest.lng, lat: southWest.lat },
     { lon: northEast.lng, lat: northEast.lat },
   )
-  if (extent !== undefined) picker.framed(extent)
+  if (extent === undefined) return
+  const { territory } = picker
+  picker.framed(territory === undefined ? { extent } : { extent, territory })
 }
 
 function sizeOf(map: MapLibreMap): Size {

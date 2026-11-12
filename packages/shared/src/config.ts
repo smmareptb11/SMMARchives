@@ -38,23 +38,12 @@ export function optionalEnv(
 export type AquasysConfig = {
   baseUrl: string
   token: string
-  /**
-   * Reference under which request bounds are read.
-   *
-   * Aquasys' storage time zone is not established: two concordant clues point
-   * at series stamped on local days. The epoch stays an absolute instant, so
-   * stored data is unambiguous; the uncertainty is on bounds and labelling.
-   */
-  timeZone: string
 }
 
 export function aquasysConfig(env: Environment = process.env): AquasysConfig {
-  const timeZone = optionalEnv('AQUASYS_TIME_ZONE', 'UTC', env)
-  assertTimeZone(timeZone)
   return {
     baseUrl: trimTrailingSlash(requireEnv('ACYCLIQ_API_URL', env)),
     token: requireEnv('ACYCLIQ_TOKEN', env),
-    timeZone,
   }
 }
 
@@ -73,6 +62,8 @@ export type RadarRainfallConfig = {
    * one shifts the whole layer without anything on screen saying so.
    */
   extent: BoundingBox
+  /** Whether no `RADAR_RAINFALL_BBOX` was given, and the extent is the code's own. */
+  extentIsDefault?: boolean | undefined
 }
 
 /**
@@ -86,7 +77,8 @@ export function radarRainfallConfig(
 ): RadarRainfallConfig | undefined {
   const root = optionalEnv('RADAR_RAINFALL_PATH', '', env)
   if (root === '') return undefined
-  return { root, extent: parseExtent(optionalEnv('RADAR_RAINFALL_BBOX', '', env)) }
+  const extent = optionalEnv('RADAR_RAINFALL_BBOX', '', env)
+  return { root, extent: parseExtent(extent), extentIsDefault: extent === '' }
 }
 
 export type DatabaseConfig = {
@@ -108,6 +100,12 @@ export function mediaConfig(env: Environment = process.env): MediaConfig {
 
 export type ApiConfig = {
   port: number
+  /**
+   * The addresses whose `X-Forwarded-Proto` is believed, in the form Express
+   * reads for `trust proxy`. The loopback when the reverse proxy runs on the
+   * host; the private ranges when it runs in a container beside the API.
+   */
+  trustedProxy: string
 }
 
 /**
@@ -121,20 +119,32 @@ export function apiConfig(env: Environment = process.env): ApiConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new ConfigurationError('API_PORT', `${value} is not a port number`)
   }
-  return { port }
+  return { port, trustedProxy: optionalEnv('TRUST_PROXY', 'loopback', env) }
+}
+
+export type AuthConfig = {
+  /** What `npm run hash-password` prints, never the password itself. */
+  passwordHash: string
+  /** Keys the digest a session is stored under. */
+  sessionSecret: string
+}
+
+const MIN_SESSION_SECRET_LENGTH = 32
+
+export function authConfig(env: Environment = process.env): AuthConfig {
+  const sessionSecret = requireEnv('SESSION_SECRET', env)
+  if (sessionSecret.length < MIN_SESSION_SECRET_LENGTH) {
+    throw new ConfigurationError(
+      'SESSION_SECRET',
+      `is shorter than ${MIN_SESSION_SECRET_LENGTH} characters`,
+    )
+  }
+  return { passwordHash: requireEnv('ADMIN_PASSWORD_HASH', env), sessionSecret }
 }
 
 function parseExtent(value: string): BoundingBox {
   if (value === '') return DEFAULT_RADAR_RAINFALL_EXTENT
   return parseBoundingBox(value, (reason) => new ConfigurationError('RADAR_RAINFALL_BBOX', reason))
-}
-
-function assertTimeZone(timeZone: string): void {
-  try {
-    new Intl.DateTimeFormat('en', { timeZone })
-  } catch {
-    throw new ConfigurationError('AQUASYS_TIME_ZONE', `${timeZone} is not an IANA time zone`)
-  }
 }
 
 function trimTrailingSlash(url: string): string {

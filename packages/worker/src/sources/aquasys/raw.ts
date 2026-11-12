@@ -58,9 +58,22 @@ const rawPointPrelSchema = z.looseObject({
   name: z.string().optional(),
 })
 
+/**
+ * A line of a station's altimetric history, of which only the altitude is read.
+ *
+ * Optional, so a malformed line costs that line rather than the whole detail,
+ * which is also where a station's quantities are read.
+ */
+const rawAltimetrySchema = z.looseObject({
+  altitude: z.number().optional(),
+})
+
+export type RawAltimetry = z.infer<typeof rawAltimetrySchema>
+
 export const rawDetailSchema = z.looseObject({
   id: z.number().int(),
   link_pointPrels: z.array(rawPointPrelSchema).optional(),
+  link_altimetrySystems: z.array(rawAltimetrySchema).optional(),
 })
 
 /**

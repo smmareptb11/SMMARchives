@@ -32,9 +32,8 @@ export type CopyLocalMediaOptions = {
  * mirrored, so a frame indexed as `20044/pluvio5mn/1593102683.png` is found
  * again under the same path below `prefix`.
  *
- * A file already present is not copied again, which is what makes re-running a
- * build cheap. One failure is recorded and does not stop the others: a missing
- * raster costs one frame, not the replay.
+ * One failure is recorded and does not stop the others: a missing raster costs
+ * one frame, not the replay.
  */
 export async function copyLocalMedia(options: CopyLocalMediaOptions): Promise<MediaTally> {
   const tally = emptyTally()
@@ -46,6 +45,7 @@ export async function copyLocalMedia(options: CopyLocalMediaOptions): Promise<Me
       tally,
       target: `${options.prefix}/${path}`,
       read: () => readFile(join(options.root, path)),
+      observation: true,
       onFailure: (error) => {
         options.collector.failed(`media ${path}`, error)
         tally.failed += 1
@@ -58,7 +58,7 @@ export async function copyLocalMedia(options: CopyLocalMediaOptions): Promise<Me
 }
 
 function emptyTally(): MediaTally {
-  return { copied: 0, skipped: 0, failed: 0, bytes: 0 }
+  return { copied: 0, failed: 0, bytes: 0 }
 }
 
 type FreezeOneOptions = {
@@ -67,7 +67,13 @@ type FreezeOneOptions = {
   target: string
   read: () => Promise<Uint8Array>
   /**
-   * What an failure costs, which is the only thing the two freezes disagree on.
+   * Whether the medium is an observation, which the tally counts copied or
+   * failed. A reduction counts in the bytes it weighs and nowhere else: one
+   * lost truncates nothing, so one kept must not inflate what the replay holds.
+   */
+  observation: boolean
+  /**
+   * What a failure costs, which is the only thing the two freezes disagree on.
    *
    * An observation that cannot be had truncates the replay and is counted; a
    * reduction that cannot be had costs the strip its weight and nothing else.
@@ -78,23 +84,18 @@ type FreezeOneOptions = {
 /**
  * Freezes one medium, whatever it is read from.
  *
- * The four steps every freeze shares — skip what the store already has, read,
- * store, count — written once. What differs between a delivered raster and a
- * remote image is where the bytes come from and how the walk is paced, so those
- * stay with their callers.
+ * The three steps every freeze shares — read, store, count — written once. What
+ * differs between a delivered raster and a remote image is where the bytes come
+ * from and how the walk is paced, so those stay with their callers.
  *
  * Returns whether the replay now holds it, which is the only thing a caller
  * needs to decide what to record.
  */
 async function freezeOne(options: FreezeOneOptions): Promise<boolean> {
   try {
-    if (await options.store.hasMedia(options.target)) {
-      options.tally.skipped += 1
-      return true
-    }
     const body = await options.read()
     await options.store.putMedia(options.target, body)
-    options.tally.copied += 1
+    if (options.observation) options.tally.copied += 1
     options.tally.bytes += body.byteLength
     return true
   } catch (error) {
@@ -142,7 +143,7 @@ export type DownloadResult = {
  * that month has passed.
  *
  * The path is derived from the code and the instant, never from the remote file
- * name, so a re-run recognises what it already has. An image that cannot be
+ * name, which is not stable enough to keep. An image that cannot be
  * fetched costs its own frame and leaves `storedPath` null — the replay says
  * which images it does not hold rather than pointing at a file that is not
  * there.
@@ -188,6 +189,7 @@ async function freeze(image: WebcamImage, run: Run): Promise<FrozenWebcamImage> 
     tally,
     target: storedPath,
     read: async () => new Uint8Array(await (await run.http.response(image.uri)).arrayBuffer()),
+    observation: true,
     onFailure: (error) => {
       options.collector.failed(`image ${image.code} ${image.at}`, error)
       tally.failed += 1
@@ -222,6 +224,7 @@ async function freezeThumbnail(image: WebcamImage, run: Run): Promise<string | n
     tally,
     target,
     read: async () => new Uint8Array(await (await run.http.response(uri)).arrayBuffer()),
+    observation: false,
     onFailure: (error) => remember(run.problems, error),
   })
 
@@ -245,8 +248,8 @@ function remember(problems: Set<string>, error: unknown): void {
 
 /**
  * Milliseconds, not seconds: two frames of one camera inside the same second
- * would otherwise resolve to one path, and the second would be counted skipped
- * while pointing at the first one's file.
+ * would otherwise resolve to one path, and the second would overwrite the
+ * first one's file.
  */
 function epochOf(at: Instant): number {
   return toEpochMilliseconds(at)

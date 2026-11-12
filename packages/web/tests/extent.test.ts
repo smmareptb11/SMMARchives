@@ -1,7 +1,7 @@
 import { SMMAR_TERRITORY } from '@smmarchives/shared'
 import { describe, expect, it } from 'vitest'
 
-import { cornersOf, extentBetween, paddingOf, reachOf } from '../src/creation/extent.ts'
+import { cornersOf, extentBetween, lonLatAt, paddingOf, reachOf } from '../src/creation/extent.ts'
 
 const VIEW = { width: 500, height: 300 }
 
@@ -59,5 +59,35 @@ describe('the extent a frame lands on', () => {
 
   it('is nothing outside the territory', () => {
     expect(extentBetween({ lon: 5.3, lat: 43.2 }, { lon: 5.5, lat: 43.4 })).toBeUndefined()
+  })
+})
+
+describe('a pixel of the view a map opened on', () => {
+  const size = { width: 800, height: 600 }
+
+  it('lands on the centre of the view at its middle', () => {
+    const [lon, lat] = lonLatAt([2.55, 43.0], 7.3, size, { x: 400, y: 300 })
+    expect(lon).toBeCloseTo(2.55, 9)
+    expect(lat).toBeCloseTo(43.0, 9)
+  })
+
+  /** At zoom 0 the world is 512 pixels wide: a quarter of it is ninety degrees. */
+  it('moves by the degrees the Web Mercator scale gives', () => {
+    const [lon, lat] = lonLatAt([0, 0], 0, { width: 512, height: 512 }, { x: 384, y: 256 })
+    expect(lon).toBeCloseTo(90, 9)
+    expect(lat).toBeCloseTo(0, 9)
+  })
+
+  it('reads north up, a pixel higher on the screen standing further north', () => {
+    const [, above] = lonLatAt([2.55, 43.0], 7.3, size, { x: 400, y: 0 })
+    const [, below] = lonLatAt([2.55, 43.0], 7.3, size, { x: 400, y: 600 })
+    expect(above).toBeGreaterThan(43.0)
+    expect(below).toBeLessThan(43.0)
+  })
+
+  it('reaches further for a wider view, which is why a resize asks again', () => {
+    const narrow = lonLatAt([2.55, 43.0], 7.3, size, { x: 800, y: 300 })[0]
+    const wide = lonLatAt([2.55, 43.0], 7.3, { width: 1600, height: 600 }, { x: 1600, y: 300 })[0]
+    expect(wide).toBeGreaterThan(narrow)
   })
 })

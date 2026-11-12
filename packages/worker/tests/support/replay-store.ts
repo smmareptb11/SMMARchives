@@ -4,7 +4,7 @@ import { basename, join } from 'node:path'
 
 import { expect } from 'vitest'
 
-import type { Report, ReplayIdentity } from '@smmarchives/shared'
+import type { DatasetName, Report, ReplayIdentity } from '@smmarchives/shared'
 
 import { openPostgresCatalog } from '../../src/replay/postgres/catalog.ts'
 import type { ReplayStore, StoredBlob } from '../../src/replay/store.ts'
@@ -43,6 +43,12 @@ export async function cleanMedia(): Promise<void> {
 export async function frozenBytes(store: ReplayStore, path: string): Promise<Buffer | undefined> {
   const blob = await store.openMedia(path)
   return blob === undefined ? undefined : bytesOf(blob)
+}
+
+/** A data set as a reader is served it, or undefined if the replay holds none. */
+export async function storedDataset(store: ReplayStore, name: DatasetName): Promise<unknown> {
+  const blob = await store.openDataset(name)
+  return blob === undefined ? undefined : JSON.parse((await bytesOf(blob)).toString())
 }
 
 export async function bytesOf(blob: StoredBlob): Promise<Buffer> {

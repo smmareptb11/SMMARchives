@@ -5,11 +5,11 @@ import { AquasysClient } from '../src/sources/aquasys/client.ts'
 import { fetchThresholds } from '../src/sources/aquasys/thresholds.ts'
 import { fetchStub, fixture, type StubbedResponse } from './support/fixtures.ts'
 
-const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
+const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton' }
 
 async function classify(sourceIds: number[], routes: Record<string, StubbedResponse>) {
   const collector = new ReportCollector({})
-  const client = new AquasysClient({ config: CONFIG, fetch: fetchStub(routes) })
+  const client = new AquasysClient({ config: CONFIG, fetch: fetchStub(routes), minIntervalMs: 0 })
   const thresholds = await fetchThresholds({ client, collector, family: 'hydro', sourceIds })
   return { thresholds, report: collector.seal() }
 }
@@ -83,6 +83,107 @@ describe('a station whose thresholds carry no category', () => {
       rule: 'no category',
       applied: 'alert level, the remaining nature',
     })
+  })
+})
+
+describe('a flood mark the source wraps in another label', () => {
+  it('is read as a flood mark, and says the nature was inferred', async () => {
+    const { thresholds, report } = await classify(
+      [22],
+      Object.fromEntries([station(22, 'thresholds-22.json')]),
+    )
+
+    expect(thresholds.map((threshold) => threshold.nature)).toEqual([
+      'flood-mark',
+      'flood-mark',
+      'flood-mark',
+    ])
+    expect(thresholds.every((threshold) => threshold.natureIsFallback)).toBe(true)
+    expect(report.fallbacks[0]).toMatchObject({
+      subject: 'source 22, threshold 1 "Autre (Crue du 15/10/2018)"',
+      rule: 'no category',
+      applied: 'flood mark, from its label',
+    })
+  })
+})
+
+describe('a ladder that declares nothing and falls as its labels worsen', () => {
+  it('is read as a drought ladder, and says so', async () => {
+    const { thresholds, report } = await classify(
+      [75],
+      Object.fromEntries([station(75, 'thresholds-75.json')]),
+    )
+
+    const flows = thresholds.filter((threshold) => threshold.quantity === 'flow')
+    expect(flows).toHaveLength(4)
+    expect(flows.every((threshold) => threshold.nature === 'drought-threshold')).toBe(true)
+    expect(flows.every((threshold) => threshold.natureIsFallback)).toBe(true)
+    expect(report.fallbacks).toContainEqual({
+      subject: 'source 75, threshold 4 "Débit de crise"',
+      rule: 'no category and no isOverrunThreshold',
+      applied: 'drought threshold, its values fall as its labels rise in gravity',
+    })
+    expect(thresholds.find((threshold) => threshold.quantity === 'level')?.nature).toBe(
+      'flood-mark',
+    )
+  })
+
+  it('decides nothing when the values neither rise nor fall with the labels', async () => {
+    const { thresholds } = await classify([1], {
+      '/hydrologicalStation/1/threshold': {
+        json: [
+          { id: 1, name: 'Vigilance', value: 4, dataType: '4' },
+          { id: 2, name: 'Alerte', value: 3, dataType: '4' },
+          { id: 3, name: 'Crise', value: 3.5, dataType: '4' },
+        ],
+      },
+    })
+
+    expect(thresholds.every((threshold) => threshold.nature === 'alert-level')).toBe(true)
+  })
+
+  it('decides nothing on a single recognised label', async () => {
+    const { thresholds } = await classify([1], {
+      '/hydrologicalStation/1/threshold': {
+        json: [
+          { id: 1, name: 'Seuil bas', value: 4, dataType: '5' },
+          { id: 2, name: 'Débit de crise', value: 1, dataType: '5' },
+        ],
+      },
+    })
+
+    expect(thresholds.every((threshold) => threshold.nature === 'alert-level')).toBe(true)
+  })
+
+  it('reads a ladder one rung of which declares it is overrun upwards as declared', async () => {
+    const { thresholds, report } = await classify([1], {
+      '/hydrologicalStation/1/threshold': {
+        json: [
+          { id: 1, name: 'Vigilance', value: 4, dataType: '4', isOverrunThreshold: '1' },
+          { id: 2, name: 'Alerte', value: 3, dataType: '4' },
+          { id: 3, name: 'Crise', value: 2, dataType: '4' },
+        ],
+      },
+    })
+
+    expect(thresholds.every((threshold) => threshold.nature === 'alert-level')).toBe(true)
+    expect(report.fallbacks.map((fallback) => fallback.rule)).not.toContain(
+      'no category and no isOverrunThreshold',
+    )
+  })
+
+  it('reads a ladder one rung of which declares its category as declared', async () => {
+    const { thresholds } = await classify([1], {
+      '/hydrologicalStation/1/threshold': {
+        json: [
+          { id: 1, name: 'Vigilance', value: 4, dataType: '4', category: 1 },
+          { id: 2, name: 'Alerte', value: 3, dataType: '4' },
+          { id: 3, name: 'Crise', value: 2, dataType: '4' },
+        ],
+      },
+    })
+
+    expect(thresholds.every((threshold) => threshold.nature === 'alert-level')).toBe(true)
   })
 })
 

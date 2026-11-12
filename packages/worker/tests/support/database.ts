@@ -48,6 +48,13 @@ const OUTSIDE_THE_DATABASE_SUITE = [
   'Read: AGENTS.md, section Commands.',
 ].join('\n')
 
+/**
+ * Every replay table hangs off `replay` by a cascading reference, so a replay
+ * table added later is emptied without this line learning its name. `session`
+ * hangs off nothing, and is named.
+ */
+const EMPTY = 'truncate table replay, session cascade'
+
 const pools = new Map<string, Pool>()
 let bootstrap: Pool | undefined
 
@@ -83,16 +90,13 @@ export async function freshDatabase(
 
   const existing = pools.get(schema)
   if (existing !== undefined) {
-    // Emptied by truncating `replay`: everything else hangs off it by a
-    // cascading reference, so one statement covers the schema and a table added
-    // later is emptied without this file learning its name.
-    await existing.query('truncate table replay cascade')
+    await existing.query(EMPTY)
     return existing
   }
 
   const pool = pinnedTo(schema, url)
   await migrate(pool, MIGRATIONS)
-  await pool.query('truncate table replay cascade')
+  await pool.query(EMPTY)
   return pool
 }
 

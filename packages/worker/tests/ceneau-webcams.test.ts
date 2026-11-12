@@ -107,6 +107,21 @@ describe('the images of a camera', () => {
     )
     expect(found.length).toBeLessThan(PICTURE_DATES.length)
   })
+
+  it('drops a picture whose address is not one, and keeps the others', async () => {
+    const listing = fixture('ceneau/images-215.json') as { pictures: { uri: string }[] }
+    const broken = {
+      ...listing,
+      pictures: listing.pictures.map((picture, index) =>
+        index === 0 ? { ...picture, uri: 'not an address' } : picture,
+      ),
+    }
+    const { images: found, report } = await images({ getMedia: { json: broken } })
+
+    expect(found).toHaveLength(PICTURE_DATES.length - 1)
+    expect(found.every((image) => image.uri !== 'not an address')).toBe(true)
+    expect(report.failures).toEqual([expect.objectContaining({ subject: 'webcam 215 picture' })])
+  })
 })
 
 describe('a period older than Ceneau keeps its images', () => {

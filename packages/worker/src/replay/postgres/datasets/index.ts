@@ -2,14 +2,20 @@ import type { DatasetName } from '@smmarchives/shared'
 
 import type { Queryable } from '../../../db/tx.ts'
 import { readEvents, writeEvents } from './events.ts'
-import { readLayers, writeLayers } from './layers.ts'
 import {
   readRadarSeries,
   readWebcamImages,
   writeRadarSeries,
   writeWebcamImages,
 } from './media-index.ts'
-import { readMeasures, readThresholds, writeMeasures, writeThresholds } from './measurements.ts'
+import {
+  readMeasuredStations,
+  readMeasures,
+  readThresholds,
+  writeMeasuredStations,
+  writeMeasures,
+  writeThresholds,
+} from './measurements.ts'
 import { readReferential, readWebcams, writeReferential, writeWebcams } from './sources.ts'
 
 /**
@@ -17,9 +23,7 @@ import { readReferential, readWebcams, writeReferential, writeWebcams } from './
  *
  * The name says the shape, so the port keeps one generic write: a lane hands
  * over what it collected and this table knows which rows it becomes. The read
- * is the same mapping the other way, and it is what preservation rests on — a
- * re-run compares what a source still offers against what the replay already
- * holds.
+ * is the same mapping the other way.
  */
 /**
  * What a reader may narrow a data set by.
@@ -29,16 +33,16 @@ import { readReferential, readWebcams, writeReferential, writeWebcams } from './
  * told instead of being served everything.
  */
 export type DatasetFilter = {
+  family?: string | undefined
   source?: string | undefined
   quantity?: string | undefined
   from?: string | undefined
   to?: string | undefined
   code?: string | undefined
-  layer?: string | undefined
 }
 
 export type DatasetMapping = {
-  /** Replaces every row this replay holds for that data set. */
+  /** Inserts the rows this data set becomes, into a replay that holds none of them yet. */
   write(db: Queryable, replayId: string, data: unknown): Promise<void>
   read(db: Queryable, replayId: string, filter: DatasetFilter): Promise<unknown>
   /** The filters this data set answers to, and no other. */
@@ -51,14 +55,10 @@ export const MAPPINGS: Record<DatasetName, DatasetMapping> = {
   measures: {
     write: writeMeasures,
     read: (db, id, filter) => readMeasures(db, id, filter),
-    narrows: ['source', 'quantity', 'from', 'to'],
+    narrows: ['family', 'source', 'quantity', 'from', 'to'],
   },
+  'measured-stations': { write: writeMeasuredStations, read: readMeasuredStations, narrows: [] },
   events: { write: writeEvents, read: readEvents, narrows: [] },
-  'reference-layers': {
-    write: writeLayers,
-    read: (db, id, filter) => readLayers(db, id, filter.layer),
-    narrows: ['layer'],
-  },
   webcams: { write: writeWebcams, read: readWebcams, narrows: [] },
   'webcam-images': {
     write: writeWebcamImages,
@@ -68,5 +68,6 @@ export const MAPPINGS: Record<DatasetName, DatasetMapping> = {
   'radar-rainfall': { write: writeRadarSeries, read: readRadarSeries, narrows: [] },
 }
 
-export { readEvents, readLayers, readMeasures, readRadarSeries, readReferential, readThresholds }
+export { readEvents, readMeasuredStations, readMeasures, readRadarSeries }
+export { readReferential, readThresholds }
 export { readWebcamImages, readWebcams }

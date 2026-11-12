@@ -13,5 +13,12 @@ import { fractionOf, type Cursor } from './reading.ts'
  * dates, never pixels, exactly like a mark on a lane.
  */
 export function Playhead({ period, at }: { period: TimeWindow; at: Cursor }) {
-  return <div className="playhead" style={{ '--frac': fractionOf(period, at) } as CSSProperties} />
+  const style = { '--frac': fractionOf(period, at) } as CSSProperties
+  return (
+    <>
+      <div className="playhead" style={style} />
+      {/* Apart from the bar on a phone, where the bar passes under the ruler and its handle does not. */}
+      <div className="playhead-handle" style={style} />
+    </>
+  )
 }

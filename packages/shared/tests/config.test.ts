@@ -4,6 +4,7 @@ import {
   DEFAULT_RADAR_RAINFALL_EXTENT,
   apiConfig,
   aquasysConfig,
+  authConfig,
   mediaConfig,
   radarRainfallConfig,
 } from '../src/config.ts'
@@ -36,6 +37,36 @@ describe("the API's listening port", () => {
     expect(() => apiConfig({ API_PORT: '70000' })).toThrow(/API_PORT/)
     expect(() => apiConfig({ API_PORT: '80.5' })).toThrow(/API_PORT/)
   })
+
+  it('believes the loopback alone unless another proxy is named', () => {
+    expect(apiConfig({}).trustedProxy).toBe('loopback')
+    expect(apiConfig({ TRUST_PROXY: 'uniquelocal' }).trustedProxy).toBe('uniquelocal')
+  })
+})
+
+describe("the administrator's credentials", () => {
+  const SECRET = 'x'.repeat(32)
+
+  it('name the hash when it is missing, rather than letting every password through', () => {
+    expect(() => authConfig({ SESSION_SECRET: SECRET })).toThrow(/ADMIN_PASSWORD_HASH/)
+  })
+
+  it('name the session secret when it is missing', () => {
+    expect(() => authConfig({ ADMIN_PASSWORD_HASH: 'scrypt:1' })).toThrow(/SESSION_SECRET/)
+  })
+
+  it('refuse a session secret too short to key anything', () => {
+    expect(() =>
+      authConfig({ ADMIN_PASSWORD_HASH: 'scrypt:1', SESSION_SECRET: 'x'.repeat(31) }),
+    ).toThrow(ConfigurationError)
+  })
+
+  it('are taken as given once both are there', () => {
+    expect(authConfig({ ADMIN_PASSWORD_HASH: 'scrypt:1', SESSION_SECRET: SECRET })).toEqual({
+      passwordHash: 'scrypt:1',
+      sessionSecret: SECRET,
+    })
+  })
 })
 
 describe('a missing variable', () => {
@@ -67,22 +98,8 @@ describe('a radar root that is not set', () => {
   })
 })
 
-describe('the Aquasys time reference', () => {
+describe('the Aquasys configuration', () => {
   const base = { ACYCLIQ_API_URL: 'https://aquasys.test/api/', ACYCLIQ_TOKEN: 'x' }
-
-  it('defaults to UTC rather than to the host time zone', () => {
-    expect(aquasysConfig(base).timeZone).toBe('UTC')
-  })
-
-  it('accepts the local reference the storage may actually use', () => {
-    expect(aquasysConfig({ ...base, AQUASYS_TIME_ZONE: 'Europe/Paris' }).timeZone).toBe(
-      'Europe/Paris',
-    )
-  })
-
-  it('refuses a zone that is not IANA', () => {
-    expect(() => aquasysConfig({ ...base, AQUASYS_TIME_ZONE: 'Paris' })).toThrow(/IANA/)
-  })
 
   it('drops the trailing slash so paths do not double up', () => {
     expect(aquasysConfig(base).baseUrl).toBe('https://aquasys.test/api')
@@ -91,9 +108,11 @@ describe('the Aquasys time reference', () => {
 
 describe('the radar rainfall extent', () => {
   it('falls back on the documented extent when unset', () => {
-    expect(radarRainfallConfig({ RADAR_RAINFALL_PATH: '/data' })?.extent).toEqual(
-      DEFAULT_RADAR_RAINFALL_EXTENT,
-    )
+    expect(radarRainfallConfig({ RADAR_RAINFALL_PATH: '/data' })).toEqual({
+      root: '/data',
+      extent: DEFAULT_RADAR_RAINFALL_EXTENT,
+      extentIsDefault: true,
+    })
   })
 
   it('is overridable, since the documented value is not authoritative', () => {

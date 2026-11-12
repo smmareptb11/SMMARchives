@@ -1,4 +1,13 @@
-import type { StyleSpecification } from 'maplibre-gl'
+import { setWorkerUrl, type StyleSpecification } from 'maplibre-gl'
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
+
+/*
+ * MapLibre finds its worker beside itself, by a name it builds at run time,
+ * which a bundle cannot see: built for production, the style arrives and no
+ * tile is ever drawn. Named here, the worker is bundled with what it imports.
+ * Every map waits for its ground before it is built, so this comes first.
+ */
+setWorkerUrl(workerUrl)
 
 /**
  * The one thing a replay does not freeze.

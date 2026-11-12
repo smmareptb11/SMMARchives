@@ -12,10 +12,11 @@ npm run build:replay -- --from 2019-10-22T00:00Z --to 2019-10-24T00:00Z --label 
 
 | Option | Effet |
 |---|---|
-| `--from`, `--to` | **Obligatoires.** La période rejouée |
+| `--from`, `--to` | **Obligatoires.** La période rejouée, deux instants ISO 8601 qui portent leur fuseau (`Z` ou un décalage) |
 | `--label` | Le libellé du rejeu |
 | `--bbox` | L'emprise, contenue dans le territoire du SMMAR. Omise, tout le parc |
-| `--id` | Construit **dans un rejeu existant**. Sans elle, la base frappe un identifiant neuf. Un identifiant qui ne désigne rien est refusé |
+| `--territory` | Le syndicat de bassin sur lequel l'emprise a été cadrée, par son nom court (`Aude Centre`, `Orbieu Jourres`…). Seulement avec `--bbox` |
+| `--id` | Construit dans le rejeu que l'API vient de créer. Sans elle, la base frappe un identifiant neuf. Un identifiant qui ne désigne rien, ou un rejeu qu'une construction a déjà entamé, est refusé |
 
 **Un rejeu est nommé par ce qui le stocke.** C'est la base qui frappe
 l'identifiant : aucun appelant n'en choisit un, donc aucun n'entre en collision
@@ -39,8 +40,21 @@ Ce sont la liste de chaque famille et, pour les stations, leurs rattachements
 aux réseaux. Le code du réseau donne le type d'une station : 4 (`Ouvrage`) ou
 5 (`Déversoir`) en fait un ouvrage, 1 (`Étiage`) ou 2 (`Inondation`) un cours
 d'eau. **Une station qu'aucun de ces quatre réseaux ne rattache n'est pas
-collectée.** Une station rattachée à la fois à un réseau d'ouvrage et à un
-réseau de cours d'eau ne l'est pas non plus, et le rapport le dit.
+collectée**, et le rapport du référentiel les nomme. Une station rattachée à la
+fois à un réseau d'ouvrage et à un réseau de cours d'eau ne l'est pas non plus,
+et le rapport le dit aussi.
+
+Ni ce typage ni la lecture des libellés de seuil — « Crue du… » pour un repère
+de crue, Vigilance, Alerte, Alerte renforcée et Crise pour le rang — ne sont
+donnés par la source. Ce sont des tables de l'application, dans
+`packages/shared/src/reference/classification.ts`, et le rapport de chaque jeu
+qu'elles ont trié les recopie : un rejeu dit avec quelles règles il a été
+construit.
+
+**Les pluviomètres simulés ne sont pas collectés.** Ce sont des mailles de
+réanalyse, pas des instruments : un code `SAFRAN_…` pour SAFRAN, `X…Y…` pour
+ERA5. La règle est provisoire, en attendant que le SMMAR dise comment les
+reconnaître, et le rapport du référentiel dit combien elle en a écartés.
 
 Chaque jeu de données est vérifié contre son contrat avant d'être stocké : une
 valeur que son propre contrat refuse fait échouer la voie, elle n'est jamais
@@ -52,7 +66,7 @@ valeur que son propre contrat refuse fait échouer la voie, elle n'est jamais
 |---|---|
 | `0` | Le manifeste est `complete` |
 | `2` | Le manifeste est `partial` **ou** `failed` |
-| `1` | Le processus n'a pas pu tourner |
+| `1` | Le processus n'a pas pu tourner, ou a été interrompu |
 
 Un rejeu qui n'a **rien** stocké ne se distingue pas, par le seul code de
 sortie, d'un rejeu à qui il manque une mesure : seul le manifeste les sépare.
@@ -60,10 +74,14 @@ Il est `failed` si aucun jeu de données n'a été écrit, `partial` si une voie
 n'est pas terminée, si un rapport porte un échec, si un média a échoué, ou si
 le journal n'a pas pu s'écrire.
 
-### Relancer
+**Une construction qui s'arrête avant la fin laisse son rejeu `failed`**, qu'elle
+ait échoué en route ou reçu `SIGTERM` ou `SIGINT` — un conteneur remplacé, un
+Ctrl-C. Seul un `SIGKILL` ne s'intercepte pas : le rejeu reste alors `running`,
+et seule sa suppression l'en sort.
 
-**Les traitements sont relançables sans créer de doublon.** Une source
-indisponible n'empêche pas les autres, et une reprise ne duplique rien.
+**Un rejeu construit est figé.** Il ne se reconstruit pas : une source
+indisponible n'empêche pas les autres, et ce qu'elle n'a pas rendu manque au
+rejeu, qui le dit. Pour l'avoir, on construit un nouveau rejeu.
 
 ### Ce que la construction laisse derrière elle
 

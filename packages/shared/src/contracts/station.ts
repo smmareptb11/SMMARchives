@@ -30,6 +30,11 @@ export const stationCategorySchema = z.enum(['watercourse', 'structure'])
 
 export type StationCategory = z.infer<typeof stationCategorySchema>
 
+/** What a level is read from: the gauge zero, or the NGF datum. */
+export const levelDatumSchema = z.enum(['gauge', 'ngf'])
+
+export type LevelDatum = z.infer<typeof levelDatumSchema>
+
 export const stationSchema = z.object({
   id: z.number().int(),
   code: z.string().nullable(),
@@ -44,6 +49,14 @@ export const stationSchema = z.object({
    * measurement points, or `null` when its detail could not be read.
    */
   quantities: z.array(quantitySchema).nullable(),
+  /**
+   * The NGF altitude of the gauge zero, which separates a level read from the
+   * gauge zero from the same level in metres NGF; `null` when the station's
+   * history gives none.
+   */
+  ngfDatum: z.number().nullable(),
+  /** What the source measures this station's level from. */
+  levelDatum: levelDatumSchema,
 })
 
 export type Station = z.infer<typeof stationSchema>

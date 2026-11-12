@@ -47,12 +47,13 @@ export type CrossingsResult = {
 export function deriveCrossings(options: DeriveCrossingsOptions): CrossingsResult {
   const { alertLevels, setAside } = excludeByNature(options.thresholds, options.collector)
   const fleet = new Map(options.stations.map((one) => [one.id, one]))
+  const measured = bySeries(options.measures)
 
   const events: ReplayEvent[] = []
   let singleStep = 0
 
   for (const ladder of ladders(alertLevels).values()) {
-    for (const event of walkLadder(ladder, options, fleet)) {
+    for (const event of walkLadder(ladder, options, fleet, measured)) {
       if (event.crossing.singleStep === true) singleStep += 1
       events.push(event.event)
     }
@@ -107,6 +108,7 @@ function walkLadder(
   ladder: readonly Threshold[],
   options: DeriveCrossingsOptions,
   fleet: Map<number, Station>,
+  measured: Map<string, Measure[]>,
 ): Array<{ event: ReplayEvent; crossing: Crossing }> {
   const first = ladder[0]!
   const station = fleet.get(first.stationId)
@@ -119,7 +121,7 @@ function walkLadder(
     return []
   }
 
-  const series = seriesOf(options, first.stationId, first.quantity)
+  const series = seriesOf(options, measured, first.stationId, first.quantity)
   if (series.length === 0) {
     options.collector.withoutData(first.stationId)
     return []
@@ -226,11 +228,17 @@ function toEvent(
     origin: 'automatic',
     category: 'threshold-crossing',
     title: `${station.name} — ${threshold.label}`,
+    description: null,
+    producerKind: null,
+    link: null,
     severity,
     color: threshold.color,
     from: crossing.from,
     to: crossing.to,
-    position: station.position,
+    position:
+      station.position === null
+        ? null
+        : { type: 'Point', coordinates: [station.position.lon, station.position.lat] },
     sourceId: threshold.stationId,
     media: [],
     crossing: {
@@ -245,6 +253,23 @@ function toEvent(
       stillActiveAtEnd: crossing.stillActiveAtEnd,
     },
   }
+}
+
+/**
+ * The measures by source and quantity, gathered in one pass: walked once per
+ * ladder instead, a whole fleet's measures are read hundreds of times over.
+ */
+function bySeries(measures: readonly Measure[]): Map<string, Measure[]> {
+  const grouped = new Map<string, Measure[]>()
+  // A crossing joins the hydro fleet and nothing else.
+  for (const measure of measures) {
+    if (measure.family !== 'hydro') continue
+    const key = `${measure.sourceId}:${measure.quantity}`
+    const series = grouped.get(key)
+    if (series === undefined) grouped.set(key, [measure])
+    else series.push(measure)
+  }
+  return grouped
 }
 
 /**
@@ -287,21 +312,19 @@ function ladders(thresholds: readonly Threshold[]): Map<string, Threshold[]> {
  * Instants are compared as time, never as strings: `instantSchema` accepts both
  * second and millisecond precision, and `'.' < 'Z'` would order them wrong.
  *
- * The join is on the identifier and the quantity, and it is the **quantity**
- * that keeps the two families apart: the two number their sources
- * independently, so `sourceId` 4 names a station and a rain gauge, and only the
- * fact that no quantity is collected on both stops one inheriting the other's
- * series. That is a property of `reference/data-types.ts`, not of this
- * function, and it ends the day a quantity is collected on both.
+ * The join is on the identifier and the quantity, among the hydro fleet's
+ * measures alone: the two families number their sources independently, so
+ * `sourceId` 4 names a station and a rain gauge.
  */
 function seriesOf(
   options: DeriveCrossingsOptions,
+  measured: Map<string, Measure[]>,
   sourceId: number,
   quantity: Quantity,
 ): Measure[] {
-  const series = options.measures
-    .filter((one) => one.sourceId === sourceId && one.quantity === quantity)
-    .sort((a, b) => toEpochMilliseconds(a.at) - toEpochMilliseconds(b.at))
+  const series = [...(measured.get(`${sourceId}:${quantity}`) ?? [])].sort(
+    (a, b) => toEpochMilliseconds(a.at) - toEpochMilliseconds(b.at),
+  )
 
   const kept: Measure[] = []
   let previous: number | undefined

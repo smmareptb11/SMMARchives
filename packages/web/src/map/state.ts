@@ -1,7 +1,9 @@
 import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.ts'
 
+import { stationsWithoutMeasures } from '../mutes.ts'
 import { rainAt, shadeOf, UNMEASURED, type Gauges } from '../rain.ts'
+import { epochOf } from '../time.ts'
 import type { Cursor } from '../transport/reading.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { keyOf, kindOf, prefixOf, type Kind } from './sources.ts'
@@ -50,11 +52,34 @@ export function coloursAt(
  */
 export function paintedAt(content: ReplayContent, at: Cursor): Map<string, string> {
   const colours = coloursAt(content.events, content.stations, at)
+  for (const [key, colour] of unmeasuredColours(content.stations, content.measuredStations)) {
+    colours.set(key, colour)
+  }
   for (const [key, colour] of rainColoursAt(content.rainGauges, content.rain, at)) {
     colours.set(key, colour)
   }
 
   return colours
+}
+
+/**
+ * The stations that measured nothing, in the grey of a gauge that measured
+ * nothing: left to the neutral, they would wear the blue of a station under
+ * every threshold, which says it was measured. None, when the replay does not
+ * say which stations measured. Such a station crosses nothing, so this grey
+ * never hides a threshold's colour.
+ */
+function unmeasuredColours(
+  stations: readonly Station[],
+  measured: ReadonlySet<number> | undefined,
+): Map<string, string> {
+  const unmeasured = stationsWithoutMeasures(stations, measured)
+
+  return new Map(
+    stations
+      .filter((one) => unmeasured.has(one.id))
+      .map((one) => [keyOf(kindOf(one.category), one.id), UNMEASURED]),
+  )
 }
 
 /**
@@ -87,29 +112,6 @@ export function rainColoursAt(
       ]
     }),
   )
-}
-
-/**
- * The crossing one station is in at an instant, which is the one it shows.
- *
- * By station identifier, so the caller answers for the family: the two Aquasys
- * families number their sources independently, and a rain gauge carrying a
- * station's identifier would be handed that station's alert. Nothing on a rain
- * gauge ever crosses today, and this is the reason it is not an argument.
- */
-export function crossingAt(
-  events: readonly ReplayEvent[],
-  stationId: number,
-  at: Cursor,
-): ReplayEvent | undefined {
-  let held: ReplayEvent | undefined
-
-  // The station's own events, and not the parc's map read once for one entry:
-  // an open bubble asks this on every frame of the reading.
-  for (const event of events) {
-    if (event.sourceId === stationId && holds(event, at)) held = higher(held, event)
-  }
-  return held
 }
 
 /**
@@ -184,6 +186,6 @@ function higher(held: ReplayEvent | undefined, one: ReplayEvent): ReplayEvent {
  * of the period » would paint a station red for a fact that lasted a second.
  */
 function holds(event: ReplayEvent, at: Cursor): boolean {
-  const from = Date.parse(event.from)
-  return at >= from && at <= (event.to === null ? from : Date.parse(event.to))
+  const from = epochOf(event.from)
+  return at >= from && at <= (event.to === null ? from : epochOf(event.to))
 }

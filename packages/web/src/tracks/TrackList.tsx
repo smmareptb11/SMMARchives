@@ -1,22 +1,35 @@
-import { memo, type MouseEvent as ReactMouseEvent } from 'react'
+import { memo, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 
 import type { TimeWindow } from '@smmarchives/shared/clock.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
-import { formatHour, formatInstant } from '../time.ts'
-import { cursorAt, instantAt } from '../transport/reading.ts'
+import { LaneFailure } from '../build/LaneFailure.tsx'
+import type { Named } from '../map/frame.ts'
 import { Lane } from './Lane.tsx'
-import { MUTES } from '../mutes.ts'
-import { assumedCrossings, speaking, type Family, type ReplayContent } from './lanes.ts'
+import { isShape, swatchOf } from '../map/symbols.ts'
+import type { Dot } from '../transport/dots.ts'
+import { useDrag } from '../transport/useDrag.ts'
+import { assumedIn, countOf, HATCHED, QUIET } from './heading.ts'
+import { isQuiet, speaking, type Family } from './lanes.ts'
+import { ticksOf } from './ruler.ts'
+import { Ticks } from './Ticks.tsx'
 
 export type TrackListProps = {
   manifest: ReplayManifest
   /** What the replay holds, already laid out: `ReplayScreen` builds them once. */
   families: readonly Family[]
+  /** Every event, at the instant the arrows jump to. */
+  dots: readonly Dot[]
   /** Where the reader pointed, as a fraction of the period. */
   onSeek: (fraction: number) => void
+  /** Holds the reading while the ruler is dragged; stable, as `useCursor` keeps it. */
+  onHold: () => () => void
   /** Whether the lanes with nothing on them are asked for. */
   mutesShown: boolean
+  /** Opens what an agent reported. Stable, or every lane re-renders with the cursor. */
+  onOpenReport: (id: string) => void
+  /** Opens a source's or a camera's detail, from its lane's name. Stable, for the same reason. */
+  onOpenLane: (named: Named) => void
 }
 
 /**
@@ -30,12 +43,17 @@ export type TrackListProps = {
 export const TrackList = memo(function TrackList({
   manifest,
   families,
+  dots,
   onSeek,
+  onHold,
   mutesShown,
+  onOpenReport,
+  onOpenLane,
 }: TrackListProps) {
   return (
     <section>
-      <Ruler period={manifest.period} onSeek={onSeek} />
+      <HourGrid period={manifest.period} />
+      <Ruler period={manifest.period} dots={dots} onSeek={onSeek} onHold={onHold} />
 
       {families.map((family) => (
         <FamilyLanes
@@ -43,6 +61,9 @@ export const TrackList = memo(function TrackList({
           family={family}
           replayId={manifest.id}
           mutesShown={mutesShown}
+          onOpenReport={onOpenReport}
+          onSeek={onSeek}
+          onOpenLane={onOpenLane}
         />
       ))}
 
@@ -51,76 +72,73 @@ export const TrackList = memo(function TrackList({
   )
 })
 
-/** One family, with the lanes the reader asked for and a count of the others. */
+/** One family, folded until the reader opens it, with the lanes they asked for counted in its heading. */
 function FamilyLanes({
   family,
   replayId,
   mutesShown,
+  onOpenReport,
+  onSeek,
+  onOpenLane,
 }: {
   family: Family
   replayId: string
   mutesShown: boolean
+  onOpenReport: (id: string) => void
+  onSeek: (fraction: number) => void
+  onOpenLane: (named: Named) => void
 }) {
-  const lanes = mutesShown ? family.lanes : speaking(family)
-  const held = family.lanes.length - lanes.length
+  const [quietShown, setQuietShown] = useState(true)
+  const asked = mutesShown ? family.lanes : speaking(family)
+  const lanes = quietShown ? asked : asked.filter((one) => !isQuiet(one))
+  const quiet = family.lanes.filter(isQuiet).length
+  const glyph = useGlyph(family.id)
 
   return (
-    <details open>
+    <details>
       <summary>
-        {family.label} <span className="count">{lanes.length}</span>
+        {family.label}{' '}
+        <Count family={family} shown={lanes.length} quiet={asked.length - lanes.length} />
       </summary>
+      <QuietSwitch count={quiet} shown={quietShown} onChange={setQuietShown} />
       {family.silent === undefined ? null : <p className="note">{silenceOf(family.silent)}</p>}
-      {held === 0 ? null : <p className="note">{heldSaid(family, held)}</p>}
+      {assumedIn(family) === 0 ? null : (
+        <p className="note assumed-note">
+          <span className="swatch" aria-hidden="true" />
+          {HATCHED}
+        </p>
+      )}
       {lanes.map((lane) => (
-        <Lane key={lane.id} lane={lane} replayId={replayId} />
+        <Lane
+          key={lane.id}
+          lane={lane}
+          glyph={glyph}
+          replayId={replayId}
+          onOpenReport={onOpenReport}
+          onSeek={onSeek}
+          onOpenLane={onOpenLane}
+        />
       ))}
     </details>
   )
 }
 
 /**
- * What a replay is called, over what period, and what it had to guess.
+ * The mark of a family before each of its lanes, as the mockup draws it.
  *
- * Apart from the lanes because the reading bar is laid over those and not over
- * this: a bar crossing the title would say the title happened at that instant.
+ * The shape is the map's own, used as a mask so the montage gives it its
+ * colour: drawn again in the stylesheet, the two drawings would drift. Drawn
+ * once per family, not once per lane. A camera is a frame rather than a shape,
+ * and the radar rainfall, which the map does not draw, has none.
  */
-export function ReplayHeading({
-  manifest,
-  content,
-}: {
-  manifest: ReplayManifest
-  content: ReplayContent
-}) {
-  return (
-    <>
-      <h1>{manifest.label ?? 'Rejeu sans titre'}</h1>
-      <p className="lead">
-        Du {formatInstant(manifest.period.from)} au {formatInstant(manifest.period.to)} — heure
-        française.
-      </p>
-      <Assumed crossings={assumedCrossings(content)} total={content.events.length} />
-    </>
-  )
-}
-
-/**
- * What the replay guessed, said before anything rests on it.
- *
- * Aquasys gives part of its fleet a ladder with neither `category` nor
- * `isOverrunThreshold`: the nature is then assumed from the label, and a
- * drought ladder read as an alert one fires on an ordinary flow. The segments
- * concerned are hatched; this says how many there are.
- */
-function Assumed({ crossings, total }: { crossings: number; total: number }) {
-  if (crossings === 0) return null
-
-  return (
-    <p className="note assumed-note">
-      {crossings} franchissement{plural(crossings)} sur {total} repose
-      {crossings > 1 ? 'nt' : ''} sur un seuil dont la nature a été supposée, faute de la lire dans
-      la source. Ces segments sont hachurés.
-    </p>
-  )
+function useGlyph(family: string): ReactNode {
+  return useMemo(() => {
+    if (isShape(family)) {
+      const mask = `url(${swatchOf(family, '#000')})`
+      return <i className="glyph" style={{ maskImage: mask }} aria-hidden="true" />
+    }
+    return family === 'webcam' ? <i className="glyph webcam" aria-hidden="true" /> : null
+  }, [family])
 }
 
 const plural = (count: number) => (count > 1 ? 's' : '')
@@ -136,27 +154,57 @@ function silenceOf(count: number): string {
   return `${String(count)} pluviomètre${plural(count)} dans ce rejeu, sans piste : il ne porte aucune mesure de pluie.`
 }
 
-/** Why a whole family of cameras can hold nothing, which the reader will ask. */
-const RETENTION =
-  "Ceneau ne garde une image qu'un mois, et le rapport de collecte dit si la période est plus ancienne."
+/** The switch on a family's lanes that crossed nothing, there only when it has some. */
+function QuietSwitch({
+  count,
+  shown,
+  onChange,
+}: {
+  count: number
+  shown: boolean
+  onChange: (shown: boolean) => void
+}) {
+  if (count === 0) return null
 
-/**
- * What the switch is holding back here, and where to go to see it.
- *
- * Counted rather than simply gone: a family showing three lanes out of
- * ninety-four would otherwise read as a replay of three sources. The switch is
- * up in the map's panel, far from what it acts on, so the sentence names it —
- * by the name the panel gives it, which `mutes.ts` spells once for both.
- */
-function heldSaid(family: Family, count: number): string {
-  const said =
-    `${String(count)} piste${plural(count)} masquée${plural(count)} : rien à montrer sur la ` +
-    `période. Case « ${MUTES} » pour les afficher.`
-
-  return family.id === 'webcam' && count === family.lanes.length ? `${said} ${RETENTION}` : said
+  return (
+    <label className="note quiet-switch">
+      <input
+        type="checkbox"
+        checked={shown}
+        onChange={(event) => {
+          onChange(event.target.checked)
+        }}
+      />
+      {QUIET} ({count})
+    </label>
+  )
 }
 
-const TICKS = 8
+/** A family's count, and what it leaves unsaid on hovering it. */
+function Count({ family, shown, quiet }: { family: Family; shown: number; quiet: number }) {
+  const { said, more } = countOf(family, shown, quiet)
+  return (
+    <span className="count" title={more}>
+      {said}
+    </span>
+  )
+}
+
+/**
+ * A faint line on every tick of the ruler, down through every lane.
+ *
+ * Laid once under the lanes rather than drawn in each: three hundred lanes
+ * would repeat the same lines, and they are the ruler's, not the lanes'.
+ */
+function HourGrid({ period }: { period: TimeWindow }) {
+  return (
+    <div className="hour-grid" aria-hidden="true">
+      {ticksOf(period).map((tick) => (
+        <i key={tick.at} style={{ '--at': tick.fraction } as CSSProperties} />
+      ))}
+    </div>
+  )
+}
 
 /**
  * The hours of the period, in French time, and where one seeks.
@@ -165,11 +213,18 @@ const TICKS = 8
  * a bar thin enough to be a bar is too thin to aim at, and the lanes below say
  * what happened rather than when one is looking.
  */
-function Ruler({ period, onSeek }: { period: TimeWindow; onSeek: (fraction: number) => void }) {
-  const seekFrom = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const track = event.currentTarget.getBoundingClientRect()
-    onSeek((event.clientX - track.left) / track.width)
-  }
+function Ruler({
+  period,
+  dots,
+  onSeek,
+  onHold,
+}: {
+  period: TimeWindow
+  dots: readonly Dot[]
+  onSeek: (fraction: number) => void
+  onHold: () => () => void
+}) {
+  const drag = useDrag(onSeek, onHold)
 
   return (
     <div className="lane ruler">
@@ -181,22 +236,8 @@ function Ruler({ period, onSeek }: { period: TimeWindow; onSeek: (fraction: numb
         here would silence the arrows, which `Transport` binds on the document
         and only for what has no focus of its own.
       */}
-      <div
-        className="lane-track"
-        onMouseDown={seekFrom}
-        onMouseMove={(event) => {
-          // Held down, so dragging scrubs; a plain move would seek on hover.
-          if (event.buttons === 1) seekFrom(event)
-        }}
-      >
-        {Array.from({ length: TICKS }, (_, index) => {
-          const at = instantAt(cursorAt(period, index / TICKS))
-          return (
-            <span className="tick" key={at} style={{ left: `${String((index / TICKS) * 100)}%` }}>
-              {formatHour(at)}
-            </span>
-          )
-        })}
+      <div className="lane-track" {...drag}>
+        <Ticks period={period} dots={dots} />
       </div>
     </div>
   )
@@ -208,15 +249,15 @@ function LanesThatFailed({ manifest }: { manifest: ReplayManifest }) {
   if (failed.length === 0) return null
 
   return (
-    <p className="refusal">
+    <div className="refusal">
       Ce rejeu est incomplet.
       <ul>
         {failed.map(([name, lane]) => (
           <li key={name}>
-            {name} : {lane.error ?? lane.state}
+            <LaneFailure lane={name} state={lane.state} error={lane.error} />
           </li>
         ))}
       </ul>
-    </p>
+    </div>
   )
 }

@@ -1,7 +1,13 @@
 import { isAbsolute } from 'node:path'
 import type { Readable } from 'node:stream'
 
-import type { DatasetName, JournalEntry, Report, ReplayManifest } from '@smmarchives/shared'
+import type {
+  DatasetName,
+  JournalEntry,
+  Report,
+  ReplayEvent,
+  ReplayManifest,
+} from '@smmarchives/shared'
 
 import type { DatasetFilter } from './postgres/datasets/index.ts'
 
@@ -17,6 +23,15 @@ export type { DatasetFilter }
 export type MediaBody = Uint8Array | ReadableStream<Uint8Array>
 
 /**
+ * What an agent writes of an event. The rest is the store's to settle: the
+ * identifier, the origin and the category.
+ */
+export type ManualEvent = Pick<
+  ReplayEvent,
+  'title' | 'description' | 'producerKind' | 'link' | 'from' | 'to' | 'position' | 'media'
+>
+
+/**
  * Stored bytes, ready to be served without being decoded.
  *
  * **The body is an open resource, and its reader owns it**: read it to the end
@@ -24,7 +39,7 @@ export type MediaBody = Uint8Array | ReadableStream<Uint8Array>
  * will ever close.
  *
  * `size` and `version` describe the bytes the body will yield, and no later
- * state of that name — a re-run may replace the data set while it is being
+ * state of that name — an agent may change the events while they are being
  * served. `version` is the material of an ETag and nothing else: opaque to its
  * reader, which only ever compares it with itself.
  */
@@ -51,15 +66,6 @@ export type StoredBlob = {
  */
 export type ReplayStore = {
   /**
-   * What a previous run stored, or undefined if it stored nothing.
-   *
-   * A re-run recollects from sources that forget: Ceneau keeps an image for a
-   * month, so a fresh listing of an old period is shorter than what the replay
-   * already froze. Overwriting blind would drop the very data the freeze
-   * saved, which is why the port reads as well as writes.
-   */
-  getDataset(name: DatasetName): Promise<unknown>
-  /**
    * The data set as bytes, narrowed by what the caller asked for.
    *
    * Serialised from the rows that hold it, so a reader that only wants one
@@ -80,7 +86,28 @@ export type ReplayStore = {
    * caller can tell a replay nobody built from one nobody can read.
    */
   getManifest(): Promise<ReplayManifest | undefined>
+  /** Leaves the publication as it was: a build neither publishes nor withdraws. */
   putManifest(manifest: ReplayManifest): Promise<void>
+  /**
+   * Opens the replay to everyone, and answers false when it is not complete —
+   * checked in the same statement, so no build can change the state between.
+   * A replay already published keeps the date it was first published.
+   */
+  publish(): Promise<boolean>
+  unpublish(): Promise<void>
+  /**
+   * Says a build will not settle the replay it left running: it is failed.
+   *
+   * A replay that settled keeps its state, so a build that stops after its last
+   * publication takes nothing back.
+   */
+  abandon(): Promise<void>
+  /**
+   * Takes the replay for the build that asks, and answers false when another
+   * build already took it — checked in the same statement, so two builds
+   * started together cannot both go in.
+   */
+  claim(): Promise<boolean>
   appendJournal(entry: JournalEntry): Promise<void>
   /**
    * The entries from the given line on, so a reader resumes on an index rather
@@ -91,8 +118,6 @@ export type ReplayStore = {
    * Answers no entry at all for a build that journalled nothing.
    */
   readJournal(from: number): Promise<JournalEntry[]>
-  /** Answers whether a re-run still has this medium to fetch. */
-  hasMedia(path: string): Promise<boolean>
   /**
    * The medium as bytes, or undefined if the replay never froze it.
    *
@@ -101,7 +126,36 @@ export type ReplayStore = {
    */
   openMedia(path: string): Promise<StoredBlob | undefined>
   putMedia(path: string, body: MediaBody): Promise<void>
+  /**
+   * Takes a medium off the volume. One already gone is no error: what was
+   * asked for is that it no longer be there.
+   */
+  removeMedia(path: string): Promise<void>
+  /**
+   * Adds an event an agent reported to the `events` data set, and answers it
+   * as a reader will read it.
+   *
+   * The data set's version moves, so a reader holding the list from before is
+   * told to fetch it again.
+   */
+  addManualEvent(event: ManualEvent): Promise<ReplayEvent>
+  /** Undefined for an identifier nobody holds, and for a crossing, as for the two below. */
+  getManualEvent(id: string): Promise<ReplayEvent | undefined>
+  /**
+   * Replaces what an agent wrote of an event, photos included, and answers it
+   * as it was and as it now is: the photos it no longer names are the caller's
+   * to remove, once the rows no longer point at them.
+   *
+   * Undefined for an identifier nobody holds, and for a crossing: one is
+   * derived from the frozen measures, and corrected by hand it would no longer
+   * say what they said.
+   */
+  updateManualEvent(id: string, event: ManualEvent): Promise<ManualEventChange | undefined>
+  /** Removes it for good, and answers what it was, so that its photos can follow. */
+  removeManualEvent(id: string): Promise<ReplayEvent | undefined>
 }
+
+export type ManualEventChange = { previous: ReplayEvent; current: ReplayEvent }
 
 /**
  * A manifest is there and its own contract refuses it.

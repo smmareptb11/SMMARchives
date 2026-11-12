@@ -7,6 +7,8 @@ import { join } from 'node:path'
 import {
   DEFAULT_RADAR_RAINFALL_EXTENT,
   ExitCode,
+  networkRules,
+  thresholdLabelRules,
   windowOf,
   type BoundingBox,
   type Measure,
@@ -28,9 +30,9 @@ import {
   fixture,
   stationReferentialRoutes,
 } from './support/fixtures.ts'
-import { aStoredReplay, cleanMedia } from './support/replay-store.ts'
+import { aStoredReplay, cleanMedia, storedDataset } from './support/replay-store.ts'
 
-const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
+const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton' }
 
 /**
  * Holds station 84 (2.8346, 43.0387) and rain gauge 4 (2.2955, 43.2153), and
@@ -97,7 +99,7 @@ async function build({
     store: wrap(real),
     ...(sources === 'radar-rainfall'
       ? {}
-      : { aquasys: { client: new AquasysClient({ config: CONFIG, fetch }) } }),
+      : { aquasys: { client: new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 }) } }),
     ...(sources === 'aquasys'
       ? {}
       : {
@@ -118,19 +120,22 @@ async function build({
  * shape, and a test asserting on the wrong one should not compile.
  */
 async function heldReferential(): Promise<{ stations: Station[]; rainGauges: RainGauge[] }> {
-  return (await stored.getDataset('stations')) as { stations: Station[]; rainGauges: RainGauge[] }
+  return (await storedDataset(stored, 'stations')) as {
+    stations: Station[]
+    rainGauges: RainGauge[]
+  }
 }
 
 async function heldThresholds(): Promise<Threshold[]> {
-  return (await stored.getDataset('thresholds')) as Threshold[]
+  return (await storedDataset(stored, 'thresholds')) as Threshold[]
 }
 
 async function heldMeasures(): Promise<Measure[]> {
-  return (await stored.getDataset('measures')) as Measure[]
+  return (await storedDataset(stored, 'measures')) as Measure[]
 }
 
 async function heldEvents(): Promise<ReplayEvent[]> {
-  return (await stored.getDataset('events')) as ReplayEvent[]
+  return (await storedDataset(stored, 'events')) as ReplayEvent[]
 }
 
 describe('the Aquasys datasets of a replay', () => {
@@ -139,6 +144,7 @@ describe('the Aquasys datasets of a replay', () => {
 
     expect(Object.keys(manifest.datasets).sort()).toEqual([
       'events',
+      'measured-stations',
       'measures',
       'radar-rainfall',
       'stations',
@@ -161,10 +167,12 @@ describe('the Aquasys datasets of a replay', () => {
     expect(manifest.datasets['stations']?.report.request).toEqual({
       families: ['hydro', 'rain-gauge'],
       extent: NARBONNAIS,
+      networks: networkRules(),
     })
     expect(manifest.datasets['thresholds']?.report.request).toEqual({
       family: 'hydro',
       sources: (await heldReferential()).stations.length,
+      labels: thresholdLabelRules(),
     })
     expect(manifest.datasets['measures']?.report.request).toEqual({
       from: '2018-10-15T00:00:00.000Z',
@@ -239,7 +247,10 @@ describe('the fleet of a replay', () => {
   it('says how many sources the extent held and how many returned measures', async () => {
     const { manifest } = await build()
 
-    expect(manifest.fleet).toEqual({ inExtent: 2, withMeasures: 2 })
+    expect(manifest.fleet).toEqual({
+      hydro: { inExtent: 1, withMeasures: 1 },
+      'rain-gauge': { inExtent: 1, withMeasures: 1 },
+    })
   })
 
   it('counts a silent source in the extent and not in the fleet', async () => {
@@ -247,7 +258,25 @@ describe('the fleet of a replay', () => {
       routes: { ...ROUTES, '/pluviometer/chartMeasures': { json: [] } },
     })
 
-    expect(manifest.fleet).toEqual({ inExtent: 2, withMeasures: 1 })
+    expect(manifest.fleet).toEqual({
+      hydro: { inExtent: 1, withMeasures: 1 },
+      'rain-gauge': { inExtent: 1, withMeasures: 0 },
+    })
+  })
+
+  it('names the stations that returned measures', async () => {
+    await build()
+
+    expect(await storedDataset(stored, 'measured-stations')).toEqual([84])
+  })
+
+  /** Station 84 is silent, rain gauge 4 is not: a measured gauge names no station. */
+  it('names no station for a rain gauge that returned measures', async () => {
+    await build({
+      routes: { ...ROUTES, '/hydrologicalStation/chronic/measures': { json: [] } },
+    })
+
+    expect(await storedDataset(stored, 'measured-stations')).toEqual([])
   })
 })
 
@@ -278,7 +307,10 @@ describe('a station and a rain gauge sharing an identifier', () => {
       },
     })
 
-    expect(manifest.fleet).toEqual({ inExtent: 2, withMeasures: 2 })
+    expect(manifest.fleet).toEqual({
+      hydro: { inExtent: 1, withMeasures: 1 },
+      'rain-gauge': { inExtent: 1, withMeasures: 1 },
+    })
   })
 })
 
@@ -288,14 +320,15 @@ describe('a replay without an extent', () => {
 
     const referential = await heldReferential()
     expect(referential.stations).toHaveLength(3)
-    expect(manifest.fleet?.inExtent).toBe(6)
+    expect(manifest.fleet?.hydro.inExtent).toBe(3)
+    expect(manifest.fleet?.['rain-gauge'].inExtent).toBe(3)
   })
 })
 
 /**
  * A source is given or it is not; there is no flag saying which lanes to run
  * beside the sources they need. It is what lets a replay be built with no
- * network at all, and what will let one failed source be repaired alone.
+ * network at all.
  */
 describe('a build given one source only', () => {
   it('runs that lane and leaves no trace of the other', async () => {
@@ -306,6 +339,7 @@ describe('a build given one source only', () => {
     expect(Object.keys(manifest.lanes)).toEqual(['aquasys', 'events'])
     expect(Object.keys(manifest.datasets).sort()).toEqual([
       'events',
+      'measured-stations',
       'measures',
       'stations',
       'thresholds',
@@ -384,7 +418,7 @@ describe('an Aquasys source that cannot be reached', () => {
 /**
  * The lane stores three data sets in sequence. Something that stops it after
  * the first must leave that first one in place: the replay is then incomplete,
- * and re-running it will overwrite what it collects without losing the rest.
+ * and says so, rather than empty.
  */
 describe('a lane that dies after storing one data set', () => {
   it('keeps what it had already stored', async () => {
@@ -496,8 +530,42 @@ describe('a derivation that throws', () => {
 
     expect(manifest.lanes['aquasys']).toMatchObject({ state: 'done' })
     expect(manifest.lanes['events']).toMatchObject({ state: 'failed' })
-    expect(Object.keys(manifest.datasets).sort()).toEqual(['measures', 'stations', 'thresholds'])
+    expect(Object.keys(manifest.datasets).sort()).toEqual([
+      'measured-stations',
+      'measures',
+      'stations',
+      'thresholds',
+    ])
     expect(manifest.state).toBe('partial')
     expect(exitCode).toBe(ExitCode.partial)
+  })
+
+  /**
+   * The database drops for a moment, just as the failure of the lane is being
+   * written: the build must still settle once it is back.
+   */
+  it('settles the replay even when its failure could not be written', async () => {
+    let dropped = false
+    const { manifest } = await build({
+      sources: 'aquasys',
+      store: (real) => ({
+        ...real,
+        putDataset: async (name, data, report) => {
+          if (name !== 'events') return real.putDataset(name, data, report)
+          dropped = true
+          throw new Error('EROFS: read-only file system')
+        },
+        putManifest: async (value) => {
+          if (!dropped) return real.putManifest(value)
+          dropped = false
+          throw new Error('Connection terminated unexpectedly')
+        },
+      }),
+    })
+
+    const held = await stored.getManifest()
+    expect(manifest.lanes['events']).toMatchObject({ state: 'failed' })
+    expect(held?.state).toBe('partial')
+    expect(held?.lanes['events']).toMatchObject({ state: 'failed' })
   })
 })

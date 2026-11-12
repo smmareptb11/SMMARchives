@@ -59,6 +59,34 @@ export function reachOf(frame: Frame, size: Size): { southWest: Point; northEast
   }
 }
 
+/** The side of the world in pixels at zoom 0, as MapLibre draws it. */
+const TILE = 512
+
+/**
+ * Where a pixel of a view lands, the view being centred on `center` at `zoom`.
+ *
+ * Web Mercator, worked out rather than asked of the map: the map answers for
+ * the view it stands on now, and the bounds it is held within are those of the
+ * view it opened on, whatever it was moved to since.
+ */
+export function lonLatAt(
+  center: [number, number],
+  zoom: number,
+  size: Size,
+  pixel: Point,
+): [number, number] {
+  const world = TILE * 2 ** zoom
+  const [lon, lat] = center
+  const x = ((lon + 180) / 360) * world + pixel.x - size.width / 2
+  const sine = Math.sin((lat * Math.PI) / 180)
+  const y =
+    (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)) * world + pixel.y - size.height / 2
+  return [
+    (x / world) * 360 - 180,
+    (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / world))) * 180) / Math.PI,
+  ]
+}
+
 /**
  * The extent between the two corners a frame lands on, cut to the territory.
  *

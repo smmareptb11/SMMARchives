@@ -10,7 +10,6 @@ import {
   rainAt,
   shadeOf,
   SHADES,
-  stepSaid,
   stepsOf,
   UNMEASURED,
 } from '../src/rain.ts'
@@ -83,33 +82,8 @@ describe('what a rain gauge had measured', () => {
     expect(read('2019-10-22T07:30:00.000Z').last).toBe(at('2019-10-22T07:00:00.000Z'))
   })
 
-  /** The step is of the whole period: a bubble says it before the cursor reaches it. */
-  it('carries the step of every measure, whatever the cursor has reached', () => {
-    expect(read('2019-10-22T05:00:00.000Z').stepMinutes).toBe(60)
-  })
-
   it('has no step to carry for a gauge holding a single measure', () => {
     expect(gauge([fell('2019-10-22T06:00:00.000Z', 83)])?.stepMinutes).toBeUndefined()
-  })
-})
-
-describe('how often a gauge measured, as the bubble says it', () => {
-  /** The two steps the floods measured give, and the only two anybody expects. */
-  it('names a minute, an hour and a day without a figure', () => {
-    expect(stepSaid(1)).toBe('Une mesure par minute.')
-    expect(stepSaid(60)).toBe('Une mesure par heure.')
-    expect(stepSaid(1440)).toBe('Une mesure par jour.')
-  })
-
-  /** A day is masculine and an hour is not, which no shared suffix would catch. */
-  it('gives the step it found rather than a class it would have to defend', () => {
-    expect(stepSaid(13)).toBe('Une mesure toutes les 13 minutes.')
-    expect(stepSaid(150)).toBe('Une mesure toutes les 2,5 heures.')
-    expect(stepSaid(2880)).toBe('Une mesure tous les 2 jours.')
-  })
-
-  it('says a period holding a single measure rather than a step of nothing', () => {
-    expect(stepSaid(undefined)).toBe('Une seule mesure sur la période.')
   })
 })
 
@@ -125,7 +99,7 @@ describe('the class the map reads a total in', () => {
    */
   it('is fixed, and these are its bounds and its blues', () => {
     expect(SHADES.map((one) => [one.from, one.colour])).toEqual([
-      [0, '#dce9f6'],
+      [0, '#bfd7ed'],
       [10, '#a9cce5'],
       [50, '#5ba3d0'],
       [100, '#2171b5'],

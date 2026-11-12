@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
    * One origin, in development as in production.
    *
    * The API carries no CORS header and has none to carry: behind the reverse
-   * proxy, one host serves this bundle and forwards these two paths to the
+   * proxy, one host serves this bundle and forwards these three paths to the
    * API. This reproduces that, so nothing here depends on an arrangement
    * production will not have.
    *
@@ -40,12 +40,14 @@ export default defineConfig(({ mode }) => {
      * worker and the map draws.
      */
     optimizeDeps: { exclude: ['maplibre-gl'] },
+    /** MapLibre starts its worker as a module, which imports what it shares with the page. */
+    worker: { format: 'es' },
     server: {
       port: Number(env['WEB_PORT'] ?? '5180'),
       // Fail rather than slide onto the next free port: the address is what a
       // browser tab, a screenshot and a bug report all name.
       strictPort: true,
-      proxy: { '/replays': api, '/health': api },
+      proxy: { '/replays': api, '/session': api, '/health': api },
     },
     plugins: [react()],
   }

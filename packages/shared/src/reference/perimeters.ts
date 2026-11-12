@@ -95,6 +95,11 @@ function perimetersOf(collection: unknown): Perimeter[] {
 /** The seven basin unions, by `ref_smmar`. */
 export const UNIONS: readonly Perimeter[] = perimetersOf(unions)
 
+/** Whether a replay's territory names one of the unions, by the short name a list shows. */
+export function isUnion(territory: string): boolean {
+  return UNIONS.some((one) => one.label === territory)
+}
+
 /**
  * The rectangle of the whole basin, which the seven unions cover together.
  *

@@ -25,13 +25,14 @@ import {
   type Problem,
 } from './support/replay.ts'
 import { withServer } from './support/server.ts'
+import { anAuth } from './support/session.ts'
 
 afterEach(cleanRoots)
 afterAll(closeDatabase)
 
 const measures = [
-  { sourceId: 1, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1.25 },
-  { sourceId: 1, quantity: 'level', at: '2019-10-22T06:05:00.000Z', value: 1.31 },
+  { family: 'hydro', sourceId: 1, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1.25 },
+  { family: 'hydro', sourceId: 1, quantity: 'level', at: '2019-10-22T06:05:00.000Z', value: 1.31 },
 ]
 
 /** A replay holding one data set, and what a reader will be served for it. */
@@ -45,8 +46,15 @@ async function aReplayWith(name: DatasetName, rows: unknown) {
     replayId: manifest.id,
     mediaRoot: api.mediaRoot,
   })
-  const stored = JSON.stringify(await store.getDataset(name))
+  const stored = await textOf(await store.openDataset(name))
   return { api, id: manifest.id, stored, app: appOn(api) }
+}
+
+async function textOf(blob: StoredBlob | undefined): Promise<string> {
+  if (blob === undefined) throw new Error('the replay holds no such data set')
+  const chunks: Uint8Array[] = []
+  for await (const chunk of blob.body) chunks.push(chunk as Uint8Array)
+  return Buffer.concat(chunks).toString('utf8')
 }
 
 const aReplayWithMeasures = () => aReplayWith('measures', measures)
@@ -81,7 +89,7 @@ describe('serving a data set', () => {
     })
   })
 
-  it('revalidates rather than freezing what a re-run may rewrite', async () => {
+  it('revalidates rather than freezing what a build or an agent may still change', async () => {
     const { id, app } = await aReplayWithMeasures()
 
     await withServer(app, async (base) => {
@@ -96,29 +104,6 @@ describe('serving a data set', () => {
       })
       expect(again.status).toBe(304)
       expect(await again.text()).toBe('')
-    })
-  })
-
-  it('changes its ETag when a re-run rewrites the data set', async () => {
-    const { api, id, app } = await aReplayWithMeasures()
-
-    await withServer(app, async (base) => {
-      const before = await fetch(`${base}/replays/${id}/measures`)
-      const etag = before.headers.get('etag')
-      await before.text()
-
-      // A re-run replaces the rows whole, which is what the version follows.
-      await writeReplay(api, aManifest({ id, datasets: { measures: aDataset(1) } }), {
-        datasets: {
-          measures: [{ sourceId: 2, quantity: 'level', at: '2019-10-22T07:00:00.000Z', value: 9 }],
-        },
-      })
-
-      const after = await fetch(`${base}/replays/${id}/measures`, {
-        headers: revalidating(etag as string),
-      })
-      expect(after.status).toBe(200)
-      expect(after.headers.get('etag')).not.toBe(etag)
     })
   })
 
@@ -154,7 +139,7 @@ describe('serving a data set', () => {
   it('refuses an identifier no replay could carry, without touching storage', async () => {
     const catalog = aCatalog({ open: vi.fn(async () => undefined) })
 
-    await withServer(createApp({ catalog }), async (base) => {
+    await withServer(createApp({ auth: anAuth(), catalog }), async (base) => {
       const response = await fetch(`${base}/replays/${encodeURIComponent('../x')}/measures`)
       expect(response.status).toBe(400)
       /* eslint-disable-next-line @typescript-eslint/unbound-method -- handed to `expect`, never
@@ -248,6 +233,8 @@ describe('the bytes on the wire', () => {
       position: null,
       category: 'watercourse' as const,
       quantities: null,
+      ngfDatum: null,
+      levelDatum: 'gauge',
     })),
     rainGauges: [],
   }
@@ -283,6 +270,9 @@ describe('the bytes on the wire', () => {
   })
 })
 
+/** A replay the catalogue of these tests serves whatever it is asked. */
+const ANY_REPLAY = 'c4a7c5be-73d0-48db-aa17-8be7b314f863'
+
 describe('when the bytes stop coming', () => {
   function catalogServing(blob: StoredBlob) {
     // The manifest carries the data set, since that is what the route asks
@@ -314,12 +304,16 @@ describe('when the bytes stop coming', () => {
       }),
     }
     const said: string[] = []
-    const app = createApp({ catalog: catalogServing(failing), log: (m) => said.push(m) })
+    const app = createApp({
+      auth: anAuth(),
+      catalog: catalogServing(failing),
+      log: (m) => said.push(m),
+    })
 
     await withServer(app, async (base) => {
       // Uncompressed: gzip holds everything until it ends, so nothing would
       // reach the client and there would be no "after the headers" to test.
-      const response = await fetch(`${base}/replays/aude-2019-10/measures`, {
+      const response = await fetch(`${base}/replays/${ANY_REPLAY}/measures`, {
         headers: { 'accept-encoding': 'identity' },
       })
       expect(response.status).toBe(200)
@@ -342,12 +336,15 @@ describe('when the bytes stop coming', () => {
       }),
     }
 
-    await withServer(createApp({ catalog: catalogServing(watched) }), async (base) => {
-      const response = await fetch(`${base}/replays/aude-2019-10/measures`, { method: 'HEAD' })
-      expect(response.status).toBe(200)
-      expect(response.headers.get('content-length')).toBe('42')
-      expect(await response.text()).toBe('')
-    })
+    await withServer(
+      createApp({ auth: anAuth(), catalog: catalogServing(watched) }),
+      async (base) => {
+        const response = await fetch(`${base}/replays/${ANY_REPLAY}/measures`, { method: 'HEAD' })
+        expect(response.status).toBe(200)
+        expect(response.headers.get('content-length')).toBe('42')
+        expect(await response.text()).toBe('')
+      },
+    )
     // Express answers HEAD through the GET handler; 19 MB read to be thrown
     // away is the whole cost of the request.
     expect(read).toBe(false)
@@ -366,10 +363,10 @@ describe('when the bytes stop coming', () => {
     }
 
     await withServer(
-      createApp({ catalog: catalogServing(endless), log: (m) => said.push(m) }),
+      createApp({ auth: anAuth(), catalog: catalogServing(endless), log: (m) => said.push(m) }),
       async (base) => {
         const abort = new AbortController()
-        const response = await fetch(`${base}/replays/aude-2019-10/measures`, {
+        const response = await fetch(`${base}/replays/${ANY_REPLAY}/measures`, {
           signal: abort.signal,
         })
         await (response.body as ReadableStream<Uint8Array>).getReader().read()
@@ -394,11 +391,11 @@ describe('when the bytes stop coming', () => {
         },
       }),
     }
-    const app = createApp({ catalog: catalogServing(endless) })
+    const app = createApp({ auth: anAuth(), catalog: catalogServing(endless) })
 
     await withServer(app, async (base) => {
       const abort = new AbortController()
-      const response = await fetch(`${base}/replays/aude-2019-10/measures`, {
+      const response = await fetch(`${base}/replays/${ANY_REPLAY}/measures`, {
         signal: abort.signal,
       })
       await (response.body as ReadableStream<Uint8Array>).getReader().read()
@@ -411,9 +408,9 @@ describe('when the bytes stop coming', () => {
 
 describe('narrowing a data set', () => {
   const series = [
-    { sourceId: 84, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1 },
-    { sourceId: 84, quantity: 'level', at: '2019-10-22T07:00:00.000Z', value: 2 },
-    { sourceId: 91, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 7 },
+    { family: 'hydro', sourceId: 84, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1 },
+    { family: 'hydro', sourceId: 84, quantity: 'level', at: '2019-10-22T07:00:00.000Z', value: 2 },
+    { family: 'hydro', sourceId: 91, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 7 },
   ]
 
   it('serves one station without the others', async () => {
@@ -424,6 +421,17 @@ describe('narrowing a data set', () => {
 
       expect(response.status).toBe(200)
       expect(await response.json()).toEqual([series[2]])
+    })
+  })
+
+  it('serves one family without the other, for a number both use', async () => {
+    const gauge = { ...series[0]!, family: 'rain-gauge', value: 9 }
+    const { id, app } = await aReplayWith('measures', [...series, gauge])
+
+    await withServer(app, async (base) => {
+      const response = await fetch(`${base}/replays/${id}/measures?family=hydro&source=84`)
+
+      expect(await response.json()).toEqual([series[0], series[1]])
     })
   })
 
@@ -461,6 +469,51 @@ describe('narrowing a data set', () => {
       )
 
       expect(response.status).toBe(400)
+    })
+  })
+
+  it('refuses a lone bound that is no instant, rather than failing on it', async () => {
+    const { id, app } = await aReplayWith('measures', series)
+
+    await withServer(app, async (base) => {
+      const response = await fetch(`${base}/replays/${id}/measures?from=garbage`)
+
+      expect(response.status).toBe(400)
+    })
+  })
+
+  it('refuses a lone bound that names no zone, which would shift with the database', async () => {
+    const { id, app } = await aReplayWith('measures', series)
+
+    await withServer(app, async (base) => {
+      const response = await fetch(`${base}/replays/${id}/measures?from=2019-10-22T06:30`)
+
+      expect(response.status).toBe(400)
+    })
+  })
+
+  it('reads a lone bound with an offset on the single clock', async () => {
+    const { id, app } = await aReplayWith('measures', series)
+
+    await withServer(app, async (base) => {
+      const offset = await fetch(`${base}/replays/${id}/measures?from=2019-10-22T08:30%2B02:00`)
+      const utc = await fetch(`${base}/replays/${id}/measures?from=2019-10-22T06:30:00Z`)
+
+      expect(await offset.json()).toEqual(await utc.json())
+    })
+  })
+
+  it('answers a filter value outside ASCII with a usable validator', async () => {
+    const { id, app } = await aReplayWith('measures', series)
+
+    await withServer(app, async (base) => {
+      for (const value of ['%E2%82%AC', 'a%22b']) {
+        const response = await fetch(`${base}/replays/${id}/measures?source=${value}`)
+        await response.text()
+
+        expect(response.status).toBe(200)
+        expect(response.headers.get('etag')).toMatch(/^"[^"]+"$/)
+      }
     })
   })
 

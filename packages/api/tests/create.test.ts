@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- one route, its refusals and its build outcomes sharing the
+   launchers and the request helper; split, each part would repeat them. */
 import { parseArgs } from 'node:util'
 
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
@@ -12,12 +14,14 @@ import {
   cleanRoots,
   closeDatabase,
   NEVER_ENDS,
+  neverLaunches,
   post,
   writeReplay,
   type Api,
   type Problem,
 } from './support/replay.ts'
 import { withServer } from './support/server.ts'
+import { asAdmin } from './support/session.ts'
 
 afterEach(cleanRoots)
 afterAll(closeDatabase)
@@ -25,6 +29,13 @@ afterAll(closeDatabase)
 const body = {
   label: "Crue de l'Aude, octobre 2019",
   period: { from: '2019-10-22T00:00:00Z', to: '2019-10-23T00:00:00Z' },
+}
+
+/** A creation framed on the Aude Centre, as the form sends it. */
+const framed = {
+  ...body,
+  extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.4 },
+  territory: 'Aude Centre',
 }
 
 /** A byte a command line cannot carry, kept out of this file's own source. */
@@ -111,6 +122,18 @@ describe('creating a replay', () => {
     })
   })
 
+  it('keeps the union the extent was framed on, from the replay it minted', async () => {
+    const api = await anApi()
+    const { asked, launch } = recorded(neverLaunches)
+
+    await withServer(appOn(api, { launch, publishTimeout: 20 }), async (base) => {
+      const manifest = (await (await post(base, framed)).json()) as ReplayManifest
+
+      expect(asked[0]?.territory).toBe('Aude Centre')
+      expect(manifest.territory).toBe('Aude Centre')
+    })
+  })
+
   it('answers while the build is still running, since the replay already exists', async () => {
     const api = await anApi()
 
@@ -135,6 +158,89 @@ describe('creating a replay', () => {
       const manifest = (await (await post(base, body)).json()) as ReplayManifest
 
       expect(manifest.state).toBe('complete')
+    })
+  })
+
+  it('answers with a replay the build settled as partial before the wait was over', async () => {
+    const api = await anApi()
+    const launch: BuildLauncher = (identity) => ({
+      exited: (async () => {
+        await writeReplay(api, aManifest({ id: identity.id, state: 'partial', label: body.label }))
+        return { code: 2, stderr: '' }
+      })(),
+    })
+
+    await withServer(appOn(api, { launch, publishTimeout: 200 }), async (base) => {
+      const response = await post(base, body)
+      const manifest = (await response.json()) as ReplayManifest
+
+      expect(response.status).toBe(201)
+      expect(manifest.state).toBe('partial')
+      expect((await fetch(`${base}/replays/${manifest.id}`)).status).toBe(200)
+    })
+  })
+})
+
+describe('what the administrator says of a replay', () => {
+  it('keeps what the administrator said of it, past the build, and hands the build none of it', async () => {
+    const api = await anApi()
+    const { asked, launch } = recorded(publishing(api))
+
+    await withServer(appOn(api, { launch, publishTimeout: 20 }), async (base) => {
+      const response = await post(base, {
+        ...body,
+        description: '  Débordement de l’Aude à Trèbes.\nRoute coupée la nuit.  ',
+        phenomenon: 'flood',
+        severity: 'crisis',
+      })
+      const { id } = (await response.json()) as ReplayManifest
+      // Read once the build has published its own manifest over the replay.
+      const manifest = (await (await asAdmin(base, `/replays/${id}`)).json()) as ReplayManifest
+
+      expect(manifest).toMatchObject({
+        // The build's own manifest, which `publishing` stamps with its update.
+        updatedAt: '2026-09-10T06:10:00.000Z',
+        description: 'Débordement de l’Aude à Trèbes.\nRoute coupée la nuit.',
+        phenomenon: 'flood',
+        severity: 'crisis',
+      })
+      expect(Object.keys(asked[0] ?? {})).not.toContain('description')
+      expect(Object.keys(asked[0] ?? {})).not.toContain('phenomenon')
+      expect(Object.keys(asked[0] ?? {})).not.toContain('severity')
+    })
+  })
+
+  it('leaves out a description of blanks, and what was not said', async () => {
+    const api = await anApi()
+
+    await withServer(appOn(api, { publishTimeout: 20 }), async (base) => {
+      const manifest = (await (
+        await post(base, { ...body, description: ' \n ' })
+      ).json()) as ReplayManifest
+
+      expect(Object.keys(manifest)).not.toContain('description')
+      expect(Object.keys(manifest)).not.toContain('phenomenon')
+      expect(Object.keys(manifest)).not.toContain('severity')
+    })
+  })
+
+  it.each([
+    ['a phenomenon outside the list', { ...body, phenomenon: 'drought' }, 'phenomenon'],
+    ['a severity outside the ladder', { ...body, severity: 'red' }, 'severity'],
+    [
+      'a description longer than allowed',
+      { ...body, description: 'x'.repeat(2001) },
+      'description',
+    ],
+    ['a description carrying a null byte', { ...body, description: `a${NUL}b` }, 'description'],
+  ])('refuses %s', async (_case, payload, path) => {
+    const api = await anApi()
+
+    await withServer(appOn(api), async (base) => {
+      const response = await post(base, payload)
+      expect(response.status).toBe(400)
+      const problem = (await response.json()) as Problem & { refusals: { path: string }[] }
+      expect(problem.refusals.map((one) => one.path)).toContain(path)
     })
   })
 })
@@ -163,6 +269,18 @@ describe('a build that refused to start', () => {
     expect(said.join('\n')).toContain('ACYCLIQ_TOKEN')
   })
 
+  it('takes its replay away, and lets go of it, when the launcher throws at once', async () => {
+    const api = await anApi()
+    const throwing: BuildLauncher = () => {
+      throw new Error('spawn ENOENT')
+    }
+
+    await withServer(appOn(api, { launch: throwing, publishTimeout: 200 }), async (base) => {
+      expect((await post(base, body)).status).toBe(500)
+      expect(await (await fetch(`${base}/replays`)).json()).toEqual([])
+    })
+  })
+
   it('leaves no replay behind, since nothing was ever collected into it', async () => {
     const api = await anApi()
 
@@ -184,7 +302,23 @@ describe('refusing a creation', () => {
       })
       expect(response.status).toBe(400)
       expect((await response.json()) as Problem & { refusals: { path: string }[] }).toMatchObject({
-        refusals: [{ path: 'period', message: 'must be two instants, in order' }],
+        refusals: [{ path: 'period', message: 'must be two instants, in order and apart' }],
+      })
+    })
+  })
+
+  it('refuses a period that ends in the future', async () => {
+    const api = await anApi()
+
+    const day = 24 * 60 * 60 * 1000
+    const from = new Date(Date.now() - day).toISOString()
+    const to = new Date(Date.now() + day).toISOString()
+
+    await withServer(appOn(api), async (base) => {
+      const response = await post(base, { ...body, period: { from, to } })
+      expect(response.status).toBe(400)
+      expect((await response.json()) as Problem & { refusals: { path: string }[] }).toMatchObject({
+        refusals: [{ path: 'period', message: 'must not end in the future' }],
       })
     })
   })
@@ -213,6 +347,8 @@ describe('refusing a creation', () => {
       'extent',
     ],
     ['a label longer than a title', { ...body, label: 'x'.repeat(201) }, 'label'],
+    ['a territory no union is named', { ...framed, territory: 'Narbonne' }, 'territory'],
+    ['a territory without an extent', { ...body, territory: 'Aude Centre' }, 'territory'],
   ])('refuses %s', async (_case, payload, path) => {
     const api = await anApi()
 
@@ -247,8 +383,10 @@ describe('refusing a creation', () => {
       // Told rather than ignored: a client that believed it named its replay
       // would keep addressing one that does not exist.
       expect(response.status).toBe(400)
-      const problem = (await response.json()) as Problem & { refusals: { path: string }[] }
-      expect(problem.refusals.map((one) => one.path)).toContain('id')
+      const problem = (await response.json()) as Problem & { refusals: { message: string }[] }
+      expect(problem.refusals).toContainEqual(
+        expect.objectContaining({ message: 'holds a field this request does not take' }),
+      )
       expect(await (await fetch(`${base}/replays`)).json()).toEqual([])
     })
   })
@@ -271,7 +409,7 @@ describe('refusing a creation', () => {
     const said: string[] = []
 
     await withServer(appOn(api, { log: (m) => said.push(m) }), async (base) => {
-      const response = await fetch(`${base}/replays`, {
+      const response = await asAdmin(base, '/replays', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{ not json',
@@ -300,19 +438,31 @@ describe('the arguments a build is given', () => {
   it('names the replay, its period, its label and its extent', () => {
     expect(
       buildArguments({
-        id: 'aude-2019-10',
+        id: 'c4a7c5be-73d0-48db-aa17-8be7b314f863',
         label: "Crue de l'Aude",
         extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.6 },
         period: { from: '2019-10-22T00:00:00.000Z', to: '2019-10-23T00:00:00.000Z' },
       }),
     ).toEqual([
-      '--id=aude-2019-10',
+      '--id=c4a7c5be-73d0-48db-aa17-8be7b314f863',
       '--from=2019-10-22T00:00:00.000Z',
       '--to=2019-10-23T00:00:00.000Z',
       "--label=Crue de l'Aude",
       // The order `parseBoundingBox` reads, not the order the object declares.
       '--bbox=2,42.7,3.2,43.6',
     ])
+  })
+
+  it('names the union the extent was framed on', () => {
+    expect(
+      buildArguments({
+        id: 'c4a7c5be-73d0-48db-aa17-8be7b314f863',
+        label: null,
+        extent: { minLon: 2, minLat: 42.7, maxLon: 3.2, maxLat: 43.6 },
+        territory: 'Aude Centre',
+        period: { from: '2019-10-22T00:00:00.000Z', to: '2019-10-23T00:00:00.000Z' },
+      }),
+    ).toContain('--territory=Aude Centre')
   })
 
   it('keeps a value that starts with a dash reachable', () => {
@@ -344,15 +494,31 @@ describe('the arguments a build is given', () => {
   it('leaves out what was not given, rather than passing an empty flag', () => {
     expect(
       buildArguments({
-        id: 'aude-2019-10',
+        id: 'c4a7c5be-73d0-48db-aa17-8be7b314f863',
         label: null,
         extent: null,
         period: { from: '2019-10-22T00:00:00.000Z', to: '2019-10-23T00:00:00.000Z' },
       }),
     ).toEqual([
-      '--id=aude-2019-10',
+      '--id=c4a7c5be-73d0-48db-aa17-8be7b314f863',
       '--from=2019-10-22T00:00:00.000Z',
       '--to=2019-10-23T00:00:00.000Z',
     ])
+  })
+})
+
+/** The database refuses a replay of no duration, so the API says it before asking. */
+describe('a period that lasts no time', () => {
+  it('is refused, and creates nothing', async () => {
+    const api = await anApi()
+
+    await withServer(appOn(api), async (base) => {
+      const response = await post(base, {
+        ...body,
+        period: { from: '2019-10-22T00:00:00Z', to: '2019-10-22T00:00:00.000Z' },
+      })
+      expect(response.status).toBe(400)
+    })
+    expect(await api.catalog.list()).toEqual([])
   })
 })

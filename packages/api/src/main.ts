@@ -1,8 +1,10 @@
-import { apiConfig, databaseConfig, mediaConfig } from '@smmarchives/shared'
+import { apiConfig, authConfig, databaseConfig, mediaConfig } from '@smmarchives/shared'
 import { openPool } from '@smmarchives/worker/db/pool.ts'
 import { openPostgresCatalog } from '@smmarchives/worker/replay/postgres/catalog.ts'
+import { openPostgresSessionStore } from '@smmarchives/worker/session/postgres.ts'
 
 import { createApp } from './app.ts'
+import { parsePasswordHash } from './password.ts'
 import { describe } from './problems.ts'
 
 /** The only place stderr is wired, as it is on the worker's side. */
@@ -11,11 +13,17 @@ function log(message: string): void {
 }
 
 try {
-  const { port } = apiConfig()
+  const { port, trustedProxy } = apiConfig()
+  const { passwordHash, sessionSecret } = authConfig()
   const pool = openPool(databaseConfig().url)
   const catalog = openPostgresCatalog({ pool, mediaRoot: mediaConfig().root, onProgress: log })
+  const auth = {
+    passwordHash: parsePasswordHash(passwordHash),
+    sessionSecret,
+    sessions: openPostgresSessionStore(pool),
+  }
 
-  createApp({ catalog, log }).listen(port, () => {
+  createApp({ catalog, auth, log, trustedProxy }).listen(port, () => {
     log(`api listening on ${port}`)
   })
 } catch (error) {

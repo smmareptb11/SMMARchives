@@ -1,23 +1,24 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useState, type ComponentProps } from 'react'
 
-import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
-import type { Measure } from '@smmarchives/shared/contracts/measure.ts'
-import type { RadarRainfallSeries } from '@smmarchives/shared/contracts/radar-rainfall.ts'
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
-import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.ts'
-import type { Threshold } from '@smmarchives/shared/contracts/threshold.ts'
-import type { FrozenWebcamImage, Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
-import { api } from './api.ts'
-import { cursorAt } from './transport/reading.ts'
+import { cursorAt, instantAt } from './transport/reading.ts'
 import { paintedAt } from './map/state.ts'
-import { gaugesOf } from './rain.ts'
-import { describe } from './problems.ts'
-import { Playhead } from './transport/Playhead.tsx'
-import { Transport } from './transport/Transport.tsx'
-import { useCursor } from './transport/useCursor.ts'
-import { ReplayHeading, TrackList } from './tracks/TrackList.tsx'
+import { PointerContext, pointerOf } from './map/pointed.ts'
+import { viewsOf } from './pictures.ts'
+import { useWindows } from './map/useWindows.ts'
+import { Windows } from './map/Windows.tsx'
+import { frontOf } from './map/windows.ts'
+import { ReportColumn, type ContentChanges } from './events/ReportPanel.tsx'
+import { usePanel, type PanelControl } from './events/usePanel.ts'
+import { useReportWindows } from './events/useReportWindows.ts'
+import { dotsOf } from './transport/dots.ts'
+import { useCursor, type Reading } from './transport/useCursor.ts'
 import { heldIn, lanesOf, type ReplayContent } from './tracks/lanes.ts'
+import { useBetweenColumnAndMap } from './useBetweenColumnAndMap.ts'
+import { ViewSwitch } from './ViewSwitch.tsx'
+import { Montage } from './Montage.tsx'
+import { useContent } from './useReplayContent.ts'
 
 /**
  * Loaded on the screen that draws one, and on no other.
@@ -36,12 +37,18 @@ const MapView = lazy(async () => ({ default: (await import('./map/MapView.tsx'))
  * draw its segment. Loading them twice would be reading the same thing twice.
  */
 export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
-  const { content, failure } = useContent(manifest)
+  const { content, failure, changes } = useContent(manifest)
+  // One per screen, held still: the lanes, the history and the map share it.
+  const [pointer] = useState(pointerOf)
 
   if (failure !== undefined) return <p className="refusal">{failure}</p>
   if (content === undefined) return <p>Lecture du rejeu…</p>
 
-  return <Replayed manifest={manifest} content={content} />
+  return (
+    <PointerContext value={pointer}>
+      <Replayed manifest={manifest} content={content} changes={changes} />
+    </PointerContext>
+  )
 }
 
 /**
@@ -55,18 +62,16 @@ export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
  * start, its end and its colour, so the same events the lanes draw are what the
  * map paints with.
  */
-function Replayed({ manifest, content }: { manifest: ReplayManifest; content: ReplayContent }) {
-  const marks = useMemo(() => content.events.map((one) => Date.parse(one.from)), [content.events])
-  const reading = useCursor(manifest.period, marks)
-  const seek = useCallback(
-    (fraction: number) => {
-      reading.seek(cursorAt(manifest.period, fraction))
-    },
-    // `reading.seek` is memoised by `useCursor`; `reading` itself is a new object on every
-    // render, so watching it would rebuild this callback sixty times a second.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the stable member, not the object
-    [reading.seek, manifest.period],
-  )
+function Replayed({
+  manifest,
+  content,
+  changes,
+}: {
+  manifest: ReplayManifest
+  content: ReplayContent
+  changes: ContentChanges
+}) {
+  const { reading, seek, dots } = useReading(manifest, content)
   const colours = useMemo(() => paintedAt(content, reading.at), [content, reading.at])
   // Above the map and the lanes because it reaches both: a replay keeps the
   // sources that answered nothing, and the reader says when to see them.
@@ -77,111 +82,116 @@ function Replayed({ manifest, content }: { manifest: ReplayManifest; content: Re
   // is built rather than building it again.
   const families = useMemo(() => lanesOf(content), [content])
   const heldBack = useMemo(() => heldIn(families), [families])
+  const panel = usePanel()
+  const between = useBetweenColumnAndMap(content, reading)
+  const { placement, setPlacement, asked, onShow, shown } = between
+  const placing = placement?.listening !== undefined
+  const { detail, windows } = useWindows(manifest.id, placing)
+  const { openReport, openEvent } = useReportWindows(content, reading, {
+    detail,
+    panel: panel.panel,
+    placing,
+  })
 
   return (
-    <>
-      <Transport reading={reading} />
-      {/* Nothing while it arrives: a box the height of the map would push the
-          lanes down and back up again, and the lanes are readable without it. */}
-      <Suspense fallback={null}>
-        <MapView
-          content={content}
-          colours={colours}
-          replayId={manifest.id}
-          at={reading.at}
-          mutesShown={mutesShown}
-          onMutesShown={setMutesShown}
-          heldBack={heldBack}
-        />
-      </Suspense>
-      <ReplayHeading manifest={manifest} content={content} />
+    <div className="replay" data-view={shown.view}>
+      <ViewSwitch {...shown} front={frontOf(windows)} onClose={detail.close} />
+      <MapSection
+        {...{ manifest, content, changes, reading, colours, heldBack, placement, asked }}
+        {...{ detail, windows, mutesShown, panel }}
+        onMutesShown={setMutesShown}
+        onOpenReport={openReport}
+      />
+      <ReportColumn
+        {...{ manifest, content, changes, onShow, playing: reading.playing }}
+        control={panel}
+        at={instantAt(reading.at)}
+        onPlacement={setPlacement}
+        onOpenReport={openEvent}
+      />
 
-      {/* One positioned wrapper for the two: the bar is laid over the lanes,
-          and is the only child of the pair that a tick re-renders. */}
-      <div className="tracks">
-        <Playhead period={manifest.period} at={reading.at} />
-        <TrackList manifest={manifest} families={families} onSeek={seek} mutesShown={mutesShown} />
-      </div>
-    </>
+      <Montage
+        manifest={manifest}
+        reading={reading}
+        {...{ families, dots, mutesShown, onSeek: seek, front: frontOf(windows) }}
+        onOpenReport={openReport}
+        onOpenLane={between.onOpenLane}
+      />
+    </div>
   )
 }
 
-type Loaded = { content: ReplayContent | undefined; failure: string | undefined }
+/**
+ * The map, and the windows over it.
+ *
+ * The windows apart from the map, which arrives last: a report's window opens
+ * from the lanes and the history as well.
+ */
+function MapSection({
+  manifest,
+  content,
+  changes,
+  reading,
+  panel,
+  ...map
+}: Omit<ComponentProps<typeof MapView>, 'replayId' | 'label' | 'at' | 'views'> & {
+  manifest: ReplayManifest
+  changes: ContentChanges
+  reading: Reading
+  panel: PanelControl
+}) {
+  const views = useMemo(() => viewsOf(content.images), [content.images])
 
-/** Every data set the screen rests on, asked for at once and put together. */
-async function contentOf(manifest: ReplayManifest, signal: AbortSignal): Promise<ReplayContent> {
-  const { id, datasets } = manifest
-  // A data set no lane produced is not asked for: the manifest says which, and
-  // the API would refuse rather than answer an empty list.
-  const askFor = async <T,>(name: string, fallback: T, filter: Record<string, string> = {}) =>
-    datasets[name as keyof typeof datasets] === undefined
-      ? fallback
-      : api.datasetOf<T>(id, name, filter, signal)
-
-  const [fleet, events, thresholds, rainfall, webcams, images, series] = await Promise.all([
-    askFor<{ stations: Station[]; rainGauges: RainGauge[] }>('stations', {
-      stations: [],
-      rainGauges: [],
-    }),
-    askFor<ReplayEvent[]>('events', []),
-    askFor<Threshold[]>('thresholds', []),
-    askFor<Measure[]>('measures', [], { quantity: 'rainfall' }),
-    askFor<Webcam[]>('webcams', []),
-    askFor<FrozenWebcamImage[]>('webcam-images', []),
-    askFor<RadarRainfallSeries[]>('radar-rainfall', []),
-  ])
-
-  return {
-    period: manifest.period,
-    ...fleet,
-    events,
-    thresholds,
-    // Where the flattening is undone, being where it was done: `askFor` answers
-    // an empty list for a data set the build never produced, and every reader
-    // downstream would otherwise have to ask the manifest the same question.
-    rain: datasets.measures === undefined ? undefined : gaugesOf(rainfall),
-    webcams,
-    images,
-    series,
-  }
+  return (
+    <section className="replay-map">
+      {/* Nothing while it arrives: the lanes are readable without it. */}
+      <Suspense fallback={null}>
+        <MapView
+          {...map}
+          {...{ content, views }}
+          replayId={manifest.id}
+          label={manifest.label}
+          at={reading.at}
+        />
+      </Suspense>
+      <Windows
+        {...{ content, views, windows: map.windows, detail: map.detail }}
+        replayId={manifest.id}
+        at={reading.at}
+        onSeek={reading.seek}
+        onEdit={(id) => {
+          panel.request({ kind: 'edit', id })
+        }}
+        onRemoved={(id) => {
+          changes.removed(id)
+          // The form amending it has nothing left to amend, nor to ask about.
+          if (panel.panel?.kind === 'edit' && panel.panel.id === id) panel.show(undefined)
+        }}
+      />
+    </section>
+  )
 }
 
 /**
- * Loads what the screen rests on, and nothing else.
- *
- * A station's measures are not among it: a replay of 24 hours holds 19 Mb of
- * them, and what the map and the lanes draw are the crossings the build
- * derived, the media it froze and the layers it copied. They are read when a
- * station's bubble opens, one station and one quantity at a time.
- *
- * The rain of the whole parc is among it, being a fortieth of that on the same
- * replay — so are the ladders that say which quantity a station is read on.
+ * The cursor over the replay, seeking it from a fraction of the period, and the
+ * events it jumps to — which are the dots the ruler draws, so that a jump lands
+ * on a dot and nowhere else.
  */
-function useContent(manifest: ReplayManifest): Loaded {
-  const [loaded, setLoaded] = useState<Loaded>({ content: undefined, failure: undefined })
-
-  useEffect(() => {
-    const leaving = new AbortController()
-
-    contentOf(manifest, leaving.signal).then(
-      (content) => {
-        setLoaded({ content, failure: undefined })
-      },
-      (error: unknown) => {
-        // A replay left for another drops its requests rather than its answers:
-        // one of them is a megabyte, on a connection the reader has walked away
-        // from. What comes back after that is the abort, and it says nothing.
-        if (!leaving.signal.aborted) setLoaded({ content: undefined, failure: describe(error) })
-      },
-    )
-
-    return () => {
-      leaving.abort()
-    }
-    // Three fields read, the same three watched. Watching `manifest` would reload every data
-    // set whenever anything else on it moved — its state, its journal — which narrowing avoids.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the fields read, not the manifest
-  }, [manifest.id, manifest.datasets, manifest.period])
-
-  return loaded
+function useReading(manifest: ReplayManifest, content: ReplayContent) {
+  const dots = useMemo(
+    () => dotsOf(content.events, manifest.period),
+    [content.events, manifest.period],
+  )
+  const marks = useMemo(() => dots.map((one) => one.at), [dots])
+  const reading = useCursor(manifest.period, marks)
+  const seek = useCallback(
+    (fraction: number) => {
+      reading.seek(cursorAt(manifest.period, fraction))
+    },
+    // `reading.seek` is memoised by `useCursor`; `reading` itself is a new object on every
+    // render, so watching it would rebuild this callback sixty times a second.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the stable member, not the object
+    [reading.seek, manifest.period],
+  )
+  return { reading, seek, dots }
 }

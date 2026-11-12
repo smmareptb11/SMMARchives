@@ -20,36 +20,44 @@ import { CorruptManifestError } from '../store.ts'
  * Nothing is stored that a query rebuilds: what a data set holds, the fleet and
  * how much of it spoke are counted from the tables that hold them, so a manifest
  * cannot drift from the replay it describes. Only what records what did *not*
- * happen has columns — media skipped, media failed, the bytes copied — because
+ * happen has columns — media failed, the bytes copied — because
  * no count retrieves those.
  */
 export async function readManifest(db: Queryable, id: string): Promise<ReplayManifest | undefined> {
   const replay = (await db.query<ReplayRow>(REPLAY, [id])).rows[0]
   if (replay === undefined) return undefined
 
-  const [lanes, datasets] = await Promise.all([readLanes(db, id), readDatasets(db, id)])
+  const [lanes, datasets, crossings, frames] = await Promise.all([
+    readLanes(db, id),
+    readDatasets(db, id),
+    countCrossings(db, id),
+    countRadarFrames(db, id),
+  ])
   const fleet = fleetOf(replay)
-  const events = eventsIn(datasets)
+  const events = eventsIn(datasets, crossings)
 
   const assembled = {
     schemaVersion: 1,
     id,
     label: replay.label,
     extent: extentOf(replay),
+    ...territoryOf(replay),
+    ...aboutOf(replay),
     period: { from: replay.period_from, to: replay.period_to },
     createdAt: replay.created_at,
     updatedAt: replay.updated_at,
     state: replay.state,
+    ...(replay.published_at === null ? {} : { publishedAt: replay.published_at }),
     lanes,
     datasets,
     media: {
       copied: replay.media_copied,
-      skipped: replay.media_skipped,
       failed: replay.media_failed,
       bytes: replay.media_bytes,
     },
     ...(fleet === undefined ? {} : { fleet }),
     ...(events === undefined ? {} : { events }),
+    ...(datasets['radar-rainfall'] === undefined ? {} : { radarFrames: frames }),
     ...(replay.journal_error === null ? {} : { journalError: replay.journal_error }),
   }
 
@@ -62,7 +70,7 @@ export async function readManifest(db: Queryable, id: string): Promise<ReplayMan
 }
 
 /** Decomposes a published manifest into the replay, its lanes and its reports. */
-/* eslint-disable-next-line complexity -- ten `?? null` and six optional chains, each a column
+/* eslint-disable-next-line complexity -- eleven `?? null` and six optional chains, each a column
    SQL may find absent, plus the two loops; not one of them is a decision */
 export async function writeManifest(db: Queryable, manifest: ReplayManifest): Promise<void> {
   const extent = manifest.extent
@@ -73,6 +81,7 @@ export async function writeManifest(db: Queryable, manifest: ReplayManifest): Pr
     extent?.minLat ?? null,
     extent?.maxLon ?? null,
     extent?.maxLat ?? null,
+    manifest.territory ?? null,
     manifest.period.from,
     manifest.period.to,
     manifest.createdAt,
@@ -80,11 +89,9 @@ export async function writeManifest(db: Queryable, manifest: ReplayManifest): Pr
     manifest.state,
     manifest.journalError ?? null,
     manifest.media.copied,
-    manifest.media.skipped,
     manifest.media.failed,
     manifest.media.bytes,
-    manifest.fleet?.inExtent ?? null,
-    manifest.fleet?.withMeasures ?? null,
+    manifest.fleet === undefined ? null : JSON.stringify(manifest.fleet),
   ])
 
   for (const [name, lane] of Object.entries(manifest.lanes)) {
@@ -104,18 +111,21 @@ export async function writeManifest(db: Queryable, manifest: ReplayManifest): Pr
 
 type ReplayRow = {
   label: string | null
+  territory: string | null
+  description: string | null
+  phenomenon: string | null
+  severity: string | null
   period_from: string
   period_to: string
   created_at: string
   updated_at: string
   state: string
+  published_at: string | null
   journal_error: string | null
   media_copied: number
-  media_skipped: number
   media_failed: number
   media_bytes: number
-  fleet_in_extent: number | null
-  fleet_with_measures: number | null
+  fleet: ReplayManifest['fleet'] | null
   min_lon: number | null
   min_lat: number | null
   max_lon: number | null
@@ -123,28 +133,29 @@ type ReplayRow = {
 }
 
 const REPLAY = `
-  select label, period_from, period_to, created_at, updated_at, state, journal_error,
-         media_copied, media_skipped, media_failed, media_bytes,
-         fleet_in_extent, fleet_with_measures,
+  select label, territory, description, phenomenon, severity, period_from, period_to, created_at, updated_at, state, published_at,
+         journal_error,
+         media_copied, media_failed, media_bytes,
+         fleet,
          ST_XMin(extent) as min_lon, ST_YMin(extent) as min_lat,
          ST_XMax(extent) as max_lon, ST_YMax(extent) as max_lat
     from replay where id = $1`
 
 const UPSERT_REPLAY = `
-  insert into replay (id, label, extent, period_from, period_to, created_at, updated_at,
-                      state, journal_error, media_copied, media_skipped, media_failed,
-                      media_bytes, fleet_in_extent, fleet_with_measures)
+  insert into replay (id, label, extent, territory, period_from, period_to, created_at,
+                      updated_at, state, journal_error, media_copied, media_failed, media_bytes,
+                      fleet)
   values ($1, $2,
           case when $3::double precision is null then null
                else ST_MakeEnvelope($3, $4, $5, $6, 4326) end,
-          $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb)
   on conflict (id) do update set
-    label = excluded.label, extent = excluded.extent, updated_at = excluded.updated_at,
+    label = excluded.label, extent = excluded.extent, territory = excluded.territory,
+    updated_at = excluded.updated_at,
     state = excluded.state, journal_error = excluded.journal_error,
-    media_copied = excluded.media_copied, media_skipped = excluded.media_skipped,
-    media_failed = excluded.media_failed, media_bytes = excluded.media_bytes,
-    fleet_in_extent = excluded.fleet_in_extent,
-    fleet_with_measures = excluded.fleet_with_measures`
+    media_copied = excluded.media_copied, media_failed = excluded.media_failed,
+    media_bytes = excluded.media_bytes,
+    fleet = excluded.fleet`
 
 const UPSERT_LANE = `
   insert into replay_lane (replay_id, name, state, started_at, finished_at, error)
@@ -179,10 +190,10 @@ const DATASETS = `
                                            where t.replay_id = d.replay_id)
            when 'measures'         then (select count(*) from measure m
                                            where m.replay_id = d.replay_id)
+           when 'measured-stations' then (select count(*) from measured_station m
+                                           where m.replay_id = d.replay_id)
            when 'events'           then (select count(*) from event e
                                            where e.replay_id = d.replay_id)
-           when 'reference-layers' then (select count(distinct layer) from reference_feature f
-                                           where f.replay_id = d.replay_id)
            when 'webcam-images'    then (select count(*) from webcam_image w
                                            where w.replay_id = d.replay_id)
            when 'radar-rainfall'   then (select count(*) from radar_series r
@@ -190,6 +201,22 @@ const DATASETS = `
            else 0
          end as count
     from replay_dataset d where d.replay_id = $1`
+
+function territoryOf(row: ReplayRow): { territory?: string } {
+  return row.territory === null ? {} : { territory: row.territory }
+}
+
+/**
+ * What the administrator said of it, each field left out when nothing was
+ * said: the contract checks the values, as it does the rest of the row.
+ */
+function aboutOf(row: ReplayRow): Record<string, string> {
+  const about: Record<string, string> = {}
+  if (row.description !== null) about.description = row.description
+  if (row.phenomenon !== null) about.phenomenon = row.phenomenon
+  if (row.severity !== null) about.severity = row.severity
+  return about
+}
 
 function extentOf(row: ReplayRow): BoundingBox | null {
   if (row.min_lon === null || row.min_lat === null) return null
@@ -225,6 +252,23 @@ async function readLanes(db: Queryable, id: string): Promise<Partial<Record<Lane
   )
 }
 
+/** The events the replay derived, apart from those agents reported in the same data set. */
+async function countCrossings(db: Queryable, id: string): Promise<number> {
+  const rows = await db.query<{ count: number }>(
+    `select count(*) as count from event where replay_id = $1 and origin = 'automatic'`,
+    [id],
+  )
+  return rows.rows[0]?.count ?? 0
+}
+
+async function countRadarFrames(db: Queryable, id: string): Promise<number> {
+  const rows = await db.query<{ count: number }>(
+    'select count(*) as count from radar_frame where replay_id = $1',
+    [id],
+  )
+  return rows.rows[0]?.count ?? 0
+}
+
 async function readDatasets(
   db: Queryable,
   id: string,
@@ -241,12 +285,11 @@ async function readDatasets(
  * referential — which is what its own contract says.
  *
  * `withMeasures` is the exception to counting everything countable: the lane
- * sums it per family, and a measure does not carry the family that would let it
- * be recounted. See `measure` in the schema.
+ * counts it per family, and a measure does not carry the family that would let
+ * it be recounted. See `measure` in the schema.
  */
 function fleetOf(row: ReplayRow): ReplayManifest['fleet'] {
-  if (row.fleet_in_extent === null || row.fleet_with_measures === null) return undefined
-  return { inExtent: row.fleet_in_extent, withMeasures: row.fleet_with_measures }
+  return row.fleet ?? undefined
 }
 
 /**
@@ -261,13 +304,16 @@ const EVENTS_REPORT = z.object({
   setAside: z.partialRecord(thresholdNatureSchema, z.number().int().nonnegative()).catch({}),
 })
 
-function eventsIn(datasets: Partial<Record<DatasetName, DatasetStatus>>): ReplayManifest['events'] {
+function eventsIn(
+  datasets: Partial<Record<DatasetName, DatasetStatus>>,
+  crossings: number,
+): ReplayManifest['events'] {
   const stored = datasets.events
   if (stored === undefined) return undefined
 
   const summary = EVENTS_REPORT.safeParse(stored.report)
   return {
-    crossings: stored.count,
+    crossings,
     singleStep: summary.success ? summary.data.singleStep : 0,
     thresholdsSetAside: summary.success ? summary.data.setAside : {},
   }

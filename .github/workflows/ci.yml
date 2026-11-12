@@ -41,3 +41,15 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
+
+  # The images `docker compose up --build` builds on the host: a Dockerfile that
+  # no longer builds would otherwise be found on the day of a deployment.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target app --tag smmarchives-app .
+      - run: docker build --target web --tag smmarchives-web .
+      # The proxy's configuration, checked by nginx itself; `api` stands for the
+      # container it relays to, which this job does not start.
+      - run: docker run --rm --add-host api:127.0.0.1 smmarchives-web nginx -t

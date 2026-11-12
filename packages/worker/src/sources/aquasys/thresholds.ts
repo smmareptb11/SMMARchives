@@ -1,4 +1,6 @@
 import {
+  FLOOD_MARK_LABEL,
+  GRAVITY_LABELS,
   dataTypesFor,
   type Fallback,
   type ReportCollector,
@@ -17,8 +19,6 @@ export type FetchThresholdsOptions = {
   family: SourceFamily
   sourceIds: readonly number[]
 }
-
-const FLOOD_MARK_LABEL = /^\s*crue\s+du\b/i
 
 /**
  * Reads the thresholds of a set of sources and classifies each one.
@@ -70,6 +70,7 @@ function classify(
   const droughtDataTypes = new Set(
     rows.filter(isDeclaredDrought).map((row) => String(row.dataType)),
   )
+  const fallingDataTypes = fallingLadders(rows)
 
   const classified: Threshold[] = []
   for (const row of rows) {
@@ -84,7 +85,10 @@ function classify(
       continue
     }
 
-    const { nature, fallback } = natureOf(row, droughtDataTypes.has(String(row.dataType)))
+    const { nature, fallback } = natureOf(row, {
+      groupIsDrought: droughtDataTypes.has(String(row.dataType)),
+      groupFalls: fallingDataTypes.has(String(row.dataType)),
+    })
     if (fallback !== undefined) {
       collector.fellBackTo({ ...fallback, subject: `source ${sourceId}, ${fallback.subject}` })
     }
@@ -105,7 +109,7 @@ function classify(
 
 function natureOf(
   row: RawThreshold,
-  groupIsDrought: boolean,
+  group: { groupIsDrought: boolean; groupFalls: boolean },
 ): { nature: ThresholdNature; fallback: Fallback | undefined } {
   const subject = `threshold ${row.id} "${row.name}"`
 
@@ -114,13 +118,13 @@ function natureOf(
   if (FLOOD_MARK_LABEL.test(row.name)) {
     return {
       nature: 'flood-mark',
-      fallback: { subject, rule: 'no category', applied: 'flood mark, from the label prefix' },
+      fallback: { subject, rule: 'no category', applied: 'flood mark, from its label' },
     }
   }
 
   if (isDeclaredDrought(row)) return { nature: 'drought-threshold', fallback: undefined }
 
-  if (groupIsDrought) {
+  if (group.groupIsDrought) {
     return {
       nature: 'drought-threshold',
       fallback: {
@@ -133,10 +137,68 @@ function natureOf(
 
   if (row.category === 1) return { nature: 'alert-level', fallback: undefined }
 
+  if (group.groupFalls) {
+    return {
+      nature: 'drought-threshold',
+      fallback: {
+        subject,
+        rule: 'no category and no isOverrunThreshold',
+        applied: 'drought threshold, its values fall as its labels rise in gravity',
+      },
+    }
+  }
+
   return {
     nature: 'alert-level',
     fallback: { subject, rule: 'no category', applied: 'alert level, the remaining nature' },
   }
+}
+
+/**
+ * The data types whose ladder falls as its labels rise in gravity.
+ *
+ * Only a drought ladder does: a flood is graver the higher the water, a drought
+ * the lower. Station 75 carries « Débit de vigilance » at 0.6 down to « Débit de
+ * crise » at 0.15 with neither `category` nor `isOverrunThreshold`, where station
+ * 85 climbs from « Vigilance » at 2 to « Crise » at 4. Two recognised labels at
+ * least, and a strict fall across all of them, or nothing is decided: an order
+ * that neither rises nor falls is a ladder this rule cannot read. A ladder any
+ * rung of which declares its nature is read as declared, never inferred.
+ */
+function fallingLadders(rows: readonly RawThreshold[]): Set<string> {
+  const ladders = new Map<string, Array<{ gravity: number; value: number }>>()
+  const rungs = rows.filter((row) => row.category !== 2 && !FLOOD_MARK_LABEL.test(row.name))
+  const declared = new Set(rungs.filter(declaresItsNature).map((row) => String(row.dataType)))
+  for (const row of rungs) {
+    const key = String(row.dataType)
+    if (declared.has(key)) continue
+    const gravity = gravityOf(row.name)
+    if (gravity === undefined) continue
+
+    const ladder = ladders.get(key)
+    if (ladder === undefined) ladders.set(key, [{ gravity, value: row.value }])
+    else ladder.push({ gravity, value: row.value })
+  }
+
+  return new Set([...ladders].filter(([, rungs]) => falls(rungs)).map(([key]) => key))
+}
+
+function falls(rungs: ReadonlyArray<{ gravity: number; value: number }>): boolean {
+  if (rungs.length < 2) return false
+  const sorted = rungs.toSorted((a, b) => a.gravity - b.gravity)
+  return sorted.every(
+    (rung, index) =>
+      index === 0 ||
+      (rung.gravity > sorted[index - 1]!.gravity && rung.value < sorted[index - 1]!.value),
+  )
+}
+
+function declaresItsNature(row: RawThreshold): boolean {
+  return row.category !== undefined || row.isOverrunThreshold !== undefined
+}
+
+function gravityOf(label: string): number | undefined {
+  return GRAVITY_LABELS.find(([pattern]) => pattern.test(label))?.[1]
 }
 
 /** Drought ladders are the only thresholds whose values decrease as things worsen. */

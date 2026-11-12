@@ -1,41 +1,113 @@
-import type uPlot from 'uplot'
+import uPlot from 'uplot'
 
-import { formatHour } from '../time.ts'
+import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
+
+import { formatDay, formatHour, hourOf } from '../time.ts'
 import { instantAt, type Cursor } from '../transport/reading.ts'
+import type { Pill } from './pills.ts'
 import type { Rung, Series } from './series.ts'
 
-/** How wide a curve is drawn inside a bubble, and how tall. */
-export const CURVE_WIDTH = 320
+/** How tall a curve is drawn inside a source's detail; its width is the panel's. */
 export const CURVE_HEIGHT = 140
 
 /**
- * How much of the episode the curve shows, around the instant being read.
+ * Keeps a chart as wide as the element holding it, which the panel sizes: the
+ * panel narrows with the window. As tall too, never under its own height, once
+ * the reader has sized the window and the holder takes the room left in it.
+ * Returns what stops following.
  *
- * Six hours, three on each side, which is what the mockup opened on. Wider, a
- * flood of a few hours flattens out; narrower, the shape of the rise is lost.
+ * The height only then: holding the chart, the element is otherwise as tall as
+ * the chart is, and a chart made as tall as its holder would follow itself.
  */
-const WINDOW = 6 * 60 * 60 * 1000
+export function followSize(chart: uPlot, holder: HTMLElement, least: number): () => void {
+  const observer = new ResizeObserver(() => {
+    const stretched = getComputedStyle(holder).flexGrow !== '0'
+    const width = holder.clientWidth
+    const height = stretched ? Math.max(least, holder.clientHeight) : least
+    if (width === chart.width && height === chart.height) return
+    chart.setSize({ width, height })
+  })
+  observer.observe(holder)
+
+  return () => {
+    observer.disconnect()
+  }
+}
 
 /** uPlot reads a time scale in seconds, where a cursor counts milliseconds. */
 export const SECOND = 1000
 
+const HOUR = 60 * 60 * SECOND
+
+/** How much of the period a chart shows: so many milliseconds around the instant, or all of it. */
+export type Span = number | 'all'
+
+/** The spans a reader picks from, which are the Acycliq widget's. */
+export const SPANS: readonly Pill<Span>[] = [
+  { label: '1h', value: HOUR },
+  { label: '2h', value: 2 * HOUR },
+  { label: '3h', value: 3 * HOUR },
+  { label: '6h', value: 6 * HOUR },
+  { label: '12h', value: 12 * HOUR },
+  { label: '1j', value: 24 * HOUR },
+  { label: 'Tout', value: 'all' },
+]
+
 /**
- * The hours the curve shows, centred on the instant being read.
+ * What a station's curve opens on: six hours, three on each side, which is
+ * what the mockup opened on. Wider, a flood of a few hours flattens out;
+ * narrower, the shape of the rise is lost.
+ */
+export const STATION_SPAN: Span = 6 * HOUR
+
+/**
+ * What a rain gauge's bars open on: the whole period, because a daily gauge
+ * holds one measure, which a window of a few hours would show empty more often
+ * than not.
+ */
+export const RAIN_SPAN: Span = 'all'
+
+/**
+ * The time a chart shows, in seconds: the span centred on the instant being
+ * read, or the period whole.
  *
- * Centred always, and never held back at the edges of the period: the bar that
- * marks the instant is drawn at the middle of the plotting area and works
- * nothing out, so the day this window stops being symmetric the bar starts
- * naming an instant that is not the one being read. At an edge the curve simply
- * stops, and the empty half of the frame is the outside of the period.
+ * Centred always, and never held back at the edges of the period: the reader
+ * finds the instant at the middle of the frame for the whole episode, and at an
+ * edge the curve simply stops — the empty half of the frame is the outside of
+ * the period.
  *
  * A fresh object each time, which uPlot needs: it takes the one it is handed
  * and writes in it.
  */
-export function windowAround(at: Cursor): { min: number; max: number } {
+export function windowOf(span: Span, at: Cursor, period: TimeWindow): { min: number; max: number } {
+  if (span === 'all') {
+    return { min: Date.parse(period.from) / SECOND, max: Date.parse(period.to) / SECOND }
+  }
+
   const middle = at / SECOND
-  const half = WINDOW / 2 / SECOND
+  const half = span / 2 / SECOND
 
   return { min: middle - half, max: middle + half }
+}
+
+/**
+ * The bar of the instant, for the layer uPlot lays over the plotting area
+ * exactly rather than over the whole box: the axis of values insets that area,
+ * and a bar placed over the whole box would sit beside the instant it marks.
+ */
+export function instantBar(): HTMLDivElement {
+  const bar = document.createElement('div')
+  bar.className = 'instant'
+  return bar
+}
+
+/**
+ * Where the bar of the instant stands, in pixels of the plotting area: uPlot knows them
+ * once it has laid the chart out, which it does after it is built, and again on
+ * every resize — the draw that follows both is where the bar is first set.
+ */
+export function placeInstant(chart: uPlot, instant: HTMLElement, at: Cursor): void {
+  instant.style.left = `${String(chart.valToPos(at / SECOND, 'x'))}px`
 }
 
 /** A series as uPlot takes it: the instants, then the values. */
@@ -60,9 +132,25 @@ export function boundsWith(ladder: readonly Rung[], low: number, high: number): 
   return [Math.min(low, ...values), Math.max(high, ...values)]
 }
 
-/** The hours of the time axis, in French time, as everything an agent reads. */
-export function hourLabels(ticks: readonly number[]): string[] {
-  return ticks.map((one) => formatHour(instantAt(one * SECOND)))
+/** A day, in the seconds uPlot steps its time axis by. */
+const DAY = 24 * 60 * 60
+
+/**
+ * The time axis, in French time, as everything an agent reads: the hours, and
+ * the day on a midnight — or the days alone once a tick stands for one. A
+ * period of a few days graduated in hours would read `00:00` without saying
+ * which day it starts.
+ */
+export function hourLabels(ticks: readonly number[], step: number): string[] {
+  return ticks.map((one) => {
+    const at = instantAt(one * SECOND)
+    return step >= DAY || isMidnight(at) ? formatDay(at) : formatHour(at)
+  })
+}
+
+/** Paris is offset from UTC by whole hours, so its full hours are UTC's. */
+function isMidnight(at: Instant): boolean {
+  return Date.parse(at) % HOUR === 0 && hourOf(at) === 0
 }
 
 /**
@@ -129,6 +217,50 @@ function decimalsOf(step: number): number {
  * bubbles graduate their hours and their figures the same way and are read one
  * after the other in the same popup.
  */
-export const hours: uPlot.Axis.DynamicValues = (...given) => hourLabels(given[1])
+export const hours: uPlot.Axis.DynamicValues = (...given) => hourLabels(given[1], given[4])
 
 export const figures: uPlot.Axis.DynamicValues = (...given) => figureLabels(given[1], given[4])
+
+/** The narrowest the value axis is drawn: what it was held to before it followed its figures. */
+const NARROWEST = 44
+
+/**
+ * How wide the value axis has to be for its widest figure, and the room beside it.
+ *
+ * A curve that barely moves is graduated in thousandths, and « 0,0700 » in a
+ * fixed width lost its « 0,0 » to the edge — read as 700. The plotting area
+ * gives up the width instead, and the bar of the instant, laid over that area,
+ * goes with it.
+ */
+export function axisWidth(
+  labels: readonly string[] | null,
+  measure: (text: string) => number,
+  room: number,
+): number {
+  const widest = Math.max(0, ...(labels ?? []).map(measure))
+  return Math.max(NARROWEST, Math.ceil(widest + room))
+}
+
+/** What uPlot draws an axis with when it is told nothing: ten-pixel ticks, five pixels apart from the figures. */
+const TICKS = 10
+const GAP = 5
+
+/**
+ * The width of the value axis, measured on what uPlot is about to write there.
+ *
+ * uPlot asks again until the answer holds still, so the figures it writes are
+ * the ones measured. Its typings call an axis's font a string; once the chart
+ * is built it holds the font and its size side by side, and the font is what
+ * the canvas measures with.
+ */
+export const figuresWidth: uPlot.Axis.Size = (self, values, axisIndex) => {
+  const axis = self.axes[axisIndex]
+  const font: unknown = axis?.font
+  self.ctx.font = String(Array.isArray(font) ? font[0] : font)
+
+  return axisWidth(
+    values,
+    (text) => self.ctx.measureText(text).width / uPlot.pxRatio,
+    (axis?.ticks?.size ?? TICKS) + (axis?.gap ?? GAP),
+  )
+}

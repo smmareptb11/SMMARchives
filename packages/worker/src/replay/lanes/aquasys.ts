@@ -3,6 +3,9 @@ import { z } from 'zod'
 import {
   dataTypesFor,
   measureSchema,
+  networkRules,
+  thresholdLabelRules,
+  measuredStationsSchema,
   rainGaugeSchema,
   stationSchema,
   thresholdSchema,
@@ -53,6 +56,7 @@ export async function collectAquasys(
     const referential = build.collectorFor('aquasys', {
       families: ['hydro', 'rain-gauge'],
       extent: identity.extent,
+      networks: networkRules(),
     })
     referential.progress('hydrological stations…')
     const options = { client: source.client, collector: referential, extent }
@@ -74,6 +78,7 @@ export async function collectAquasys(
     const ladders = build.collectorFor('aquasys', {
       family: 'hydro',
       sources: stationIds.length,
+      labels: thresholdLabelRules(),
     })
     const thresholds = await fetchThresholds({
       client: source.client,
@@ -95,11 +100,14 @@ export async function collectAquasys(
     })
     const perFamily: MeasuresResult[] = []
     let rowsDropped = 0
-    // Summed per family, never pooled: the two number their sources
-    // independently — 94 stations over 1 to 160, 229 rain gauges over 4 to 744
-    // — so one identifier names one source of each, and a single set keyed on
-    // it would count the pair as one.
-    let withMeasures = 0
+    // Per family, never pooled: the two number their sources independently —
+    // 94 stations over 1 to 160, 229 rain gauges over 4 to 744 — so one
+    // identifier names one source of each, and a single set keyed on it would
+    // count the pair as one.
+    const answered: Record<SourceFamily, Set<number>> = {
+      hydro: new Set(),
+      'rain-gauge': new Set(),
+    }
 
     for (const [family, sourceIds] of [
       ['hydro', stationIds],
@@ -118,9 +126,7 @@ export async function collectAquasys(
       perFamily.push(result)
       rowsDropped += result.rowsDropped
 
-      const answered = new Set<number>()
-      for (const one of result.measures) answered.add(one.sourceId)
-      withMeasures += answered.size
+      for (const one of result.measures) answered[family].add(one.sourceId)
     }
 
     const measures = perFamily.flatMap((one) => one.measures)
@@ -132,13 +138,25 @@ export async function collectAquasys(
       { data: measures, report: readings.seal({ density, rowsDropped }) },
       measures.length,
     )
+    const measuredStations = [...answered.hydro]
+    await build.stored(
+      'measured-stations',
+      measuredStationsSchema,
+      {
+        data: measuredStations.sort((one, other) => one - other),
+        report: build
+          .collectorFor('aquasys', { from: identity.period.from, to: identity.period.to })
+          .seal(),
+      },
+      measuredStations.length,
+    )
 
     // The fleet of a replay is deduced from the measures, never from
     // referential dates: `creationDate` takes negative values and `closeDate`
     // is nearly always absent.
     await build.counted({
-      inExtent: stations.length + rainGauges.length,
-      withMeasures,
+      hydro: { inExtent: stations.length, withMeasures: answered.hydro.size },
+      'rain-gauge': { inExtent: rainGauges.length, withMeasures: answered['rain-gauge'].size },
     })
 
     // Returned rather than derived here: what the collection implies is

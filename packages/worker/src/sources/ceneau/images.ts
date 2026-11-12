@@ -85,6 +85,11 @@ function decode(
 
   for (const picture of pictures) {
     try {
+      // The contract's own judgement, before anything is downloaded: let
+      // through, one address that is not one costs the whole data set.
+      if (!webcamImageSchema.shape.uri.safeParse(picture.uri).success) {
+        throw new Error('its address is not a URL')
+      }
       const reduction = reductionOf(picture.thumb_uri)
       if (reduction.lost) unusable += 1
 

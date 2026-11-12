@@ -24,6 +24,8 @@ function station(id: number, position: Position | null = BERRE): Station {
     position,
     category: 'watercourse',
     quantities: ['level'],
+    ngfDatum: null,
+    levelDatum: 'gauge',
   }
 }
 
@@ -59,6 +61,7 @@ function ladder(
 /** One measure every five minutes, which is the cadence Aquasys serves at rest. */
 function series(values: readonly number[], sourceId = 84, quantity: Quantity = 'level'): Measure[] {
   return values.map((value, index) => ({
+    family: 'hydro' as const,
     sourceId,
     quantity,
     at: new Date(Date.UTC(2018, 9, 15, 0, index * 5)).toISOString(),
@@ -259,13 +262,18 @@ describe('a rain gauge numbered like a station', () => {
     // Station 4 exists and crosses; source 4's rainfall measures are not its level.
     expect(events).toHaveLength(0)
   })
+
+  it('gets none of them either on a quantity both families measure', () => {
+    const gauge = series([2.0, 7.0], 4).map((one) => ({ ...one, family: 'rain-gauge' as const }))
+    const thresholds = [{ ...ladder(1, 'Vigilance', 2.8), stationId: 4 }]
+    const { events } = derive(gauge, thresholds, [station(4)])
+
+    expect(events).toHaveLength(0)
+  })
 })
 
 describe('the identity of a crossing', () => {
-  /**
-   * A re-run regenerates the same identifiers, so no duplicate is possible and
-   * an event an agent set aside stays recognisable after a regeneration.
-   */
+  /** Derived rather than counted, so an event an agent set aside stays recognisable. */
   it('is derived from the station, the quantity, the threshold and the start', () => {
     const first = derive(series([2.0, 3.1, 2.4]))
     const again = derive(series([2.0, 3.1, 2.4]))
@@ -279,7 +287,11 @@ describe('an event a crossing produced', () => {
   it('carries the station it happened on, so the map can place it', () => {
     const { events } = derive(series([2.0, 3.1]))
 
-    expect(events[0]).toMatchObject({ sourceId: 84, position: BERRE, media: [] })
+    expect(events[0]).toMatchObject({
+      sourceId: 84,
+      position: { type: 'Point', coordinates: [BERRE.lon, BERRE.lat] },
+      media: [],
+    })
     expect(events[0]?.title).toContain('Vigilance')
   })
 
@@ -400,8 +412,20 @@ describe('input that arrives in no particular order', () => {
    */
   it('compares instants as time even when their precision differs', () => {
     const measures = [
-      { sourceId: 84, quantity: 'level' as const, at: '2018-10-15T00:00:00Z', value: 2.0 },
-      { sourceId: 84, quantity: 'level' as const, at: '2018-10-15T00:00:00.500Z', value: 3.1 },
+      {
+        family: 'hydro' as const,
+        sourceId: 84,
+        quantity: 'level' as const,
+        at: '2018-10-15T00:00:00Z',
+        value: 2.0,
+      },
+      {
+        family: 'hydro' as const,
+        sourceId: 84,
+        quantity: 'level' as const,
+        at: '2018-10-15T00:00:00.500Z',
+        value: 3.1,
+      },
     ]
     const { events } = derive(measures, [ladder(1, 'V', 2.8)])
 
@@ -419,6 +443,7 @@ describe('a series carrying two measures at the same instant', () => {
   it('keeps one and says it dropped the other', () => {
     const at = '2018-10-15T00:00:00.000Z'
     const measures = [3.1, 2.0, 3.2].map((value) => ({
+      family: 'hydro' as const,
       sourceId: 84,
       quantity: 'level' as const,
       at,
@@ -440,9 +465,27 @@ describe('a series carrying two measures at the same instant', () => {
 describe('a series with a hole in it', () => {
   it('holds the event open across the hole, on the last value known', () => {
     const measures = [
-      { sourceId: 84, quantity: 'level' as const, at: '2018-10-15T00:00:00.000Z', value: 2.0 },
-      { sourceId: 84, quantity: 'level' as const, at: '2018-10-15T00:05:00.000Z', value: 3.1 },
-      { sourceId: 84, quantity: 'level' as const, at: '2018-10-15T12:05:00.000Z', value: 2.0 },
+      {
+        family: 'hydro' as const,
+        sourceId: 84,
+        quantity: 'level' as const,
+        at: '2018-10-15T00:00:00.000Z',
+        value: 2.0,
+      },
+      {
+        family: 'hydro' as const,
+        sourceId: 84,
+        quantity: 'level' as const,
+        at: '2018-10-15T00:05:00.000Z',
+        value: 3.1,
+      },
+      {
+        family: 'hydro' as const,
+        sourceId: 84,
+        quantity: 'level' as const,
+        at: '2018-10-15T12:05:00.000Z',
+        value: 2.0,
+      },
     ]
     const { events } = derive(measures, [ladder(1, 'V', 2.8)])
 

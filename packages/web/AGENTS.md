@@ -18,9 +18,9 @@ Deliberate omissions exist, and the four here are of three kinds.
 - **The fields read, rather than the record holding them.** The manifest is
   stable, but watching it whole would reload every data set when its state or
   its journal moved.
-- **A value read once to build a first frame.** `StationChart` reads `at` and
-  `ladder` to draw, and follows neither: a second effect follows `at`, and a
-  different ladder is a different component through the key upstream.
+- **A value read once to build a first frame.** `StationChart` reads its window
+  and `ladder` to draw, and follows neither: a second effect follows the window,
+  and a different ladder is a different component through the key upstream.
 
 Four of them say so on the line above, after `--`. **A disable without a reason
 is not an answer to this rule.** Unused directives are an error too, so the day

@@ -32,6 +32,14 @@ export async function collectRadarRainfall(
       to: period.to,
     })
 
+    if (source.extentIsDefault === true) {
+      collector.fellBackTo({
+        subject: 'radar rainfall extent',
+        rule: 'RADAR_RAINFALL_BBOX is not set',
+        applied: 'the extent written in the code, which no delivery states',
+      })
+    }
+
     const { series, skipped } = await indexDeliveries({
       root: source.root,
       extent: source.extent,

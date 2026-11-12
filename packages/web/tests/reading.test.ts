@@ -6,9 +6,13 @@ import {
   clamped,
   cursorAt,
   fractionOf,
+  frameElapsed,
   nextMark,
   previousMark,
+  resumes,
+  shortcutFor,
   startOf,
+  stepped,
 } from '../src/transport/reading.ts'
 import { period } from './support/content.ts'
 
@@ -85,5 +89,77 @@ describe('jumping from one event to the next', () => {
   it('finds them whatever order they came in', () => {
     expect(nextMark([30, 0, 20, 10], 10)).toBe(20)
     expect(previousMark([30, 0, 20, 10], 25)).toBe(20)
+  })
+})
+
+describe('the reading once a drag lets it go', () => {
+  const day = { from: '2019-10-21T22:00:00.000Z', to: '2019-10-22T22:00:00.000Z' }
+
+  it('goes on if it was playing', () => {
+    expect(resumes(true, day, Date.parse('2019-10-22T08:00:00.000Z'))).toBe(true)
+  })
+
+  it('stays still if it was not', () => {
+    expect(resumes(false, day, Date.parse('2019-10-22T08:00:00.000Z'))).toBe(false)
+  })
+
+  /** Played from the end, it would advance nothing and leave the button pressed. */
+  it('stays still at the end, even if it was playing', () => {
+    expect(resumes(true, day, Date.parse(day.to))).toBe(false)
+  })
+})
+
+describe('a frame of the reading', () => {
+  it('counts the time since the one before it', () => {
+    expect(frameElapsed(1_016, 1_000)).toBe(16)
+  })
+
+  /** Ten minutes away from the tab at sixty minutes a second is ten hours of replay. */
+  it('counts no more than a quarter of a second after the tab was hidden', () => {
+    expect(frameElapsed(600_000, 0)).toBe(250)
+    expect(advanced(period, noon, frameElapsed(600_000, 0), 60)).toBe(noon + 15 * 60_000)
+  })
+})
+
+describe('a step of the keyboard', () => {
+  it('moves the reading by an hour, either way', () => {
+    expect(stepped(period, noon, 1)).toBe(noon + 60 * 60_000)
+    expect(stepped(period, noon, -1)).toBe(noon - 60 * 60_000)
+  })
+
+  it('stays within the period', () => {
+    expect(stepped(period, at('2019-10-22T23:30:00.000Z'), 1)).toBe(at('2019-10-23T00:00:00.000Z'))
+    expect(stepped(period, at('2019-10-22T00:30:00.000Z'), -1)).toBe(at('2019-10-22T00:00:00.000Z'))
+  })
+})
+
+describe('a key pressed during the reading', () => {
+  it('plays with space, jumps with an arrow, and steps with Shift and an arrow', () => {
+    expect(shortcutFor(' ', false, 'none')).toBe('toggle')
+    expect(shortcutFor('ArrowRight', false, 'none')).toBe('next')
+    expect(shortcutFor('ArrowLeft', false, 'none')).toBe('previous')
+    expect(shortcutFor('ArrowRight', true, 'none')).toBe('forward')
+    expect(shortcutFor('ArrowLeft', true, 'none')).toBe('back')
+  })
+
+  /** Focus stays on « Événement suivant » once it is clicked: the arrows must go on working. */
+  it('keeps the arrows working on a button just clicked, and leaves it its space', () => {
+    expect(shortcutFor('ArrowRight', false, 'pressable')).toBe('next')
+    expect(shortcutFor(' ', false, 'pressable')).toBeUndefined()
+  })
+
+  it('leaves every key to a field being typed into', () => {
+    for (const key of [' ', 'ArrowLeft', 'ArrowRight']) {
+      expect(shortcutFor(key, false, 'typing')).toBeUndefined()
+    }
+  })
+
+  it('leaves the arrows to the map, which pans with them, and plays with space there', () => {
+    expect(shortcutFor('ArrowRight', false, 'map')).toBeUndefined()
+    expect(shortcutFor(' ', false, 'map')).toBe('toggle')
+  })
+
+  it('does nothing with another key', () => {
+    expect(shortcutFor('a', false, 'none')).toBeUndefined()
   })
 })

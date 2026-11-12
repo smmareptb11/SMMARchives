@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { gaugesWithoutRain, webcamsWithoutPicture } from '../src/mutes.ts'
+import { gaugesWithoutRain, stationsWithoutMeasures, webcamsWithoutPicture } from '../src/mutes.ts'
 import { viewsOf } from '../src/pictures.ts'
 import { gaugesOf } from '../src/rain.ts'
-import { aCamera, aGauge, aMeasure, aView, held } from './support/content.ts'
+import { aCamera, aGauge, aMeasure, aStation, aView, held } from './support/content.ts'
 
 const rainfall = (sourceId: number) =>
   gaugesOf([aMeasure(sourceId, '2019-10-22T06:00:00.000Z', 3, 'rainfall')])
@@ -41,6 +41,18 @@ describe('the rain gauges the replay holds nothing of', () => {
     const content = held({ rainGauges: [aGauge(4, 'Couiza', 2.2)], rain: undefined })
 
     expect(gaugesWithoutRain(content.rainGauges, content.rain).size).toBe(0)
+  })
+})
+
+describe('the stations the replay holds no measure of', () => {
+  const stations = [aStation(9, 'Trèbes'), aStation(3, 'Restitution-Marseillette')]
+
+  it('names the ones missing from the list of the measured, and only those', () => {
+    expect(stationsWithoutMeasures(stations, new Set([9]))).toEqual(new Set([3]))
+  })
+
+  it('names none when the replay does not hold the list', () => {
+    expect(stationsWithoutMeasures(stations, undefined)).toEqual(new Set())
   })
 })
 

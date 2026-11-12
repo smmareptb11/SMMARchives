@@ -27,6 +27,7 @@ transaction each. **What decides lives in a pure module**, which is what
 - [`docs/installation.md`](docs/installation.md) — prerequisites, environment, database, deployment
 - [`docs/utilisation.md`](docs/utilisation.md) — the build, its options and exit codes
 - [`docs/api.md`](docs/api.md) — the HTTP routes, their codes, the shape of an error
+- [`docs/lancer-avec-docker.md`](docs/lancer-avec-docker.md) — running the deployed stack with Docker Compose
 - [`packages/api/AGENTS.md`](packages/api/AGENTS.md), [`packages/web/AGENTS.md`](packages/web/AGENTS.md) — what each package adds
 
 They describe what exists: what is not written is named as not written.
@@ -57,7 +58,7 @@ npm run typecheck && npm run lint && npm run format:check && npm test
 | Source | Holds | Reached by |
 |---|---|---|
 | Aquasys | Levels, flows, rainfall totals, thresholds, the station referential | REST, authenticated by a token |
-| Lizmap | Hydraulic structures, camera positions | OGC services |
+| Lizmap | Camera positions | OGC services |
 | Ceneau | Timestamped webcam images | One JSON file per camera, images on another host |
 | Radar rainfall | Rainfall accumulation rasters, by delivery | A directory indexed in place, no live history |
 
@@ -116,17 +117,18 @@ Breaking one produces a wrong result, not merely slower work.
    station and a temperature on a rain gauge, and the same `sourceId` names one
    source of each family — hence a key of `(replay, family, id)`. A crossing
    joins the hydro fleet and nothing else.
-5. **A replay is named by what stores it**, and its jobs are re-runnable
-   without creating duplicates. The database mints the identifier, so none
-   collides and none has to be refused.
+5. **A replay is named by what stores it**, and built once. The database
+   mints the identifier, so none collides and none has to be refused; a build
+   never goes into a replay another build has started.
 6. **Configurable, never hardcoded.** Each rests on a value the sources do not
-   state: the Aquasys storage timezone, the threshold classification when
-   `category` is absent, its business category, and the radar rainfall extent —
-   reported with the data, a wrong one shifting the layer invisibly. Make it a
-   parameter, surface the fallback, never guess.
+   state: the threshold classification when `category` is absent, its
+   business category, and the radar rainfall extent — reported with the data,
+   a wrong one shifting the layer invisibly. Make it a parameter, surface the
+   fallback, never guess.
 
 The map knows two symbols — a watercourse station is a circle, a hydraulic
-structure a square. The charts follow the Acycliq Widget and never embed it:
+structure a square — and an event an agent reported is a diamond, or the area
+it covers. The charts follow the Acycliq Widget and never embed it:
 it is built for live data, where a replay is frozen.
 
 ## Rules

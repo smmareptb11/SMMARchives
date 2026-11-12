@@ -8,6 +8,7 @@ import {
 } from '@smmarchives/shared'
 
 import type { Queryable } from '../../../db/tx.ts'
+import { insertRows } from './batch.ts'
 
 /** The two families Aquasys numbers independently, kept apart by the key. */
 const AQUASYS = ['hydro', 'rain-gauge']
@@ -15,10 +16,29 @@ const AQUASYS = ['hydro', 'rain-gauge']
 const INSERT = `
   insert into source (replay_id, family, external_id, code, name, comment, town_code,
                       category, altitude, position, quantities, extra)
-  values ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-          case when $10::double precision is null then null
-               else ST_SetSRID(ST_MakePoint($10, $11), 4326) end,
-          $12::jsonb, $13::jsonb)`
+  select $1, r.family, r.external_id, r.code, r.name, r.comment, r.town_code, r.category,
+         r.altitude,
+         case when r.lon is null then null else ST_SetSRID(ST_MakePoint(r.lon, r.lat), 4326) end,
+         r.quantities, r.extra
+    from jsonb_to_recordset($2::jsonb) as r(family text, external_id text, code text,
+         name text, comment text, town_code text, category text, altitude double precision,
+         lon double precision, lat double precision, quantities jsonb, extra jsonb)`
+
+/** A row of `source`, as the statement above reads it. */
+type SourceInsert = {
+  family: string
+  external_id: string
+  code: string | null
+  name: string | null
+  comment: string | null
+  town_code: string | null
+  category: string | null
+  altitude: number | null
+  lon: number | null
+  lat: number | null
+  quantities: unknown
+  extra: Record<string, unknown> | null
+}
 
 const SELECT = `
   select family, external_id, code, name, comment, town_code, category, altitude,
@@ -48,52 +68,42 @@ type SourceRow = {
  * contract. Read back through the contract, because storage is the one place a
  * value can arrive from outside the process.
  */
-/* eslint-disable-next-line complexity -- eight of ten branches are an optional column becoming
-   a SQL null; the other two are the two families sharing the table */
 export async function writeReferential(
   db: Queryable,
   replayId: string,
   data: unknown,
 ): Promise<void> {
   const { stations, rainGauges } = data as { stations: Station[]; rainGauges: RainGauge[] }
-  await db.query(`delete from source where replay_id = $1 and family = any($2::text[])`, [
-    replayId,
-    AQUASYS,
+  await insertRows(db, INSERT, replayId, [
+    ...stations.map((station): SourceInsert => ({
+      ...aquasysRow('hydro', station),
+      category: station.category,
+      extra: { ngfDatum: station.ngfDatum, levelDatum: station.levelDatum },
+    })),
+    ...rainGauges.map((gauge): SourceInsert => ({
+      ...aquasysRow('rain-gauge', gauge),
+      category: null,
+      extra: null,
+    })),
   ])
+}
 
-  for (const station of stations) {
-    await db.query(INSERT, [
-      replayId,
-      'hydro',
-      String(station.id),
-      station.code,
-      station.name,
-      station.comment,
-      station.townCode,
-      station.category,
-      station.altitude,
-      station.position?.lon ?? null,
-      station.position?.lat ?? null,
-      JSON.stringify(station.quantities),
-      null,
-    ])
-  }
-  for (const gauge of rainGauges) {
-    await db.query(INSERT, [
-      replayId,
-      'rain-gauge',
-      String(gauge.id),
-      gauge.code,
-      gauge.name,
-      gauge.comment,
-      gauge.townCode,
-      null,
-      gauge.altitude,
-      gauge.position?.lon ?? null,
-      gauge.position?.lat ?? null,
-      JSON.stringify(gauge.quantities),
-      null,
-    ])
+/** What a station and a rain gauge write the same way. */
+function aquasysRow(
+  family: string,
+  source: Station | RainGauge,
+): Omit<SourceInsert, 'category' | 'extra'> {
+  return {
+    family,
+    external_id: String(source.id),
+    code: source.code,
+    name: source.name,
+    comment: source.comment,
+    town_code: source.townCode,
+    altitude: source.altitude,
+    lon: source.position?.lon ?? null,
+    lat: source.position?.lat ?? null,
+    quantities: source.quantities,
   }
 }
 
@@ -106,7 +116,14 @@ export async function readReferential(
   return {
     stations: rows
       .filter((row) => row.family === 'hydro')
-      .map((row) => stationSchema.parse({ ...common(row), category: row.category }))
+      .map((row) =>
+        stationSchema.parse({
+          ...common(row),
+          category: row.category,
+          ngfDatum: row.extra?.ngfDatum ?? null,
+          levelDatum: row.extra?.levelDatum,
+        }),
+      )
       .sort((one, other) => one.id - other.id),
     rainGauges: rows
       .filter((row) => row.family === 'rain-gauge')
@@ -131,31 +148,27 @@ function common(row: SourceRow) {
 
 export async function writeWebcams(db: Queryable, replayId: string, data: unknown): Promise<void> {
   const webcams = data as Webcam[]
-  await db.query(`delete from source where replay_id = $1 and family = 'webcam'`, [replayId])
-
-  for (const webcam of webcams) {
-    await db.query(INSERT, [
-      replayId,
-      'webcam',
-      webcam.code,
-      webcam.code,
+  await insertRows(
+    db,
+    INSERT,
+    replayId,
+    webcams.map((webcam): SourceInsert => ({
+      family: 'webcam',
+      external_id: webcam.code,
+      code: webcam.code,
       // A webcam has no name of its own: what names it is its commune, which
       // goes where the other family-specific fields go.
-      null,
-      null,
-      null,
-      null,
-      null,
-      webcam.position.lon,
-      webcam.position.lat,
-      null,
-      JSON.stringify({
-        commune: webcam.commune,
-        url: webcam.url,
-        operational: webcam.operational,
-      }),
-    ])
-  }
+      name: null,
+      comment: null,
+      town_code: null,
+      category: null,
+      altitude: null,
+      lon: webcam.position.lon,
+      lat: webcam.position.lat,
+      quantities: null,
+      extra: { commune: webcam.commune, url: webcam.url, operational: webcam.operational },
+    })),
+  )
 }
 
 export async function readWebcams(db: Queryable, replayId: string): Promise<Webcam[]> {

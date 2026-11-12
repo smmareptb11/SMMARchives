@@ -1,0 +1,43 @@
+[
+ {
+  "id": 1,
+  "code": "75",
+  "name": "Débit de vigilance",
+  "value": 0.6,
+  "dataType": "5",
+  "htmlColor": "#808080"
+ },
+ {
+  "id": 2,
+  "code": "75",
+  "name": "Débit d'alerte",
+  "value": 0.22,
+  "dataType": "5",
+  "htmlColor": "#ffff00"
+ },
+ {
+  "id": 3,
+  "code": "75",
+  "name": "Débit d'alerte renforcée",
+  "value": 0.185,
+  "dataType": "5",
+  "htmlColor": "#ffa500"
+ },
+ {
+  "id": 4,
+  "code": "75",
+  "name": "Débit de crise",
+  "value": 0.15,
+  "dataType": "5",
+  "htmlColor": "#ff0000"
+ },
+ {
+  "id": 1,
+  "code": "75",
+  "name": "Crue du 23/01/2020",
+  "value": 2.12,
+  "isOverrunThreshold": "1",
+  "dataType": "4",
+  "category": 2
+ }
+]

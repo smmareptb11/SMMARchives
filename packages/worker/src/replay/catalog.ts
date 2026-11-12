@@ -1,4 +1,9 @@
-import { replayIdSchema, type ReplayIdentity, type ReplayManifest } from '@smmarchives/shared'
+import {
+  replayIdSchema,
+  type ReplayAbout,
+  type ReplayIdentity,
+  type ReplayManifest,
+} from '@smmarchives/shared'
 
 import type { ReplayStore } from './store.ts'
 
@@ -15,8 +20,12 @@ export type ReplayCatalog = {
    *
    * The identity of a stored object belongs to what stores it: no client names
    * a replay, so none can collide with another, and no name has to be refused.
+   * What the administrator said of it is stored with it, and never by a build.
    */
-  create(identity: Omit<ReplayIdentity, 'id'>): Promise<{ id: string; store: ReplayStore }>
+  create(
+    identity: Omit<ReplayIdentity, 'id'>,
+    about?: ReplayAbout,
+  ): Promise<{ id: string; store: ReplayStore }>
   list(): Promise<ReplayManifest[]>
   /** Undefined on a replay that does not exist. A read never creates one. */
   open(id: string): Promise<ReplayStore | undefined>

@@ -1,22 +1,35 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 import { Map as MapLibreMap, NavigationControl } from 'maplibre-gl'
-import { memo, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import type { Cursor } from '../transport/reading.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 import { BLANK, groundOf } from './ground.ts'
-import { drawSources, drawTerritory, paintSources, showFamilies, showMutes } from './layers.ts'
-import { boundsOf } from './sources.ts'
+import {
+  drawReports,
+  drawSources,
+  drawTerritory,
+  paintReports,
+  paintSources,
+  redrawReports,
+  showFamilies,
+  showMutes,
+} from './layers.ts'
+import { drawPointed, usePointed } from './pointing.ts'
+import { reportPaintingAt, samePainting, type ReportPainting } from './reports.ts'
+import { offsetFor, roomFor, type Asked } from './frame.ts'
+import { openingOn, overviewControl } from './overview.ts'
+import { useExported } from './exportControl.ts'
 import { addShapes } from './symbols.ts'
-import { CalloutView } from './CalloutView.tsx'
-import { useCallout, useSourceClicks, type Open } from './useCallout.ts'
 import { EVERYTHING, type Shown } from './families.ts'
-import { viewsOf, type Views } from '../pictures.ts'
-import { LayerPanel } from './LayerPanel.tsx'
-import { silencesOf } from './silences.ts'
-import { WebcamMarkers } from './WebcamMarkers.tsx'
+import { MapLegend } from './Legend.tsx'
+import { SourceDetail } from './SourceDetail.tsx'
+import { PlacementView, usePlacing } from './PlacementView.tsx'
+import type { Views } from '../pictures.ts'
+import type { Detail } from './useWindows.ts'
+import type { Window } from './windows.ts'
+import type { Placement } from '../events/placing.ts'
 
 /** The Aude basin, so a replay holding nothing placed still opens somewhere. */
 const FALLBACK = { center: [2.55, 43.17] as [number, number], zoom: 8.6 }
@@ -56,7 +69,7 @@ function useMountedMap(
       // take the whole parc down with them.
       const created = map
       map.once('styledata', () => {
-        drawEverything(created, held.current)
+        drawEverything(created, held)
         drawn.current = created
         onReady(true)
       })
@@ -74,13 +87,22 @@ function useMountedMap(
 }
 
 /** Everything a replay puts on the map, once there is a style to put it on. */
-function drawEverything(map: MapLibreMap, content: ReplayContent): void {
+function drawEverything(map: MapLibreMap, held: RefObject<ReplayContent>): void {
+  const content = held.current
   addShapes(map)
   drawTerritory(map)
   drawSources(map, content)
+  drawReports(map, content)
+  drawPointed(map)
 
-  const bounds = boundsOf(content)
-  if (bounds !== undefined) map.fitBounds(bounds, { padding: 40, animate: false })
+  const opening = openingOn(map, content)
+  if (opening !== undefined)
+    map.fitBounds(opening.bounds, { padding: opening.padding, animate: false })
+  // Above the zoom, which MapLibre stacks under the controls added after it.
+  map.addControl(
+    overviewControl(() => openingOn(map, held.current)),
+    'bottom-right',
+  )
 }
 
 /**
@@ -113,6 +135,36 @@ function usePaintedSources(
 }
 
 /**
+ * Shows what agents had reported by the instant read, and only when that
+ * changes: once per report a reading reaches, and once more when it is over.
+ */
+function usePaintedReports(
+  ready: boolean,
+  drawn: RefObject<MapLibreMap | undefined>,
+  content: ReplayContent,
+  { at, hidden }: { at: Cursor; hidden: string | undefined },
+): void {
+  const painted = useRef<ReportPainting | undefined>(undefined)
+  const painting = useMemo(
+    () => reportPaintingAt(content.events, at, hidden),
+    [content.events, at, hidden],
+  )
+
+  // A report saved while the replay is open: the map was drawn without it.
+  useEffect(() => {
+    if (ready && drawn.current !== undefined) redrawReports(drawn.current, content)
+  }, [ready, drawn, content])
+
+  useEffect(() => {
+    if (!ready || drawn.current === undefined) return
+    if (painted.current !== undefined && samePainting(painted.current, painting)) return
+
+    painted.current = painting
+    paintReports(drawn.current, painting)
+  }, [ready, drawn, painting])
+}
+
+/**
  * What the reader kept, applied to the map that draws it.
  *
  * Two effects rather than one, so neither switch redoes the other's work over
@@ -130,6 +182,40 @@ function useShownSources(map: MapLibreMap | undefined, shown: Shown, mutesShown:
   }, [map, mutesShown])
 }
 
+/**
+ * The zoom a spot is shown at when the map stands further out: a town and the
+ * roads around it. Closer, the map keeps its zoom and only moves.
+ */
+const SPOT_ZOOM = 12
+
+/**
+ * Takes the map to where a card of the history sends it, each time one does.
+ *
+ * Clear of the legend, and of what the card opens: a crossing its station's
+ * detail, a report its sheet.
+ */
+function useFlown(map: MapLibreMap | undefined, asked: Asked | undefined): void {
+  useEffect(() => {
+    const frame = asked?.frame
+    if (map === undefined || frame === undefined) return
+    const { clientWidth, clientHeight } = map.getContainer()
+    const padding = roomFor(
+      clientWidth,
+      clientHeight,
+      asked?.opens === undefined ? 'sheet' : 'detail',
+    )
+
+    if (frame.kind === 'area') map.fitBounds(frame.bounds, { padding })
+    else {
+      map.flyTo({
+        center: frame.at,
+        zoom: Math.max(map.getZoom(), SPOT_ZOOM),
+        offset: offsetFor(padding),
+      })
+    }
+  }, [map, asked])
+}
+
 /** Whether two paintings say the same thing of the same sources. */
 function says(held: Map<string, string>, next: Map<string, string>): boolean {
   if (held.size !== next.size) return false
@@ -144,22 +230,42 @@ export type MapViewProps = {
   content: ReplayContent
   colours: Map<string, string>
   replayId: string
+  /** The replay's title, which the image of the map is saved under. */
+  label: string | null
   at: Cursor
   /** Whether the sources the replay holds nothing of are drawn. */
   mutesShown: boolean
   onMutesShown: (shown: boolean) => void
   /** How many sources the switch holds back, the lanes' own included. */
   heldBack: number
+  /** Opens what an agent reported, from the diamond or the area that stands for it. */
+  onOpenReport: (id: string) => void
+  /** What each camera showed, which its marker shows at the instant read. */
+  views: Views
+  /** The windows open over the map, which the map opens and outlines the sources of. */
+  detail: Detail
+  windows: readonly Window[]
+  /** What the report form asks the map to draw and listen for, while it is open. */
+  placement: Placement | undefined
+  /** Where a card of the history sends the map, and the station it opens there. */
+  asked: Asked | undefined
 }
 
 export function MapView({
   content,
   colours,
   replayId,
+  label,
   at,
   mutesShown,
   onMutesShown,
   heldBack,
+  onOpenReport,
+  placement,
+  asked,
+  views,
+  detail,
+  windows,
 }: MapViewProps) {
   const drawn = useRef<MapLibreMap | undefined>(undefined)
   const [ready, setReady] = useState(false)
@@ -168,37 +274,26 @@ export function MapView({
   // The handle, once there is one to hang anything on. Read from the ref rather
   // than held in state: what says it is there is `ready`, set beside it.
   const hung = ready ? drawn.current : undefined
-  const { bubble, shown: open } = useCallout(hung, replayId)
-  useSourceClicks(hung, bubble)
-  const views = useMemo(() => viewsOf(content.images), [content.images])
-
   useShownSources(hung, shown, mutesShown)
   usePaintedSources(ready, drawn, colours)
+  useFlown(hung, asked)
+  usePointed(hung, shown, mutesShown)
+  usePaintedReports(ready, drawn, content, { at, hidden: placement?.amending })
+  useExported(hung, label, at)
+  const placing = usePlacing(placement?.listening !== undefined)
 
   return (
     <>
       <Ground content={content} drawn={drawn} onReady={setReady} />
-      <LayerPanel
-        content={content}
-        shown={shown}
-        onChange={setShown}
-        mutesShown={mutesShown}
-        onMutesShown={onMutesShown}
-        heldBack={heldBack}
-      />
-      <Silences content={content} />
+      <MapLegend {...{ content, shown, mutesShown, onMutesShown, heldBack }} onChange={setShown} />
       {/* Hung on the map rather than drawn by it, and so only once it exists. */}
-      <WebcamMarkers
+      <SourceDetail
+        {...{ content, replayId, at, shown, mutesShown, onOpenReport, placing, asked }}
+        {...{ views, detail, windows }}
         map={hung}
-        content={content}
-        replayId={replayId}
-        at={at}
-        bubble={bubble}
-        shown={shown.webcam}
-        mutesShown={mutesShown}
-        views={views}
+        onSpot={placement?.listening?.onSpot}
       />
-      <Callout open={open} content={content} views={views} replayId={replayId} at={at} />
+      <PlacementView map={hung} placement={placement} placing={placing} />
     </>
   )
 }
@@ -237,51 +332,3 @@ function Ground({
     </>
   )
 }
-
-/**
- * What the open bubble says, rendered into the element MapLibre shows.
- *
- * A portal rather than a subtree of its own: the element belongs to the popup,
- * which MapLibre moves and removes, and React only fills it.
- */
-function Callout({
-  open,
-  content,
-  views,
-  replayId,
-  at,
-}: {
-  open: Open | undefined
-  content: ReplayContent
-  views: Views
-  replayId: string
-  at: Cursor
-}) {
-  if (open === undefined) return null
-
-  return createPortal(
-    <CalloutView
-      subject={open.subject}
-      content={content}
-      views={views}
-      replayId={replayId}
-      at={at}
-    />,
-    open.container,
-  )
-}
-
-/** What the map holds back, as `map/silences.ts` decides to put it. */
-const Silences = memo(function Silences({ content }: { content: ReplayContent }) {
-  // Memoised because the map beside it re-renders on every tick, and one of
-  // these sentences counts a collection of three hundred features.
-  const said = useMemo(() => silencesOf(content), [content])
-
-  return (
-    <ul className="silences">
-      {said.map((one) => (
-        <li key={one}>{one}</li>
-      ))}
-    </ul>
-  )
-})

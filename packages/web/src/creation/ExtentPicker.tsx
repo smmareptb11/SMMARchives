@@ -1,16 +1,23 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-import type { BoundingBox } from '@smmarchives/shared/contracts/geometry.ts'
 import type { Perimeter } from '@smmarchives/shared/reference/perimeters.ts'
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
 import { BLANK, groundOf } from '../map/ground.ts'
 import { FRAME } from './extent.ts'
-import { basinMap, frameOn, listen, pickerOn, settle, type Picker } from './viewfinder.ts'
+import {
+  basinMap,
+  frameOn,
+  listen,
+  pickerOn,
+  settle,
+  type Framed,
+  type Picker,
+} from './viewfinder.ts'
 
 export type ExtentPickerProps = {
-  onChange: (extent: BoundingBox | null) => void
+  onChange: Framed
   /** Whether the rectangle is moving, the extent it frames not yet told. */
   onMoving: (moving: boolean) => void
 }
@@ -28,12 +35,18 @@ export type ExtentPickerProps = {
 export function ExtentPicker({ onChange, onMoving }: ExtentPickerProps) {
   const [whole, setWhole] = useState(true)
   const [union, setUnion] = useState('')
-  const { container, groundless, ready, picker } = useMountedPicker(onChange, onMoving)
+  const [named, setNamed] = useState<string | undefined>(undefined)
+  const framed: Framed = (framing) => {
+    setNamed(framing.territory)
+    onChange(framing)
+  }
+  const { container, groundless, ready, picker } = useMountedPicker(framed, onMoving)
   const unions = useUnions()
 
   function narrow(narrowed: boolean): void {
     if (picker.current === undefined) return
     picker.current.narrowed = narrowed
+    picker.current.territory = undefined
     setWhole(!narrowed)
     if (!narrowed) setUnion('')
     settle(picker.current)
@@ -44,7 +57,7 @@ export function ExtentPicker({ onChange, onMoving }: ExtentPickerProps) {
     if (picker.current === undefined || picked === undefined) return
     setUnion(code)
     setWhole(false)
-    frameOn(picker.current, picked.bounds)
+    frameOn(picker.current, picked.bounds, picked.label)
   }
 
   return (
@@ -56,11 +69,7 @@ export function ExtentPicker({ onChange, onMoving }: ExtentPickerProps) {
         </p>
       ) : null}
       <ExtentView container={container} framed={!whole} />
-      <p className="note">
-        {whole
-          ? 'Tout le territoire. « Réduire l’emprise » trace un rectangle sur la carte.'
-          : 'Emprise réduite : seuls les stations, pluviomètres et webcams du rectangle seront rejoués. Zoomez ou déplacez la carte pour l’ajuster.'}
-      </p>
+      <p className="note">{noteOf(whole, named)}</p>
       <UnionSelect
         unions={unions}
         value={union}
@@ -72,6 +81,14 @@ export function ExtentPicker({ onChange, onMoving }: ExtentPickerProps) {
       </button>
     </fieldset>
   )
+}
+
+function noteOf(whole: boolean, named: string | undefined): string {
+  if (whole) return 'Tout le territoire. « Réduire l’emprise » trace un rectangle sur la carte.'
+  const kept = 'seuls les stations, pluviomètres et webcams du rectangle seront rejoués.'
+  return named === undefined
+    ? `Emprise réduite : ${kept} Zoomez ou déplacez la carte pour l’ajuster.`
+    : `Emprise ${named} : ${kept} Zoomez ou déplacez la carte pour l’ajuster : elle deviendra une emprise réduite.`
 }
 
 /** The map, and the rectangle over it while the extent is narrowed. */
@@ -150,7 +167,7 @@ function useUnions(): readonly Perimeter[] {
 
 /** Builds the map once, and tears it down once. */
 function useMountedPicker(
-  onChange: (extent: BoundingBox | null) => void,
+  onChange: Framed,
   onMoving: (moving: boolean) => void,
 ): {
   container: RefObject<HTMLDivElement | null>

@@ -8,14 +8,15 @@ import { isMediaPath } from '@smmarchives/worker/replay/store.ts'
 
 import { sendBlob } from './blobs.ts'
 import { badRequest, notFound } from './problems.ts'
-import { openReplay } from './replays.ts'
+import { cachedFor, openReplay } from './replays.ts'
 
 /**
- * A frozen medium is never rewritten: freezing skips a path the store already
- * holds — `freezeOne`, in the worker's `replay/media.ts` — and the path is
- * derived from the code and the instant. One address, one set of bytes, for
- * good. Make that copy unconditional and this header becomes a lie no client
- * can catch for a year.
+ * A medium is never rewritten. A replay is built once, so each path is written
+ * once, and no two media share a path: a webcam image is addressed by its
+ * camera and its instant, a raster by its delivery, and an agent's photos by a
+ * folder drawn at random for each sending. One address, one set of bytes, for
+ * good. Let a path be written twice and this header becomes a lie no client can
+ * catch for a year.
  */
 const FOREVER = 'public, max-age=31536000, immutable'
 
@@ -47,7 +48,7 @@ export function registerMedia(app: Express, catalog: ReplayCatalog): void {
         contentType: FROZEN_MEDIA_EXTENSIONS.has(extension)
           ? extension
           : 'application/octet-stream',
-        cacheControl: FOREVER,
+        cacheControl: cachedFor(opened.manifest, FOREVER),
       })
     },
   )

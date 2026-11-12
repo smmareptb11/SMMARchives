@@ -16,6 +16,7 @@ import {
   type Problem,
 } from './support/replay.ts'
 import { rawGet, withServer } from './support/server.ts'
+import { anAuth } from './support/session.ts'
 
 afterEach(cleanRoots)
 afterAll(closeDatabase)
@@ -178,12 +179,15 @@ describe('refusing what is not a medium of this replay', () => {
       },
     })
     const app = createApp({
+      auth: anAuth(),
       catalog: aCatalog({ open: async () => store }),
       log: (message) => said.push(message),
     })
 
     await withServer(app, async (base) => {
-      const response = await fetch(`${base}/replays/aude-2019-10/media/webcams/1.jpg`)
+      const response = await fetch(
+        `${base}/replays/c4a7c5be-73d0-48db-aa17-8be7b314f863/media/webcams/1.jpg`,
+      )
       // A volume gone is not the client writing a bad path, and an operator
       // has to see it.
       expect(response.status).toBe(500)
@@ -221,7 +225,10 @@ describe('refusing what is not a medium of this replay', () => {
 
   it('answers 404 under a replay nobody built', async () => {
     await withServer(appOn(await anApi()), async (base) => {
-      expect((await fetch(`${base}/replays/never-built/media/webcams/1/2.jpg`)).status).toBe(404)
+      expect(
+        (await fetch(`${base}/replays/5d1e7c4a-0000-4000-8000-000000000000/media/webcams/1/2.jpg`))
+          .status,
+      ).toBe(404)
     })
   })
 

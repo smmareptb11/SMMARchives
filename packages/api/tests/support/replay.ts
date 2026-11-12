@@ -16,11 +16,13 @@ import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 import { openPostgresCatalog } from '@smmarchives/worker/replay/postgres/catalog.ts'
 import { writeManifest } from '@smmarchives/worker/replay/postgres/manifest.ts'
 import { openPostgresStore } from '@smmarchives/worker/replay/postgres/store.ts'
+import { openPostgresSessionStore } from '@smmarchives/worker/session/postgres.ts'
 import type { ReplayStore } from '@smmarchives/worker/replay/store.ts'
 
 import { createApp, type ApiOptions } from '../../src/app.ts'
 import type { BuildLauncher } from '../../src/builds.ts'
 import { closeDatabase, freshDatabase, withDatabase } from './database.ts'
+import { anAuth, asAdmin } from './session.ts'
 
 export { closeDatabase, withDatabase }
 
@@ -68,9 +70,12 @@ export function aManifest(overrides: Partial<ReplayManifest> = {}): ReplayManife
     createdAt: '2026-09-10T06:00:00.000Z',
     updatedAt: '2026-09-10T06:10:00.000Z',
     state: 'complete',
+    // Published, so a test reads it as anyone would; one about the
+    // administrator's view leaves it out.
+    publishedAt: '2026-09-10T06:20:00.000Z',
     lanes: { 'radar-rainfall': { state: 'done' } },
     datasets: {},
-    media: { copied: 0, skipped: 0, failed: 0, bytes: 0 },
+    media: { copied: 0, failed: 0, bytes: 0 },
     ...overrides,
   }
 }
@@ -103,6 +108,18 @@ export async function writeReplay(
   // The manifest again: storing a data set moves `updatedAt`, and a test that
   // asserts on what it published must get what it published.
   await writeManifest(api.pool, manifest)
+  await publishAsWritten(api, manifest)
+}
+
+/**
+ * Set by hand: the store stamps a publication with its own clock, and a test
+ * that asserts on the manifest must get the instant it wrote.
+ */
+async function publishAsWritten(api: Api, manifest: ReplayManifest): Promise<void> {
+  await api.pool.query('update replay set published_at = $2 where id = $1', [
+    manifest.id,
+    manifest.publishedAt ?? null,
+  ])
 }
 
 function reportOf(manifest: ReplayManifest, name: DatasetName): Report {
@@ -138,13 +155,18 @@ export async function corruptManifest(api: Api, id: string): Promise<void> {
  * promise that no test starts a collection would rest on no test ever posting
  * one.
  */
-export function appOn(api: Api, options: Omit<ApiOptions, 'catalog'> = {}) {
-  return createApp({ catalog: api.catalog, launch: neverLaunches, ...options })
+export function appOn(api: Api, options: Partial<Omit<ApiOptions, 'catalog'>> = {}) {
+  return createApp({
+    catalog: api.catalog,
+    auth: anAuth(openPostgresSessionStore(api.pool)),
+    launch: neverLaunches,
+    ...options,
+  })
 }
 
-/** A creation, as a client sends one. */
+/** A creation, as the signed-in administrator sends one. */
 export function post(base: string, payload: unknown): Promise<Response> {
-  return fetch(`${base}/replays`, {
+  return asAdmin(base, '/replays', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
@@ -169,6 +191,30 @@ export function aCatalog(overrides: Partial<ReplayCatalog> = {}): ReplayCatalog 
   }
 }
 
+/**
+ * A catalogue whose replays start being built after they are first opened:
+ * what a change finds when it checks the replay again before writing, once its
+ * photos have arrived.
+ */
+export function buildingOnceOpened(catalog: ReplayCatalog): ReplayCatalog {
+  let opened = 0
+  return {
+    ...catalog,
+    open: async (id) => {
+      const store = await catalog.open(id)
+      opened += 1
+      if (store === undefined || opened === 1) return store
+      return {
+        ...store,
+        getManifest: async () => {
+          const manifest = await store.getManifest()
+          return manifest === undefined ? undefined : { ...manifest, state: 'running' }
+        },
+      }
+    },
+  }
+}
+
 /** A build still running, whatever the test does next. */
 export const NEVER_ENDS = new Promise<{ code: number | null; stderr: string }>(() => {})
 
@@ -181,16 +227,25 @@ export type Problem = { type: string; title: string; status: number; detail: str
  */
 export function aStore(overrides: Partial<ReplayStore>): ReplayStore {
   return {
-    getDataset: async () => undefined,
     openDataset: async () => undefined,
     putDataset: async () => {},
     getManifest: async () => aManifest(),
     putManifest: async () => {},
+    publish: async () => false,
+    unpublish: async () => {},
+    abandon: async () => {},
+    claim: async () => true,
     appendJournal: async () => {},
     readJournal: async () => [],
-    hasMedia: async () => false,
     openMedia: async () => undefined,
     putMedia: async () => {},
+    removeMedia: async () => {},
+    addManualEvent: async () => {
+      throw new Error('this store adds no event')
+    },
+    getManualEvent: async () => undefined,
+    updateManualEvent: async () => undefined,
+    removeManualEvent: async () => undefined,
     ...overrides,
   }
 }

@@ -28,5 +28,31 @@
   "contactCode": 20,
   "code": "SMAC5",
   "updateLogin": "agent-a"
+ },
+ {
+  "id": 5,
+  "name": "SAFRAN Carcassonne_1",
+  "creationDate": 1757693456632,
+  "x": 2.483983026989639,
+  "y": 43.21140684611155,
+  "projectionType": 16,
+  "townCode": "11069",
+  "code": "SAFRAN_6120_18010",
+  "jobId": 3377,
+  "updateLogin": "agent-a",
+  "updateDate": 1757693456632
+ },
+ {
+  "id": 693,
+  "name": "ERA5 Limoux_1",
+  "creationDate": 1761591705577,
+  "x": 2.25,
+  "y": 43,
+  "projectionType": 16,
+  "townCode": "11408",
+  "code": "X2.25Y43",
+  "jobId": 9937,
+  "updateLogin": "agent-a",
+  "updateDate": 1761591705577
  }
 ]

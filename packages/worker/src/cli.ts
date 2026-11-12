@@ -9,10 +9,24 @@ import {
   encloses,
   parseBoundingBox,
   replayIdSchema,
-  windowOf,
+  periodOf,
   type BoundingBox,
   type TimeWindow,
 } from '@smmarchives/shared'
+import { isUnion } from '@smmarchives/shared/reference/perimeters.ts'
+
+/**
+ * Lets the process outlive whoever read its progress.
+ *
+ * The API reads a build's stderr only to learn why it could not start, and
+ * the build's own trace is its journal, in the database. Once that reader is
+ * gone — the API stopped while the build runs — the next line of progress
+ * meets a closed pipe, and left unhandled that error kills a build that had
+ * nothing wrong with it. Any other failure to write still surfaces.
+ */
+function ignoreGoneReader(error: NodeJS.ErrnoException): void {
+  if (error.code !== 'EPIPE') throw error
+}
 
 /**
  * Runs a process that stores what it collected instead of returning it.
@@ -22,6 +36,7 @@ import {
  * run that could not start at all exits 1.
  */
 export async function runProcess(run: () => Promise<ExitCode>): Promise<void> {
+  process.stderr.on('error', ignoreGoneReader)
   try {
     process.exitCode = await run()
   } catch (error) {
@@ -65,6 +80,17 @@ export function toExtent(value: string | undefined): BoundingBox | undefined {
   return extent
 }
 
+/** The basin union an extent was framed on, which names nothing without one. */
+export function toTerritory(
+  value: string | undefined,
+  extent: BoundingBox | undefined,
+): string | undefined {
+  if (value === undefined) return undefined
+  if (!isUnion(value)) throw new UsageError('--territory must name a basin union')
+  if (extent === undefined) throw new UsageError('--territory needs --bbox')
+  return value
+}
+
 /**
  * The identifier of a replay, which also names the directory holding its media.
  *
@@ -85,7 +111,7 @@ export function toWindow(from: string | undefined, to: string | undefined): Time
     throw new UsageError('--from and --to are both required')
   }
   try {
-    return windowOf(from, to)
+    return periodOf(from, to)
   } catch (error) {
     throw new UsageError(error instanceof Error ? error.message : String(error))
   }

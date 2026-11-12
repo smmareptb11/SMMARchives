@@ -23,7 +23,7 @@ const identity: Omit<ReplayIdentity, 'id'> = {
 }
 
 const MEASURES: Measure[] = [
-  { sourceId: 84, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1.25 },
+  { family: 'hydro', sourceId: 84, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1.25 },
 ]
 
 const REPORT = aReport()
@@ -65,6 +65,34 @@ describe('a replay in the database', () => {
     expect(manifest?.state).toBe('running')
   })
 
+  it('carries what the administrator said of it, past every manifest a build publishes', async () => {
+    const about = {
+      description: 'Route coupée à Trèbes.',
+      phenomenon: 'flood',
+      severity: 'alert',
+    } as const
+    const { id, store } = await catalog.create(identity, about)
+
+    expect(await store.getManifest()).toMatchObject(about)
+
+    // A build publishes its manifest from the identity it was handed, which
+    // holds none of it.
+    const built = await store.getManifest()
+    const { description: _d, phenomenon: _p, severity: _s, ...fromBuild } = built!
+    await store.putManifest({ ...fromBuild, id, state: 'complete' })
+
+    expect(await store.getManifest()).toMatchObject({ ...about, state: 'complete' })
+  })
+
+  it('carries nothing of what was not said', async () => {
+    const { store } = await catalog.create(identity)
+
+    const manifest = await store.getManifest()
+    expect(Object.keys(manifest ?? {})).not.toContain('description')
+    expect(Object.keys(manifest ?? {})).not.toContain('phenomenon')
+    expect(Object.keys(manifest ?? {})).not.toContain('severity')
+  })
+
   it('gives two creations two identifiers', async () => {
     const one = await catalog.create(identity)
     const other = await catalog.create(identity)
@@ -88,13 +116,6 @@ describe('a replay in the database', () => {
     expect((await catalog.list()).map((one) => one.label)).toEqual(['newer', 'older'])
   })
 
-  it('reads back a data set the way a re-run needs it', async () => {
-    const { store } = await catalog.create(identity)
-    await store.putDataset('measures', MEASURES, REPORT)
-
-    expect(await store.getDataset('measures')).toEqual(MEASURES)
-  })
-
   it('shows a data set in the manifest with its report from the moment it is stored', async () => {
     const { store } = await catalog.create(identity)
     await store.putDataset('measures', MEASURES, REPORT)
@@ -110,24 +131,6 @@ describe('a replay in the database', () => {
     const blob = await opened(store)
     expect(JSON.parse((await bytesOf(blob)).toString('utf8'))).toEqual(MEASURES)
     expect(blob.size).toBeGreaterThan(0)
-  })
-
-  it('changes the version of a data set a re-run rewrote', async () => {
-    const { store } = await catalog.create(identity)
-    await store.putDataset('measures', MEASURES, REPORT)
-    const before = (await opened(store)).version
-
-    await store.putDataset('measures', [{ ...MEASURES[0]!, value: 9.99 }], REPORT)
-    expect((await opened(store)).version).not.toBe(before)
-  })
-
-  it('shows the report of the run that rewrote a data set, not the first one', async () => {
-    const { store } = await catalog.create(identity)
-    await store.putDataset('measures', MEASURES, REPORT)
-
-    const rerun = aReport({ ranAt: '2026-09-12T08:05:00.000Z' })
-    await store.putDataset('measures', MEASURES, rerun)
-    expect((await store.getManifest())?.datasets['measures']?.report).toEqual(rerun)
   })
 
   it('keeps the bytes it froze on the volume, not in the database', async () => {
@@ -156,14 +159,6 @@ describe('a replay in the database', () => {
     const { store } = await catalog.create(identity)
 
     await expect(store.putMedia('../escaped.jpg', new Uint8Array([1]))).rejects.toThrow(/outside/)
-  })
-
-  it('knows a medium is already there, so a re-run does not fetch it again', async () => {
-    const { store } = await catalog.create(identity)
-    await store.putMedia('webcams/215/1.jpg', new Uint8Array([1]))
-
-    expect(await store.hasMedia('webcams/215/1.jpg')).toBe(true)
-    expect(await store.hasMedia('webcams/215/2.jpg')).toBe(false)
   })
 
   it('takes rows and bytes away together', async () => {

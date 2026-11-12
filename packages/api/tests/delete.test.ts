@@ -22,12 +22,18 @@ import {
   type Problem,
 } from './support/replay.ts'
 import { withServer } from './support/server.ts'
+import { anAuth, asAdmin, sessionCookie } from './support/session.ts'
 
 afterEach(cleanRoots)
 afterAll(closeDatabase)
 
 function remove(base: string, id: string) {
-  return fetch(`${base}/replays/${id}`, { method: 'DELETE' })
+  return asAdmin(base, `/replays/${id}`, { method: 'DELETE' })
+}
+
+/** Signed in beforehand, so the two requests leave together. */
+function removeAs(cookie: string, base: string, id: string) {
+  return fetch(`${base}/replays/${id}`, { method: 'DELETE', headers: { cookie } })
 }
 
 const PERIOD = { from: '2019-10-22T00:00:00Z', to: '2019-10-23T00:00:00Z' }
@@ -38,7 +44,15 @@ describe('deleting a replay', () => {
     const manifest = aManifest({ datasets: { measures: aDataset(1) } })
     await writeReplay(api, manifest, {
       datasets: {
-        measures: [{ sourceId: 1, quantity: 'level', at: '2019-10-22T06:00:00.000Z', value: 1 }],
+        measures: [
+          {
+            family: 'hydro',
+            sourceId: 1,
+            quantity: 'level',
+            at: '2019-10-22T06:00:00.000Z',
+            value: 1,
+          },
+        ],
       },
       media: { 'webcams/215/1.jpg': 'x', 'radar/20034/pluvio5mn/1.png': 'y' },
     })
@@ -73,7 +87,11 @@ describe('deleting a replay', () => {
     await writeReplay(api, manifest)
 
     await withServer(appOn(api), async (base) => {
-      const both = await Promise.all([remove(base, manifest.id), remove(base, manifest.id)])
+      const cookie = await sessionCookie(base)
+      const both = await Promise.all([
+        removeAs(cookie, base, manifest.id),
+        removeAs(cookie, base, manifest.id),
+      ])
       // The second is told someone holds the replay, which is truer than being
       // told there was nothing there.
       expect(both.map((one) => one.status).sort()).toEqual([204, 409])
@@ -152,9 +170,12 @@ describe('refusing what cannot name a replay', () => {
       },
     })
 
-    await withServer(createApp({ catalog, launch: neverLaunches }), async (base) => {
-      expect((await remove(base, encodeURIComponent('../secrets'))).status).toBe(400)
-      expect(removed).toEqual([])
-    })
+    await withServer(
+      createApp({ catalog, auth: anAuth(), launch: neverLaunches }),
+      async (base) => {
+        expect((await remove(base, encodeURIComponent('../secrets'))).status).toBe(400)
+        expect(removed).toEqual([])
+      },
+    )
   })
 })

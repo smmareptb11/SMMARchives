@@ -1,15 +1,15 @@
 import compression from 'compression'
 import type { Express, Request, Response } from 'express'
 
-import { datasetNameSchema, windowOf, type DatasetName } from '@smmarchives/shared'
+import { datasetNameSchema, parseInstant, windowOf, type DatasetName } from '@smmarchives/shared'
 import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 import { MAPPINGS, type DatasetFilter } from '@smmarchives/worker/replay/postgres/datasets/index.ts'
 
 import { sendBlob } from './blobs.ts'
 import { badRequest, notFound } from './problems.ts'
-import { openReplay } from './replays.ts'
+import { cachedFor, openReplay } from './replays.ts'
 
-/** Not immutable: a re-run rewrites a data set in place. */
+/** Not immutable: a build fills a data set while it is read, and an agent changes the events. */
 const REVALIDATE = 'public, max-age=0, must-revalidate'
 
 export function registerDatasets(app: Express, catalog: ReplayCatalog): void {
@@ -56,7 +56,7 @@ export function registerDatasets(app: Express, catalog: ReplayCatalog): void {
       }
       await sendBlob(req, res, blob, {
         contentType: 'application/json',
-        cacheControl: REVALIDATE,
+        cacheControl: cachedFor(opened.manifest, REVALIDATE),
       })
     },
   )
@@ -87,15 +87,22 @@ function filterFor(name: DatasetName, query: Request['query']): DatasetFilter | 
 }
 
 /**
- * A window is ordered where every other one is, so `from` after `to` is a
- * refusal rather than an empty answer a client would read as an absence.
+ * Each bound on the single clock, alone or not, and the two in order: `from`
+ * after `to` is a refusal rather than an empty answer a client would read as an
+ * absence. What reaches the database is the normalised instant, never the
+ * client's text, which it would read in the zone of its session.
  */
 function checkedWindow(filter: DatasetFilter): DatasetFilter | string {
-  if (filter.from === undefined || filter.to === undefined) return filter
   try {
-    windowOf(filter.from, filter.to)
-    return filter
+    if (filter.from !== undefined && filter.to !== undefined) {
+      return { ...filter, ...windowOf(filter.from, filter.to) }
+    }
+    return {
+      ...filter,
+      ...(filter.from === undefined ? {} : { from: parseInstant(filter.from) }),
+      ...(filter.to === undefined ? {} : { to: parseInstant(filter.to) }),
+    }
   } catch {
-    return 'from and to must be two instants, in order'
+    return 'from and to must be instants naming their zone, in order'
   }
 }

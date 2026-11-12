@@ -1,6 +1,7 @@
-import { fromEpochMilliseconds } from '@smmarchives/shared/clock.ts'
+import { fromEpochMilliseconds, type TimeWindow } from '@smmarchives/shared/clock.ts'
 import type { FrozenWebcamImage } from '@smmarchives/shared/contracts/webcam.ts'
 
+import { formatSince } from './time.ts'
 import { lastBefore, type Cursor } from './transport/reading.ts'
 
 /** A view the replay holds a picture of, with its instant already read. */
@@ -45,6 +46,16 @@ export function instantOf(view: View) {
 }
 
 /**
+ * When the view shown was taken, seen from the instant read.
+ *
+ * A camera that went dark goes on showing its last view, which would otherwise
+ * read as the scene at that instant.
+ */
+export function takenWhen(view: View, at: Cursor): string {
+  return `Image prise ${formatSince(instantOf(view), fromEpochMilliseconds(at))}`
+}
+
+/**
  * What a camera showed at an instant: its last view before it.
  *
  * A view holds until the next one is taken — the rule the lane's strip draws
@@ -55,4 +66,39 @@ export function instantOf(view: View) {
 export function viewAt(views: Views, code: string, at: Cursor): View | undefined {
   const held = views.get(code)
   return held === undefined ? undefined : lastBefore(held, at)
+}
+
+/** Where the view at an instant stands among a camera's views, and the ones either side. */
+export type Steps = {
+  /** Its rank among the views of the period, from 0; nothing when it is not one of them. */
+  index: number | undefined
+  /** How many views the camera holds within the period. */
+  count: number
+  previous: Cursor | undefined
+  /** The first view, when the cursor is before every one. */
+  next: Cursor | undefined
+}
+
+/**
+ * The views on either side of the one shown, for stepping from view to view.
+ *
+ * Read with the same rule as `viewAt`, so a step lands the cursor on the very
+ * instant of a view and the view shown is that one. A step always reaches
+ * another instant — two views taken at once are one stop — and stays within
+ * the period, which is where the reading can go: a step that cannot move the
+ * cursor is no step.
+ */
+export function viewStepsOf(views: Views, code: string, at: Cursor, period: TimeWindow): Steps {
+  const from = Date.parse(period.from)
+  const to = Date.parse(period.to)
+  const within = (views.get(code) ?? []).filter((one) => one.at >= from && one.at <= to)
+  const shown = viewAt(views, code, at)
+  const index = shown === undefined ? -1 : within.indexOf(shown)
+
+  return {
+    index: index < 0 ? undefined : index,
+    count: within.length,
+    previous: within.findLast((one) => one.at < (shown?.at ?? at))?.at,
+    next: within.find((one) => one.at > at)?.at,
+  }
 }

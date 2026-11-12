@@ -1,7 +1,7 @@
 import { ConfigurationError, ExitCode, SourceError } from '@smmarchives/shared'
 import { describe, expect, it, vi } from 'vitest'
 
-import { UsageError, runProcess, toExtent, toReplayId } from '../src/cli.ts'
+import { UsageError, runProcess, toExtent, toReplayId, toTerritory, toWindow } from '../src/cli.ts'
 
 /**
  * What every command of the worker rests on, exercised through `runProcess`
@@ -97,6 +97,20 @@ describe('a process that could not run', () => {
  * The same four-number format arrives from a flag and from an environment
  * variable, with two different consequences. One parser, two errors.
  */
+describe('the territory read from the command line', () => {
+  const extent = { minLon: 2.1, minLat: 43.1, maxLon: 2.5, maxLat: 43.3 }
+
+  it('is a basin union, by the short name a list shows', () => {
+    expect(toTerritory('Aude Centre', extent)).toBe('Aude Centre')
+    expect(() => toTerritory('Narbonne', extent)).toThrow('--territory must name a basin union')
+  })
+
+  it('names an extent, and nothing without one', () => {
+    expect(() => toTerritory('Aude Centre', undefined)).toThrow('--territory needs --bbox')
+    expect(toTerritory(undefined, undefined)).toBeUndefined()
+  })
+})
+
 describe('the extent read from the command line', () => {
   it('carries the same bounds as the one read from the environment', () => {
     expect(() => toExtent('1000,2000,3000,4000')).toThrow(UsageError)
@@ -140,7 +154,23 @@ describe('the identifier of a replay', () => {
     expect(() => toReplayId('Aude 2018')).toThrow(/--id/)
   })
 
-  it('accepts the slug an operator would actually write', () => {
-    expect(toReplayId('aude-2018-10')).toBe('aude-2018-10')
+  it('accepts the identifier the database minted, and nothing else', () => {
+    expect(toReplayId('c4a7c5be-73d0-48db-aa17-8be7b314f863')).toBe(
+      'c4a7c5be-73d0-48db-aa17-8be7b314f863',
+    )
+    expect(() => toReplayId('aude-2018-10')).toThrow(/--id/)
+  })
+})
+
+describe('the period read from the command line', () => {
+  it('is refused when it lasts no time, before the database is asked to store it', () => {
+    expect(() => toWindow('2019-10-22T00:00:00Z', '2019-10-22T00:00:00.000Z')).toThrow(UsageError)
+  })
+
+  it('is read when it lasts', () => {
+    expect(toWindow('2019-10-22T00:00:00Z', '2019-10-23T00:00:00Z')).toEqual({
+      from: '2019-10-22T00:00:00.000Z',
+      to: '2019-10-23T00:00:00.000Z',
+    })
   })
 })

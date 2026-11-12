@@ -17,6 +17,7 @@ import {
   type Problem,
 } from './support/replay.ts'
 import { withServer } from './support/server.ts'
+import { anAuth } from './support/session.ts'
 
 afterEach(cleanRoots)
 afterAll(closeDatabase)
@@ -55,6 +56,7 @@ describe('listing replays', () => {
     const said: string[] = []
 
     const app = createApp({
+      auth: anAuth(),
       catalog: openPostgresCatalog({
         pool: api.pool,
         mediaRoot: api.mediaRoot,
@@ -120,12 +122,12 @@ describe('reading one replay', () => {
     })
   })
 
-  it('answers 404 on a name it could never have minted', async () => {
+  it('refuses a name the database could never have minted', async () => {
     const api = await anApi()
 
     await withServer(appOn(api), async (base) => {
       const response = await fetch(`${base}/replays/aude-2019-10`)
-      expect(response.status).toBe(404)
+      expect(response.status).toBe(400)
     })
   })
 
@@ -137,6 +139,7 @@ describe('reading one replay', () => {
     const said: string[] = []
 
     const app = createApp({
+      auth: anAuth(),
       catalog: api.catalog,
       log: (message) => said.push(message),
     })
@@ -159,7 +162,7 @@ describe('refusing what cannot name a replay', () => {
   it('answers 400 without reaching storage', async () => {
     const catalog = aCatalog({ open: vi.fn(async () => undefined) })
 
-    await withServer(createApp({ catalog }), async (base) => {
+    await withServer(createApp({ auth: anAuth(), catalog }), async (base) => {
       const response = await fetch(`${base}/replays/${encodeURIComponent('../secrets')}`)
       expect(response.status).toBe(400)
       expect((await response.json()) as Problem).toMatchObject({ type: 'bad-request' })

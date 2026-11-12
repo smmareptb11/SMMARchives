@@ -6,15 +6,19 @@ import { boundingBoxSchema } from './geometry.ts'
 import { thresholdNatureSchema } from './threshold.ts'
 
 /**
- * The identifier of a replay, which is also the name of what stores it.
+ * The identifier of a replay: the UUID the database minted for it, lower case
+ * as PostgreSQL writes it.
  *
- * A slug rather than a free string: it becomes a directory today and a path
- * segment in the API tomorrow, so a separator or a space in it would escape
- * both.
+ * Nothing else is one. It names a directory of media and a path segment of the
+ * API, so a separator or a space in it would escape both — and a name the
+ * database could never have minted is refused here rather than looked up.
  */
 export const replayIdSchema = z
   .string()
-  .regex(/^[a-z0-9][a-z0-9-]*$/, 'must be lowercase letters, digits and dashes')
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    'must be the identifier the database minted',
+  )
 
 /**
  * One stored data set of a replay.
@@ -28,7 +32,7 @@ export const datasetNameSchema = z.enum([
   'stations',
   'thresholds',
   'measures',
-  'reference-layers',
+  'measured-stations',
   'webcams',
   'webcam-images',
   'radar-rainfall',
@@ -41,7 +45,7 @@ export type DatasetName = z.infer<typeof datasetNameSchema>
  * produces.
  *
  * `aquasys` carries three because they come from one host and one referential,
- * and `lizmap` three because they come from one host. `events`
+ * and `lizmap` two because they come from one host. `events`
  * and `media` read no source at all: they work on what the others returned, and
  * they are lanes so that a failure in one of them stays theirs. What must stay sequential is an access, not a subject.
  */
@@ -68,8 +72,6 @@ export type DatasetStatus = z.infer<typeof datasetStatusSchema>
 
 export const mediaTallySchema = z.object({
   copied: z.number().int().nonnegative(),
-  /** Already present from an earlier run, which is what makes a re-run cheap. */
-  skipped: z.number().int().nonnegative(),
   failed: z.number().int().nonnegative(),
   bytes: z.number().int().nonnegative(),
 })
@@ -87,10 +89,60 @@ export const replayIdentitySchema = z.object({
   label: z.string().nullable(),
   /** Null is the whole SMMAR fleet, which is the territory's own extent. */
   extent: boundingBoxSchema.nullable(),
+  /**
+   * The basin union the extent was framed on, by the short name a list shows.
+   * Absent when the extent is the whole fleet, or a rectangle no union names.
+   */
+  territory: z.string().optional(),
   period: timeWindowSchema,
 })
 
 export type ReplayIdentity = z.infer<typeof replayIdentitySchema>
+
+/** The kind of episode a replay covers, which a list of replays is classed by. */
+export const phenomenonSchema = z.enum([
+  'flood',
+  'intense-rainfall',
+  'runoff',
+  'marine-submersion',
+  'windstorm',
+  'other',
+])
+
+export type Phenomenon = z.infer<typeof phenomenonSchema>
+
+/**
+ * How serious the episode was, on the SMMAR's own ladder: the one its
+ * thresholds are named on, lowest first.
+ */
+export const severitySchema = z.enum(['vigilance', 'alert', 'reinforced-alert', 'crisis'])
+
+export type Severity = z.infer<typeof severitySchema>
+
+/**
+ * What an administrator says of a replay as it is constituted, each optional.
+ *
+ * Not part of its identity: a build needs none of it, and none of it reaches
+ * the build.
+ */
+export const replayAboutSchema = z.object({
+  description: z.string().optional(),
+  phenomenon: phenomenonSchema.optional(),
+  severity: severitySchema.optional(),
+})
+
+export type ReplayAbout = z.infer<typeof replayAboutSchema>
+
+/**
+ * One family of the fleet, and how much of it spoke.
+ *
+ * Per family because the two number their sources independently, and a reader
+ * told « 263 stations » would count the rain gauges among them.
+ */
+const fleetCountSchema = z.object({
+  inExtent: z.number().int().nonnegative(),
+  withMeasures: z.number().int().nonnegative(),
+})
 
 /**
  * What a replay holds and how it came to hold it.
@@ -100,10 +152,13 @@ export type ReplayIdentity = z.infer<typeof replayIdentitySchema>
  * replaying the build.
  */
 export const replayManifestSchema = replayIdentitySchema.extend({
+  ...replayAboutSchema.shape,
   schemaVersion: z.literal(1),
   createdAt: instantSchema,
   updatedAt: instantSchema,
   state: replayStateSchema,
+  /** When it was opened to everyone. Absent, only the administrator sees it. */
+  publishedAt: instantSchema.optional(),
   lanes: z.partialRecord(laneNameSchema, laneStatusSchema),
   datasets: z.partialRecord(datasetNameSchema, datasetStatusSchema),
   media: mediaTallySchema,
@@ -117,8 +172,8 @@ export const replayManifestSchema = replayIdentitySchema.extend({
    */
   fleet: z
     .object({
-      inExtent: z.number().int().nonnegative(),
-      withMeasures: z.number().int().nonnegative(),
+      hydro: fleetCountSchema,
+      'rain-gauge': fleetCountSchema,
     })
     .optional(),
   /**
@@ -137,6 +192,13 @@ export const replayManifestSchema = replayIdentitySchema.extend({
       thresholdsSetAside: z.partialRecord(thresholdNatureSchema, z.number().int().nonnegative()),
     })
     .optional(),
+  /**
+   * The radar rainfall images the replay holds, over every series.
+   *
+   * Not the count of `radar-rainfall`, which is an array of series. Absent
+   * unless that data set was collected.
+   */
+  radarFrames: z.number().int().nonnegative().optional(),
   /**
    * Why the journal is incomplete, when it could not be written.
    *

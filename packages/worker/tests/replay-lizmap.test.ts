@@ -9,7 +9,6 @@ import {
   windowOf,
   type BoundingBox,
   type FrozenWebcamImage,
-  type ReferenceLayer,
   type TimeWindow,
   type Webcam,
 } from '@smmarchives/shared'
@@ -22,11 +21,11 @@ import {
   aStoredReplay,
   cleanMedia,
   frozenBytes,
+  storedDataset,
   type StoredReplay,
 } from './support/replay-store.ts'
 import { LizmapClient } from '../src/sources/lizmap/client.ts'
-import { REFERENCE_LAYERS } from '../src/sources/lizmap/layers.ts'
-import { fetchStub, fixture, fixtureText } from './support/fixtures.ts'
+import { fetchStub, fixture } from './support/fixtures.ts'
 
 const CONFIG = { baseUrl: 'https://crise.test' }
 
@@ -59,17 +58,11 @@ const RASTER_EPOCH = 1788933600
 
 const ROUTES = {
   'TYPENAME=webcam': { json: fixture('lizmap/webcam.json') },
-  'TYPENAME=ouvrage_hydraulique': { json: fixture('lizmap/ouvrage_hydraulique.json') },
   Ceneau_img_215: { json: fixture('ceneau/images-215.json') },
   'media.ceneau.test': { text: 'JPEG' },
 }
 
-/**
- * The replay the builds of one test write into.
- *
- * Kept across two builds on purpose: what a re-run preserves is only visible
- * when the second run finds what the first stored.
- */
+/** The replay a test builds into, created on its first build. */
 let replay: StoredReplay | undefined
 let deliveries: string
 
@@ -132,9 +125,9 @@ async function held<T>(name: Parameters<typeof stored>[0]): Promise<T> {
   return (await stored(name)) as T
 }
 
-function stored(name: 'reference-layers' | 'webcams' | 'webcam-images'): Promise<unknown> {
+function stored(name: 'webcams' | 'webcam-images'): Promise<unknown> {
   if (replay === undefined) throw new Error('nothing was built yet')
-  return replay.store.getDataset(name)
+  return storedDataset(replay.store, name)
 }
 
 /** The bytes of a frozen image, or undefined when the replay never froze it. */
@@ -149,39 +142,18 @@ function startOver(): void {
 }
 
 describe('the Lizmap data sets of a replay', () => {
-  it('are the reference layers, the cameras and their image lists', async () => {
+  it('are the cameras and their image lists', async () => {
     const { manifest } = await build()
 
-    expect(Object.keys(manifest.datasets).sort()).toEqual([
-      'reference-layers',
-      'webcam-images',
-      'webcams',
-    ])
+    expect(Object.keys(manifest.datasets).sort()).toEqual(['webcam-images', 'webcams'])
     expect(manifest.state).toBe('complete')
   })
 
-  it('read from the Lizmap the structures and the cameras, and no other layer', async () => {
+  it('read the camera layer from the Lizmap, and no other', async () => {
     const { calls } = await build()
 
     const read = new Set(calls.flatMap((url) => /TYPENAME=([^&]+)/.exec(url)?.[1] ?? []))
-    expect([...read].sort()).toEqual(['ouvrage_hydraulique', 'webcam'])
-  })
-
-  it('freeze the structures layer whole', async () => {
-    const { calls } = await build()
-
-    // Asked for by name, and actually requested: the stored `name` is the one
-    // the lane asked for, so reading it back would only echo the enum.
-    expect(calls.filter((url) => url.includes('TYPENAME=ouvrage_hydraulique'))).toHaveLength(1)
-
-    const layers = await held<ReferenceLayer[]>('reference-layers')
-    expect(layers.map((one) => one.name)).toEqual(['ouvrage_hydraulique'])
-    // Whole, not narrowed: every feature the layer holds is in the replay.
-    for (const layer of layers) {
-      expect(layer.featureCount).toBeGreaterThan(0)
-      expect(layer.geojson.features).toHaveLength(layer.featureCount)
-    }
-    expect(calls.some((url) => url.includes('BBOX'))).toBe(false)
+    expect([...read]).toEqual(['webcam'])
   })
 
   it('keep only the cameras that have an archive', async () => {
@@ -208,9 +180,6 @@ describe('the Lizmap data sets of a replay', () => {
     const [first] = IMAGES.pictures
     const { manifest } = await build({ routes: { ...ROUTES, [first!.uri]: { status: 404 } } })
 
-    expect(manifest.datasets['reference-layers']?.report.request).toEqual({
-      layers: [...REFERENCE_LAYERS],
-    })
     expect(manifest.datasets['webcams']?.report.request).toEqual({ extent: MAILHAC })
     expect(manifest.datasets['webcam-images']?.report.request).toEqual({
       from: RECENT.from,
@@ -232,8 +201,8 @@ describe('the Lizmap data sets of a replay', () => {
  */
 describe('the webcam images of a replay', () => {
   // Every picture of the fixture carries a `thumb_uri`, and both files land on
-  // the volume: the tally counts what the replay holds, not what it observed.
-  const FILES = IMAGES.pictures.length * 2
+  // the volume; the tally counts the pictures, which are what the replay observed.
+  const PICTURES = IMAGES.pictures.length
 
   it('are copied under it, and the data set points at the copy', async () => {
     const { manifest } = await build()
@@ -244,7 +213,7 @@ describe('the webcam images of a replay', () => {
       expect(image.storedPath).toMatch(/^webcams\/215\/\d+\.jpg$/)
       expect(await frozen(image.storedPath ?? '')).toBe('JPEG')
     }
-    expect(manifest.media.copied).toBe(FILES)
+    expect(manifest.media.copied).toBe(PICTURES)
   })
 
   /**
@@ -329,13 +298,17 @@ describe('the webcam images of a replay', () => {
     expect(fallback?.applied).toMatch(/404/)
   })
 
-  it('are not fetched again by a second run', async () => {
-    await build()
-    const { manifest, calls } = await build()
+  it('count a reduction in the bytes it weighs, never as a picture copied or lost', async () => {
+    const [first] = IMAGES.pictures
+    const whole = (await build()).manifest.media
+    startOver()
+    const { manifest } = await build({
+      routes: { ...ROUTES, [first!.thumb_uri]: { status: 404 } },
+    })
 
-    expect(manifest.media.copied).toBe(0)
-    expect(manifest.media.skipped).toBe(FILES)
-    expect(calls.some((url) => url.includes('media.ceneau.test'))).toBe(false)
+    expect(manifest.media.copied).toBe(PICTURES)
+    expect(manifest.media.failed).toBe(0)
+    expect(manifest.media.bytes).toBeLessThan(whole.bytes)
   })
 
   it('cost their own image when one cannot be fetched, not the replay', async () => {
@@ -349,7 +322,7 @@ describe('the webcam images of a replay', () => {
       images.filter((one: { storedPath: string | null }) => one.storedPath === null),
     ).toHaveLength(1)
     expect(manifest.media.failed).toBe(1)
-    expect(manifest.media.copied).toBe(FILES - 1)
+    expect(manifest.media.copied).toBe(PICTURES - 1)
     expect(manifest.state).toBe('partial')
     expect(exitCode).toBe(ExitCode.partial)
   })
@@ -391,45 +364,6 @@ describe('a Lizmap that cannot be reached', () => {
     expect(manifest.state).toBe('partial')
     expect(exitCode).toBe(ExitCode.partial)
   })
-
-  /** A layer that refuses is one layer, not the lane. */
-  it('keeps the cameras when the layer refuses', async () => {
-    const { manifest } = await build({
-      routes: {
-        ...ROUTES,
-        'TYPENAME=ouvrage_hydraulique': { text: fixtureText('lizmap/forbidden.xml') },
-      },
-    })
-
-    expect(manifest.datasets['reference-layers']?.count).toBe(0)
-    expect(manifest.datasets['reference-layers']?.report.failures).toHaveLength(1)
-    expect(manifest.datasets['webcams']?.count).toBeGreaterThan(0)
-    expect(manifest.state).toBe('partial')
-  })
-})
-
-/**
- * The freeze exists because Ceneau purges after a month. A re-run recollects
- * the listing from a source that has since forgotten those images, so the index
- * must not be replaced by the shorter one: that would drop the layer the freeze
- * had already saved, leaving the JPEGs on disk with nothing pointing at them.
- */
-describe('a re-run once Ceneau has purged the images', () => {
-  it('keeps the images it had already frozen', async () => {
-    await build()
-    const { manifest } = await build({
-      routes: { ...ROUTES, Ceneau_img_215: { json: { pictures: [] } } },
-    })
-
-    const images = await held<FrozenWebcamImage[]>('webcam-images')
-    expect(images).toHaveLength(IMAGES.pictures.length)
-    for (const image of images) {
-      expect(await frozen(image.storedPath ?? '')).toBe('JPEG')
-    }
-    expect(manifest.datasets['webcam-images']?.report.fallbacks).toMatchObject([
-      { subject: 'webcam 215' },
-    ])
-  })
 })
 
 /**
@@ -441,9 +375,8 @@ describe('a replay whose two lanes both freeze media', () => {
   it('counts what both of them copied', async () => {
     const { manifest } = await build({ withRadar: true })
 
-    // One raster in the delivery tree, and three pictures in the listing, each
-    // frozen with the reduction Ceneau publishes beside it.
-    expect(manifest.media.copied).toBe(IMAGES.pictures.length * 2 + 1)
+    // One raster in the delivery tree, and three pictures in the listing.
+    expect(manifest.media.copied).toBe(IMAGES.pictures.length + 1)
     expect(manifest.datasets['radar-rainfall']).toBeDefined()
     expect(manifest.datasets['webcam-images']).toBeDefined()
     expect(manifest.state).toBe('complete')
@@ -459,7 +392,7 @@ describe('a run asked for no media', () => {
     expect(images.every((one: { storedPath: string | null }) => one.storedPath === null)).toBe(true)
     expect(images.every((one) => one.storedThumbPath === null)).toBe(true)
     expect(calls.some((url) => url.includes('media.ceneau.test'))).toBe(false)
-    expect(manifest.media).toEqual({ copied: 0, skipped: 0, failed: 0, bytes: 0 })
+    expect(manifest.media).toEqual({ copied: 0, failed: 0, bytes: 0 })
   })
 
   it('leaves the images in the order the listing gave them, as a copying run does', async () => {

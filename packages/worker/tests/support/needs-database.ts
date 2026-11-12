@@ -7,20 +7,27 @@
  * rather than in the config so that checking it costs no side effect.
  */
 export const NEEDS_DATABASE = [
+  'packages/api/tests/amend.test.ts',
   'packages/api/tests/create.test.ts',
   'packages/api/tests/datasets.test.ts',
   'packages/api/tests/delete.test.ts',
+  'packages/api/tests/events.test.ts',
   'packages/api/tests/journal.test.ts',
   'packages/api/tests/media.test.ts',
+  'packages/api/tests/photos.test.ts',
   'packages/api/tests/progress.test.ts',
+  'packages/api/tests/publication.test.ts',
   'packages/api/tests/replays.test.ts',
+  'packages/api/tests/session.test.ts',
   'packages/worker/tests/build-replay-cli.test.ts',
   'packages/worker/tests/build-replay.test.ts',
-  'packages/worker/tests/db-migrate.test.ts',
+  'packages/worker/tests/db-tx.test.ts',
   'packages/worker/tests/replay-aquasys.test.ts',
   'packages/worker/tests/replay-lizmap.test.ts',
   'packages/worker/tests/replay-postgres-datasets.test.ts',
   'packages/worker/tests/replay-postgres-journal.test.ts',
   'packages/worker/tests/replay-postgres-manifest.test.ts',
+  'packages/worker/tests/replay-postgres-manual-events.test.ts',
+  'packages/worker/tests/replay-postgres-publication.test.ts',
   'packages/worker/tests/replay-postgres-store.test.ts',
 ]

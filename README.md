@@ -35,17 +35,18 @@ durée, même lorsque les systèmes sources n'exposent plus la période concern�
 - Rejeu synchronisé carte et frise, piloté par une seule horloge
 - Graphiques par station et par pluviomètre
 - Liste des rejeux constitués, du plus récent au plus ancien
+- Connexion de l'administrateur par un mot de passe unique : seul l'administrateur
+  voit les rejeux non publiés, en constitue et en modifie les événements
+- Publication d'un rejeu complet par l'administrateur, et retrait : l'accueil
+  montre à tous les rejeux publiés, et à l'administrateur, à part, ceux en
+  préparation
+- Suppression d'un rejeu par l'administrateur, depuis l'accueil, avec ses
+  images et ses événements
 
 ### Ce qui est prévu et n'est pas écrit
 
 La saisie manuelle d'événements et de témoignages géolocalisés, l'export
-d'images pour les supports de présentation, et l'administration protégée par
-mot de passe.
-
-> [!WARNING]
-> **Rien n'est protégé aujourd'hui.** Aucune route ne demande de mot de passe,
-> et `DELETE /replays/:id` efface un rejeu entier, irréversiblement. L'API ne
-> doit pas être exposée publiquement.
+d'images pour les supports de présentation.
 
 ## Les sources de données
 
@@ -69,19 +70,28 @@ Les échanges utilisent des formats ouverts : REST, JSON, GeoJSON et CSV.
 
 ## Démarrer
 
-Node.js 24 ou plus récent, et Docker Compose.
+**Pour simplement utiliser l'application**, sans rien connaître à la
+programmation : [`lancer-avec-docker.md`](docs/lancer-avec-docker.md), pas à
+pas. Sur un serveur Debian sans Docker :
+[`lancer-sans-docker.md`](docs/lancer-sans-docker.md).
+
+Pour développer : Node.js 24 ou plus récent, et Docker Compose — ou un
+PostgreSQL 17 avec PostGIS déjà installé, à la place du service `db`.
 
 ```bash
 npm install
-cp .env.sample .env       # prêt à l'emploi en local ; les sources se renseignent après
+cp .env.sample .env       # les sources se renseignent avant le premier rejeu
+npm run hash-password     # coller la ligne dans ADMIN_PASSWORD_HASH
+openssl rand -base64 48   # coller la ligne dans SESSION_SECRET
 docker compose up -d db   # PostgreSQL avec PostGIS
 npm run migrate           # applique le schéma
 npm run dev:api           # http://localhost:3000
 npm run dev:web           # http://localhost:5180, dans un second terminal
 ```
 
-`http://localhost:5180` ouvre la liste des rejeux, la création vit à `/nouveau`
-et un rejeu à `/rejeux/<identifiant>`. Constituer un rejeu demande en plus les
+`http://localhost:5180` ouvre la liste des rejeux, la création vit à `/nouveau`,
+la connexion de l'administrateur à `/connexion` et un rejeu à
+`/rejeux/<identifiant>`. Constituer un rejeu demande d'être connecté, et les
 adresses des sources, que `.env.sample` laisse vides.
 
 La procédure complète, les prérequis et le tableau des variables sont dans
@@ -106,6 +116,8 @@ plus étroite, qui se dit comme telle.
 
 | Document | Quand l'ouvrir |
 |---|---|
+| [`lancer-avec-docker.md`](docs/lancer-avec-docker.md) | Lancer l'application pas à pas, sans connaissances techniques |
+| [`lancer-sans-docker.md`](docs/lancer-sans-docker.md) | Installer l'application sur un serveur Debian, sans Docker |
 | [`installation.md`](docs/installation.md) | Installer, configurer, lancer, déployer |
 | [`utilisation.md`](docs/utilisation.md) | Constituer un rejeu en ligne de commande |
 | [`api.md`](docs/api.md) | Consommer un rejeu par HTTP : routes, filtres, codes, forme des erreurs |

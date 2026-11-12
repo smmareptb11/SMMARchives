@@ -5,19 +5,30 @@ import type { ReplayCatalog } from '@smmarchives/worker/replay/catalog.ts'
 import { BuildRegistry, spawnBuild, type BuildLauncher } from './builds.ts'
 import { registerCreation } from './creations.ts'
 import { registerDatasets } from './datasets.ts'
+import { registerEvents } from './events.ts'
 import { registerJournal } from './journal.ts'
 import { registerMedia } from './media.ts'
 import { registerProgress } from './progress.ts'
 import { errorHandler, onUnknownRoute } from './problems.ts'
 import { registerReplays } from './replays.ts'
+import {
+  recogniseAdmin,
+  refuseOtherSites,
+  registerSession,
+  requireAdminToChange,
+  type Auth,
+} from './session.ts'
 
 export type ApiOptions = {
   catalog: ReplayCatalog
+  auth: Auth
   /**
    * Where what cannot be said in a response is said instead. Silent by
    * default, the way the worker's own sinks are: only `main.ts` wires stderr.
    */
   log?: ((message: string) => void) | undefined
+  /** Whose `X-Forwarded-Proto` is believed: the loopback unless told otherwise. */
+  trustedProxy?: string | undefined
   /** Replaced in tests, which never start a real collection. */
   launch?: BuildLauncher | undefined
   /** How long a creation waits to hear that the build could not start at all. */
@@ -34,6 +45,7 @@ export function createApp(options: ApiOptions): Express {
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })
   })
+  registerAccess(app, options.auth, options.trustedProxy ?? 'loopback')
   const builds = new BuildRegistry(options.launch ?? spawnBuild)
   registerCreation(app, {
     catalog: options.catalog,
@@ -42,6 +54,7 @@ export function createApp(options: ApiOptions): Express {
     log,
   })
   registerReplays(app, { catalog: options.catalog, builds })
+  registerEvents(app, { catalog: options.catalog, builds, log })
   registerMedia(app, options.catalog)
   registerJournal(app, options.catalog)
   registerProgress(app, options.catalog, options.pollIntervalMs ?? 500)
@@ -52,4 +65,20 @@ export function createApp(options: ApiOptions): Express {
   app.use(onUnknownRoute)
   app.use(errorHandler(log))
   return app
+}
+
+/**
+ * Where a change comes from, the session, then who may change anything, ahead
+ * of the routes themselves: a stranger is turned away before a replay is looked
+ * up, so the answer says nothing about which replays exist.
+ */
+function registerAccess(app: Express, auth: Auth, trustedProxy: string): void {
+  // The reverse proxy's `X-Forwarded-Proto` is what tells a session cookie it
+  // travels over HTTPS, and only the proxy named here is believed.
+  app.set('trust proxy', trustedProxy)
+  app.use(refuseOtherSites)
+  app.use(recogniseAdmin(auth))
+  // Signing in and out is the one change a stranger may ask for.
+  registerSession(app, auth)
+  app.use(requireAdminToChange)
 }

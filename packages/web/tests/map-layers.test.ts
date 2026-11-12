@@ -1,8 +1,8 @@
 import { featureFilter } from '@maplibre/maplibre-gl-style-spec'
 import { describe, expect, it } from 'vitest'
 
-import { filterOf } from '../src/map/layers.ts'
-import type { Kind } from '../src/map/sources.ts'
+import { filterOf, paintSources } from '../src/map/layers.ts'
+import { KINDS, type Kind } from '../src/map/sources.ts'
 
 /** Whether a layer would draw a feature carrying these properties. */
 function draws(kind: Kind, mutesShown: boolean, properties: Record<string, unknown>): boolean {
@@ -31,5 +31,30 @@ describe('what a family layer draws', () => {
    */
   it('draws a source carrying no answer either way', () => {
     expect(draws('watercourse', false, { kind: 'watercourse' })).toBe(true)
+  })
+})
+
+describe('the outline of a selected source', () => {
+  /** Every paint asked of a map that holds every layer, by layer. */
+  function painted(colours: Map<string, string>): Map<string, unknown> {
+    const paints = new Map<string, unknown>()
+    paintSources(
+      {
+        getLayer: () => ({}),
+        setPaintProperty: (layer, _property, value) => paints.set(layer, value),
+      },
+      colours,
+    )
+    return paints
+  }
+
+  /** An orange of its own would read as one more threshold reached. */
+  it('is painted in the colour of the source it outlines, at every tick', () => {
+    const paints = painted(new Map([['watercourse:84', '#ff9900']]))
+
+    for (const kind of KINDS) {
+      expect(paints.get(`sources-${kind}-selected`), kind).toEqual(paints.get(`sources-${kind}`))
+    }
+    expect(JSON.stringify(paints.get('sources-watercourse-selected'))).toContain('#ff9900')
   })
 })

@@ -1,4 +1,4 @@
-import type { RainGauge } from '@smmarchives/shared/contracts/station.ts'
+import type { RainGauge, Station } from '@smmarchives/shared/contracts/station.ts'
 import type { Webcam } from '@smmarchives/shared/contracts/webcam.ts'
 
 import type { Views } from './pictures.ts'
@@ -11,7 +11,7 @@ import type { Gauges } from './rain.ts'
  * other end of the screen; spelled twice, one of them would soon send a reader
  * looking for something that is no longer there.
  */
-export const MUTES = 'Sources sans données sur la période'
+export const MUTES = 'Sources sans données'
 
 /**
  * The gauges a replay holds no rain of over its period, for the map to hold back.
@@ -27,10 +27,6 @@ export const MUTES = 'Sources sans données sur la période'
  * hundred and twenty-nine gauges for one lane's failure. Only the manifest tells
  * the two apart, and `ReplayContent` is where it was asked — which is why the
  * rain arrives here as `undefined` rather than as an empty map.
- *
- * No station is ever named, here or anywhere: their measures are the nineteen
- * megabytes `ReplayScreen` deliberately does not load, and the panel says so
- * beside the switch rather than promising otherwise.
  */
 export function gaugesWithoutRain(
   gauges: readonly RainGauge[],
@@ -39,6 +35,22 @@ export function gaugesWithoutRain(
   if (rain === undefined) return new Set()
 
   return new Set(gauges.filter((one) => !rain.has(one.id)).map((one) => one.id))
+}
+
+/**
+ * The stations a replay holds no measure of over its period.
+ *
+ * Read off the list of the measured ones, and not off their measures: those are
+ * the nineteen megabytes `ReplayScreen` deliberately does not load. Nobody is
+ * named when the replay holds no such list, for the reason the gauges give.
+ */
+export function stationsWithoutMeasures(
+  stations: readonly Station[],
+  measured: ReadonlySet<number> | undefined,
+): Set<number> {
+  if (measured === undefined) return new Set()
+
+  return new Set(stations.filter((one) => !measured.has(one.id)).map((one) => one.id))
 }
 
 /**

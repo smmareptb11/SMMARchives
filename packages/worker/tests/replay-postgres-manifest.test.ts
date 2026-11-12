@@ -30,7 +30,7 @@ function aManifest(overrides: Partial<ReplayManifest> = {}): ReplayManifest {
       lizmap: { state: 'failed', error: 'the host answered nothing' },
     },
     datasets: {},
-    media: { copied: 12, skipped: 3, failed: 1, bytes: 4096 },
+    media: { copied: 12, failed: 1, bytes: 4096 },
     ...overrides,
   }
 }
@@ -43,7 +43,7 @@ describe('the manifest of a replay', () => {
   })
 
   it('is read back as it was published', async () => {
-    const manifest = aManifest()
+    const manifest = aManifest({ territory: 'Aude Centre' })
     await writeManifest(pool, manifest)
 
     expect(await readManifest(pool, manifest.id)).toEqual(manifest)
@@ -82,13 +82,56 @@ describe('the manifest of a replay', () => {
     })
     await writeManifest(pool, manifest)
     await pool.query(
-      `insert into measure (replay_id, source_id, quantity, at, value) values
-         ($1, '84', 'level', '2019-10-22T06:00:00Z', 1.25),
-         ($1, '84', 'level', '2019-10-22T06:05:00Z', 1.31)`,
+      `insert into measure (replay_id, family, source_id, quantity, at, value) values
+         ($1, 'hydro', '84', 'level', '2019-10-22T06:00:00Z', 1.25),
+         ($1, 'hydro', '84', 'level', '2019-10-22T06:05:00Z', 1.31)`,
       [manifest.id],
     )
 
     expect((await readManifest(pool, manifest.id))?.datasets.measures?.count).toBe(2)
+  })
+
+  it('counts the radar images over every series, not the series', async () => {
+    const manifest = aManifest({
+      datasets: { 'radar-rainfall': { count: 0, report: aReport() } },
+    })
+    await writeManifest(pool, manifest)
+    await pool.query(
+      `insert into radar_series (replay_id, delivery, product) values
+         ($1, 'd1', 'p1'), ($1, 'd1', 'p2')`,
+      [manifest.id],
+    )
+    await pool.query(
+      `insert into radar_frame (replay_id, delivery, product, at, path) values
+         ($1, 'd1', 'p1', '2019-10-22T06:00:00Z', 'a.tif'),
+         ($1, 'd1', 'p1', '2019-10-22T06:05:00Z', 'b.tif'),
+         ($1, 'd1', 'p2', '2019-10-22T06:00:00Z', 'c.tif')`,
+      [manifest.id],
+    )
+
+    const read = await readManifest(pool, manifest.id)
+    expect(read?.datasets['radar-rainfall']?.count).toBe(2)
+    expect(read?.radarFrames).toBe(3)
+  })
+
+  it('counts no radar image for a replay that collected no radar rainfall', async () => {
+    const manifest = aManifest()
+    await writeManifest(pool, manifest)
+
+    expect((await readManifest(pool, manifest.id))?.radarFrames).toBeUndefined()
+  })
+
+  it('counts the measured stations from their own rows', async () => {
+    const manifest = aManifest({
+      datasets: { 'measured-stations': { count: 0, report: aReport() } },
+    })
+    await writeManifest(pool, manifest)
+    await pool.query(
+      `insert into measured_station (replay_id, station_id) values ($1, '2'), ($1, '84')`,
+      [manifest.id],
+    )
+
+    expect((await readManifest(pool, manifest.id))?.datasets['measured-stations']?.count).toBe(2)
   })
 
   it('carries no fleet until a lane has collected a referential', async () => {
@@ -99,15 +142,16 @@ describe('the manifest of a replay', () => {
   })
 
   it('keeps the fleet the lane counted, which no query recounts', async () => {
-    // `withMeasures` is summed per family by the lane, and a measure carries no
-    // family: two sources sharing a number are two here, and one to a count.
-    const manifest = aManifest({ fleet: { inExtent: 323, withMeasures: 96 } })
+    // `withMeasures` is counted per family by the lane, and a measure carries
+    // no family: two sources sharing a number are two here, and one to a count.
+    const fleet = {
+      hydro: { inExtent: 89, withMeasures: 49 },
+      'rain-gauge': { inExtent: 254, withMeasures: 214 },
+    }
+    const manifest = aManifest({ fleet })
     await writeManifest(pool, manifest)
 
-    expect((await readManifest(pool, manifest.id))?.fleet).toEqual({
-      inExtent: 323,
-      withMeasures: 96,
-    })
+    expect((await readManifest(pool, manifest.id))?.fleet).toEqual(fleet)
   })
 
   it('rebuilds what the derivation implied from its own report', async () => {

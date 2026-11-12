@@ -10,23 +10,33 @@ create table replay (
   label         text,
   -- Null is the whole SMMAR fleet, which is the territory's own extent.
   extent        geometry(Polygon, 4326),
+  -- The basin union the extent was framed on. Null when no union names it.
+  territory     text,
+  -- What the administrator said of it on constituting it, each optional and
+  -- never written by a build.
+  description   text,
+  phenomenon    text,
+  severity      text,
   period_from   timestamptz not null,
   period_to     timestamptz not null,
   created_at    timestamptz not null,
   updated_at    timestamptz not null,
   state         text not null,
+  -- Set by the one build that goes into this replay, in the statement that
+  -- checks no other did: a replay is built once.
+  build_claimed_at timestamptz,
+  -- Null until an administrator publishes the replay, which only a complete
+  -- one can be. A build never writes it.
+  published_at  timestamptz,
   journal_error text,
-  -- The tally of a copy, which no count over the tables retrieves: what was
-  -- skipped and what failed never became a row.
+  -- The tally of a copy, which no count over the tables retrieves: what failed
+  -- never became a row.
   media_copied  integer not null default 0,
-  media_skipped integer not null default 0,
   media_failed  integer not null default 0,
   media_bytes   bigint  not null default 0,
-  -- The fleet a replay rests on. `with_measures` is the one count no query
-  -- retrieves: it is summed per family by the lane that collected it, and a
-  -- measure does not carry the family that would let it be recounted here.
-  fleet_in_extent     integer,
-  fleet_with_measures integer,
+  -- The fleet a replay rests on, per family, as the lane that collected it
+  -- counted it.
+  fleet         jsonb,
   check (period_from < period_to)
 );
 
@@ -45,7 +55,7 @@ create table replay_dataset (
   name       text not null,
   report     jsonb not null,
   -- When its rows were last written, which is the material of the ETag a
-  -- reader revalidates against: a re-run rewrites a data set in place, and
+  -- reader revalidates against: an agent changes the events in place, and
   -- nothing about the rows themselves says that it did.
   updated_at timestamptz not null default now(),
   primary key (replay_id, name)
@@ -98,53 +108,52 @@ create table threshold (
   primary key (replay_id, station_id, quantity, threshold_id)
 );
 
--- The primary key *is* the rule that a re-run creates no duplicate: two
--- readings of one source, one quantity and one instant are the same reading,
--- and the second overwrites the first instead of adding to it.
---
--- No family here, because a measure does not carry one: the two Aquasys
--- families number their sources independently, and what keeps `source_id` 4 on
--- a station apart from `source_id` 4 on a rain gauge is that no quantity is
--- collected on both. The rule, and the day it ends, are stated in
--- `replay/crossings.ts`; a column here would look like an answer this data
--- cannot give.
+-- The primary key *is* the rule that a measure has no duplicate: two readings
+-- of one source, one quantity and one instant are the same reading, and the
+-- collection keeps the first before anything reaches this table. The family is
+-- part of it: the two Aquasys families number their sources independently, so
+-- `source_id` 4 names a station and a rain gauge.
 create table measure (
   replay_id uuid not null references replay on delete cascade,
+  family    text not null,
   source_id text not null,
   quantity  text not null,
   at        timestamptz not null,
   value     double precision not null,
-  primary key (replay_id, source_id, quantity, at)
+  primary key (replay_id, family, source_id, quantity, at)
+);
+
+create table measured_station (
+  replay_id  uuid not null references replay on delete cascade,
+  station_id text not null,
+  primary key (replay_id, station_id)
 );
 
 create table event (
-  replay_id uuid not null references replay on delete cascade,
-  id        text not null,
-  origin    text not null,
-  category  text not null,
-  title     text not null,
-  severity  integer,
-  color     text,
-  starts_at timestamptz not null,
+  replay_id     uuid not null references replay on delete cascade,
+  -- Minted here for an agent's event; a derivation supplies its own.
+  id            text not null default gen_random_uuid()::text,
+  origin        text not null,
+  category      text not null,
+  title         text not null,
+  description   text,
+  -- What kind of producer reported it, in the agent's own words: an SMMAR
+  -- agent, a river syndicate, a commune, the SDIS, a resident.
+  producer_kind text,
+  link          text,
+  severity      integer,
+  color         text,
+  starts_at     timestamptz not null,
   -- Null is a point in time; a value means it stayed active until then.
-  ends_at   timestamptz,
-  position  geometry(Point, 4326),
-  family    text,
-  source_id text,
-  media     text[] not null default '{}',
-  crossing  jsonb,
+  ends_at       timestamptz,
+  -- A point or an area: a flooded field is not a spot.
+  position      geometry(Geometry, 4326),
+  -- A station of the hydro fleet, with no family beside it: only a crossing
+  -- names a source, and a crossing joins that fleet alone.
+  source_id     text,
+  media         text[] not null default '{}',
+  crossing      jsonb,
   primary key (replay_id, id)
-);
-
--- One row per feature rather than one document per layer: an extent is
--- simplified when it is served, not once and for all at import.
-create table reference_feature (
-  replay_id  uuid not null references replay on delete cascade,
-  layer      text not null,
-  ordinal    integer not null,
-  properties jsonb not null,
-  geom       geometry(Geometry, 4326),
-  primary key (replay_id, layer, ordinal)
 );
 
 create table webcam_image (
@@ -156,6 +165,10 @@ create table webcam_image (
   -- Where the copy lives, relative to the replay's media directory. Null when
   -- a run asked for no media, or when the fetch returned nothing.
   stored_path text,
+  -- The reduction Ceneau publishes beside the picture, which a lane draws
+  -- instead of the full image. Null is read as "draw the full image", never as
+  -- a defect: Ceneau does not always publish one.
+  stored_thumb_path text,
   primary key (replay_id, code, at)
 );
 
@@ -164,7 +177,7 @@ create table radar_series (
   delivery            text not null,
   product             text not null,
   -- A property of the series, not of one frame.
-  median_step_minutes integer,
+  median_step_minutes double precision,
   primary key (replay_id, delivery, product)
 );
 
@@ -183,4 +196,11 @@ create table radar_frame (
 create index measure_by_source on measure (replay_id, source_id, at);
 create index event_by_start on event (replay_id, starts_at);
 create index source_position on source using gist (position);
-create index reference_feature_geom on reference_feature using gist (geom);
+
+-- One row per signed-in browser. The token stays in the cookie: what is kept
+-- is its digest keyed by the session secret, so a copy of this table opens
+-- nothing.
+create table session (
+  digest     text primary key,
+  expires_at timestamptz not null
+);

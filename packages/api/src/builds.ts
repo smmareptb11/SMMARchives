@@ -41,6 +41,7 @@ export function buildArguments(identity: ReplayIdentity): string[] {
     `--to=${identity.period.to}`,
     ...(identity.label === null ? [] : [`--label=${identity.label}`]),
     ...(identity.extent === null ? [] : [`--bbox=${toBbox(identity.extent)}`]),
+    ...(identity.territory === undefined ? [] : [`--territory=${identity.territory}`]),
   ]
 }
 
@@ -51,7 +52,8 @@ function toBbox(extent: BoundingBox): string {
 
 export const spawnBuild: BuildLauncher = (identity) => {
   // Detached: a restart of the API must not kill a collection that runs for
-  // minutes. Its trace is the journal, not this process.
+  // minutes. Its trace is the journal, not this process. Not across a
+  // container restart, which takes every process of the container with it.
   const child = spawn(RUNNER, ['--env-file-if-exists=.env', SCRIPT, ...buildArguments(identity)], {
     detached: true,
     stdio: ['ignore', 'ignore', 'pipe'],
@@ -122,7 +124,14 @@ export class BuildRegistry {
 
   /** Starts a build on an identifier already reserved. */
   start(identity: ReplayIdentity): BuildHandle {
-    const handle = this.#launch(identity)
+    let handle: BuildHandle
+    try {
+      handle = this.#launch(identity)
+    } catch (error) {
+      // Nothing runs, so nothing holds the identifier any more.
+      this.release(identity.id)
+      throw error
+    }
     // Let go whatever happened, and never on a rejection nobody catches: a
     // launcher that throws would otherwise take the process down.
     handle.exited.then(

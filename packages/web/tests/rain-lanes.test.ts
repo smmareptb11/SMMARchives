@@ -113,6 +113,24 @@ describe('a rain gauge lane', () => {
     expect(lane?.marks[1]?.label).toBe('9,5 mm sur 1 heure')
   })
 
+  /** An hourly gauge silent for three hours: its next bar covers the three. */
+  it('says the span of each bar, and not the step of its gauge, after a gap in the measures', () => {
+    const lane = laneOf(
+      parc(
+        rained([
+          [4, '2019-10-22T06:00:00.000Z', 3],
+          [4, '2019-10-22T07:00:00.000Z', 2],
+          [4, '2019-10-22T08:00:00.000Z', 1],
+          [4, '2019-10-22T11:00:00.000Z', 1.2],
+        ]),
+      ),
+      'Couiza',
+    )
+
+    expect(lane?.marks.map((one) => one.label)).toContain('1,2 mm sur 3 heures')
+    expect(lane?.marks.map((one) => one.label)).toContain('1 mm sur 1 heure')
+  })
+
   it('leaves a gauge that measured nothing an empty lane, for the switch to hold back', () => {
     const lane = laneOf(parc(rained([[4, '2019-10-22T06:00:00.000Z', 3]])), 'Villegly')
 
@@ -188,6 +206,61 @@ describe('the order a lane of bars is laid in', () => {
       'Couiza',
     )
 
-    expect(lane?.marks.map((one) => one.width)).toEqual([100, 0.4])
+    expect(lane?.marks.map((one) => one.width)).toEqual([100, 0])
+    expect(lane?.marks[1]?.instant).toBe(true)
+  })
+})
+
+describe('the width of a bar of rain', () => {
+  /** Five minutes is under a point in time on a day: widened, each bar covered the next. */
+  it('is its own span, however narrow, so bars side by side never cover each other', () => {
+    const lane = laneOf(
+      parc(
+        rained([
+          [4, '2019-10-22T06:00:00.000Z', 1],
+          [4, '2019-10-22T06:05:00.000Z', 2],
+          [4, '2019-10-22T06:10:00.000Z', 4],
+        ]),
+      ),
+      'Couiza',
+    )
+    const bars = (lane?.marks ?? []).toSorted((one, other) => one.left - other.left)
+
+    for (const [index, bar] of bars.entries()) {
+      expect(bar.width).toBeCloseTo((5 / (24 * 60)) * 100, 6)
+      expect(bar.instant).toBeUndefined()
+      const next = bars[index + 1]
+      if (next !== undefined) expect(bar.left + bar.width).toBeCloseTo(next.left, 6)
+    }
+  })
+
+  it('leaves a lone measure an instant, for the lane to widen', () => {
+    const lane = laneOf(parc(rained([[4, '2019-10-22T06:00:00.000Z', 3]])), 'Couiza')
+
+    expect(lane?.marks[0]).toMatchObject({ width: 0, instant: true })
+  })
+
+  it('draws the seam between two bars only on a bar wide enough to keep its colour', () => {
+    const narrow = laneOf(
+      parc(
+        rained([
+          [4, '2019-10-22T06:00:00.000Z', 1],
+          [4, '2019-10-22T06:05:00.000Z', 2],
+        ]),
+      ),
+      'Couiza',
+    )
+    const wide = laneOf(
+      parc(
+        rained([
+          [4, '2019-10-22T06:00:00.000Z', 1],
+          [4, '2019-10-22T07:00:00.000Z', 2],
+        ]),
+      ),
+      'Couiza',
+    )
+
+    expect(narrow?.marks.some((one) => one.seam === true)).toBe(false)
+    expect(wide?.marks.every((one) => one.seam === true)).toBe(true)
   })
 })

@@ -14,14 +14,23 @@ function storeThat(appendJournal: ReplayStore['appendJournal']): ReplayStore {
   return {
     appendJournal,
     readJournal: async () => [],
-    getDataset: async () => undefined,
     openDataset: async () => undefined,
     putDataset: async () => {},
     getManifest: async () => undefined,
     putManifest: async () => {},
-    hasMedia: async () => false,
+    publish: async () => false,
+    unpublish: async () => {},
+    abandon: async () => {},
+    claim: async () => true,
     openMedia: async () => undefined,
     putMedia: async () => {},
+    removeMedia: async () => {},
+    addManualEvent: async () => {
+      throw new Error('this store adds no event')
+    },
+    getManualEvent: async () => undefined,
+    updateManualEvent: async () => undefined,
+    removeManualEvent: async () => undefined,
   }
 }
 

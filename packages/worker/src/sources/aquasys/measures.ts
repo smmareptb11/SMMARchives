@@ -81,10 +81,13 @@ export async function fetchMeasures(options: FetchMeasuresOptions): Promise<Meas
         const rows = rawMeasureRowsSchema.parse(
           await options.client.measures(options.family, { sourceId, dataType: typeId, ...window }),
         )
-        const decoded = decode(rows, sourceId, quantity)
+        const decoded = decode(rows, options.family, sourceId, quantity)
         rowsDropped += rows.length - decoded.length
 
-        const kept = cropToWindow(decoded, options.window, (measure) => measure.at)
+        const kept = firstPerInstant(
+          cropToWindow(decoded, options.window, (measure) => measure.at),
+          options.collector,
+        )
         series.push(kept)
         density.push({
           sourceId,
@@ -123,6 +126,35 @@ function resolveQuantities(
 }
 
 /**
+ * One measure per instant of a series, the first the source returned.
+ *
+ * A replay holds one reading per source, quantity and instant, which is what
+ * its storage keys on; a second one would be refused there, taking the whole
+ * data set with it. The crossings keep the first as well, so the measures they
+ * are derived from are the ones a reader is served.
+ */
+function firstPerInstant(series: readonly Measure[], collector: ReportCollector): Measure[] {
+  const seen = new Set<number>()
+  const kept = series.filter((measure) => {
+    const at = toEpochMilliseconds(measure.at)
+    if (seen.has(at)) return false
+    seen.add(at)
+    return true
+  })
+
+  const dropped = series.length - kept.length
+  if (dropped > 0) {
+    const { sourceId, quantity } = series[0]!
+    collector.fellBackTo({
+      subject: `source ${sourceId} ${quantity}`,
+      rule: 'one measure per instant',
+      applied: `${dropped} measure(s) on an instant already seen were dropped, the first kept`,
+    })
+  }
+  return kept
+}
+
+/**
  * Turns positional rows into measures, reading four columns and no more.
  *
  * The response is an array of arrays, not the documented array of objects.
@@ -131,7 +163,12 @@ function resolveQuantities(
  * public. Everything needed to tell rows apart is a request parameter, so there
  * is nothing to gain from decoding further.
  */
-function decode(rows: readonly unknown[][], sourceId: number, quantity: Quantity): Measure[] {
+function decode(
+  rows: readonly unknown[][],
+  family: SourceFamily,
+  sourceId: number,
+  quantity: Quantity,
+): Measure[] {
   const measures: Measure[] = []
 
   for (const row of rows) {
@@ -140,7 +177,7 @@ function decode(rows: readonly unknown[][], sourceId: number, quantity: Quantity
     if (typeof epoch !== 'number' || typeof value !== 'number' || !Number.isFinite(value)) continue
 
     try {
-      measures.push({ sourceId, quantity, at: fromEpochMilliseconds(epoch), value })
+      measures.push({ family, sourceId, quantity, at: fromEpochMilliseconds(epoch), value })
     } catch {
       // An epoch outside the plausible range is one bad row, not a bad series:
       // dropping the whole call would lose the 899 good measures around it.

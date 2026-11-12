@@ -1,7 +1,7 @@
 import type { Feature, Point } from 'geojson'
 import { describe, expect, it } from 'vitest'
 
-import { boundsOf, sourceUnder, sourcesOf } from '../src/map/sources.ts'
+import { boundsOf, framedIn, sourceUnder, sourcesOf } from '../src/map/sources.ts'
 import { gaugesOf } from '../src/rain.ts'
 import { aGauge, aMeasure, aStation, held } from './support/content.ts'
 
@@ -31,7 +31,19 @@ describe('a source the replay holds nothing of', () => {
     expect(geojson.features.map((one) => propertyOf(one, 'mute'))).toEqual([false, false])
   })
 
-  it('is never a station: this screen does not load their measures', () => {
+  it('is a station the replay holds no measure of, and not one that measured', () => {
+    const stations = [aStation(9, 'Trèbes'), aStation(3, 'Restitution-Marseillette')]
+    const { geojson } = sourcesOf(held({ stations, measuredStations: new Set([9]), ...parc }))
+
+    expect(geojson.features.map((one) => propertyOf(one, 'mute'))).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ])
+  })
+
+  it('is no station when the replay does not say which stations measured', () => {
     const { geojson } = sourcesOf(held({ stations: [aStation(9, 'Trèbes')], ...parc }))
 
     expect(geojson.features.map((one) => propertyOf(one, 'mute'))).toEqual([false, true, false])
@@ -165,5 +177,20 @@ describe('which of the sources under a pointer a click is about', () => {
 
   it('is nothing at all under nothing', () => {
     expect(sourceUnder([])).toBeUndefined()
+  })
+})
+
+describe('the room left around the sources on opening', () => {
+  it('is the full room on a map that has it', () => {
+    expect(framedIn(900, 500)).toEqual({ top: 40, right: 280, bottom: 40, left: 40 })
+  })
+
+  /** Room the map does not have makes MapLibre give up, and the replay opens elsewhere. */
+  it('shrinks in proportion on a small map, leaving the sources half of it', () => {
+    const room = framedIn(400, 80)
+
+    expect(room.left + room.right).toBe(200)
+    expect(room.top + room.bottom).toBe(40)
+    expect(room.right / room.left).toBe(7)
   })
 })

@@ -1,12 +1,12 @@
 import type { Pool } from 'pg'
 
 import {
+  ExitCode,
   aquasysConfig,
   databaseConfig,
   lizmapConfig,
   mediaConfig,
   radarRainfallConfig,
-  type ExitCode,
   type ReplayIdentity,
   type ReplayManifest,
 } from '@smmarchives/shared'
@@ -18,11 +18,13 @@ import {
   runProcess,
   toExtent,
   toReplayId,
+  toTerritory,
   toWindow,
 } from '../cli.ts'
 import { openPool } from '../db/pool.ts'
 import { buildReplay } from '../replay/build.ts'
 import { openPostgresCatalog } from '../replay/postgres/catalog.ts'
+import type { ReplayStore } from '../replay/store.ts'
 import { AquasysClient } from '../sources/aquasys/client.ts'
 import { LizmapClient } from '../sources/lizmap/client.ts'
 
@@ -33,11 +35,15 @@ await runProcess(async () => {
     from: { type: 'string' },
     to: { type: 'string' },
     bbox: { type: 'string' },
+    territory: { type: 'string' },
   })
 
+  const extent = toExtent(args.bbox)
+  const territory = toTerritory(args.territory, extent)
   const asked = {
     label: args.label ?? null,
-    extent: toExtent(args.bbox) ?? null,
+    extent: extent ?? null,
+    ...(territory === undefined ? {} : { territory }),
     period: toWindow(args.from, args.to),
   }
 
@@ -64,30 +70,73 @@ async function build(
     onProgress: progress,
   })
 
-  // Without `--id` the database mints one, which is the ordinary way to build.
-  // With it, the build goes into a replay that already exists: a re-run repairs
-  // a lane without costing the others.
+  // Without `--id` the database mints one. With it, the build goes into the
+  // replay the API has just created, which no build has taken yet: a replay is
+  // frozen once built.
   const { id, store } = await openOrCreate(catalog, askedId, asked)
+  if (!(await store.claim())) {
+    throw new UsageError(`--id ${id} names a replay a build has already started`)
+  }
   const identity: ReplayIdentity = { id, ...asked }
+  const stopListening = abandonOnSignal(store)
 
-  progress(`replay ${identity.id}, ${identity.period.from} → ${identity.period.to}…`)
-  const radarRainfall = radarSource()
-  const { manifest, exitCode } = await buildReplay({
-    identity,
-    store,
-    aquasys: { client: new AquasysClient({ config: aquasysConfig() }) },
-    lizmap: {
-      client: new LizmapClient({ config: lizmapConfig() }),
-      // The images sit on another host, reached without the Lizmap's spacing.
-      fetch: globalThis.fetch,
-    },
-    ...(radarRainfall === undefined ? {} : { radarRainfall }),
-    copyMedia: true,
-    onProgress: progress,
-  })
+  try {
+    progress(`replay ${identity.id}, ${identity.period.from} → ${identity.period.to}…`)
+    const radarRainfall = radarSource()
+    const { manifest, exitCode } = await buildReplay({
+      identity,
+      store,
+      aquasys: { client: new AquasysClient({ config: aquasysConfig() }) },
+      lizmap: {
+        client: new LizmapClient({ config: lizmapConfig() }),
+        // The images sit on another host, reached without the Lizmap's spacing.
+        fetch: globalThis.fetch,
+      },
+      ...(radarRainfall === undefined ? {} : { radarRainfall }),
+      copyMedia: true,
+      onProgress: progress,
+    })
 
-  summarise(manifest)
-  return exitCode
+    summarise(manifest)
+    return exitCode
+  } catch (error) {
+    await abandon(store)
+    throw error
+  } finally {
+    stopListening()
+  }
+}
+
+/**
+ * Marks the replay failed, as far as the database still answers.
+ *
+ * Left `running`, a replay nobody builds any more refuses its events and its
+ * publication for good. The failure to mark it is said, never raised: the
+ * error that stopped the build is the one worth reading.
+ */
+async function abandon(store: ReplayStore): Promise<void> {
+  try {
+    await store.abandon()
+  } catch (error) {
+    progress(`  the replay could not be marked failed: ${String(error)}`)
+  }
+}
+
+/**
+ * Abandons the replay when the process is told to stop, as a container is when
+ * it is replaced. A `SIGKILL` cannot be caught, and leaves it `running`.
+ */
+function abandonOnSignal(store: ReplayStore): () => void {
+  const onSignal = (signal: NodeJS.Signals) => {
+    progress(`${signal}: build interrupted`)
+    void abandon(store).finally(() => process.exit(ExitCode.failure))
+  }
+  process.once('SIGTERM', onSignal)
+  process.once('SIGINT', onSignal)
+  return () => {
+    process.off('SIGTERM', onSignal)
+    process.off('SIGINT', onSignal)
+  }
 }
 
 /** The replay to build into, named or minted. */
@@ -133,9 +182,9 @@ function summarise(manifest: ReplayManifest): void {
     )
   }
 
-  const { copied, skipped, failed } = manifest.media
-  if (copied + skipped + failed > 0) {
-    progress(`  media  ${copied} copied, ${skipped} already there, ${failed} failed`)
+  const { copied, failed } = manifest.media
+  if (copied + failed > 0) {
+    progress(`  media  ${copied} copied, ${failed} failed`)
   }
 
   for (const [name, lane] of Object.entries(manifest.lanes)) {

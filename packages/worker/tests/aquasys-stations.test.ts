@@ -1,5 +1,5 @@
-import { ReportCollector, type BoundingBox } from '@smmarchives/shared'
-import { describe, expect, it } from 'vitest'
+import { ReportCollector, type BoundingBox, type Fallback } from '@smmarchives/shared'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
@@ -7,7 +7,7 @@ import { rawNetworkLinkSchema } from '../src/sources/aquasys/raw.ts'
 import { fetchRainGauges, fetchStations } from '../src/sources/aquasys/stations.ts'
 import { fetchStub, fixture, stationReferentialRoutes } from './support/fixtures.ts'
 
-const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton', timeZone: 'UTC' }
+const CONFIG = { baseUrl: 'https://api.test/api', token: 'jeton' }
 
 /** The detail of every source the fixtures list, which a referential always reads. */
 const DETAILS = {
@@ -25,7 +25,7 @@ function collect(
 ) {
   const collector = new ReportCollector({})
   const fetch = fetchStub({ ...DETAILS, ...routes })
-  const client = new AquasysClient({ config: CONFIG, fetch })
+  const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
   return { client, collector, fetch, extent }
 }
 
@@ -69,13 +69,11 @@ describe('the hydrological station referential', () => {
     const stations = await fetchStations(options)
 
     expect(stations.map((station) => station.id)).toEqual([2, 152])
-    expect(options.collector.seal().fallbacks).toEqual([
-      {
-        subject: 'station 84',
-        rule: 'on both structure and watercourse networks',
-        applied: 'station dropped',
-      },
-    ])
+    expect(options.collector.seal().fallbacks).toContainEqual({
+      subject: 'station 84',
+      rule: 'on both structure and watercourse networks',
+      applied: 'station dropped',
+    })
   })
 
   it('leaves out an out-of-scope station before any detail call', async () => {
@@ -86,12 +84,50 @@ describe('the hydrological station referential', () => {
     expect(options.fetch.calls.some((call) => call.includes('/hydrologicalStation/24'))).toBe(false)
   })
 
+  it('says which stations it left out for want of a typing network', async () => {
+    const options = collect(stationReferentialRoutes())
+    await fetchStations(options)
+
+    expect(options.collector.seal().fallbacks).toEqual([
+      {
+        subject: 'stations 24',
+        rule: 'on no network that types a station',
+        applied: 'stations dropped',
+      },
+    ])
+  })
+
   it('reads what a station measures from its measurement points', async () => {
     const options = collect(stationReferentialRoutes())
     const stations = await fetchStations(options)
 
     expect(stations.find((station) => station.id === 84)?.quantities).toEqual(['level', 'flow'])
     expect(stations.find((station) => station.id === 2)?.quantities).toEqual([])
+  })
+
+  /** The fixture's only line holds 56.148. */
+  it('reads the NGF datum off the recorded altimetric history', async () => {
+    const options = collect(stationReferentialRoutes())
+    const stations = await fetchStations(options)
+
+    expect(stations.find((station) => station.id === 84)?.ngfDatum).toBe(56.148)
+  })
+
+  /** The list's `ngfCote` is not where the datum is read. */
+  it('gives no datum to a station whose detail holds no altimetric history', async () => {
+    const options = collect(stationReferentialRoutes())
+    const stations = await fetchStations(options)
+
+    expect(stations.find((station) => station.id === 2)?.ngfDatum).toBeNull()
+  })
+
+  /** Station 2 stores its level in metres NGF, which its detail does not say. */
+  it('reads what a level is measured from off the reference table', async () => {
+    const options = collect(stationReferentialRoutes())
+    const stations = await fetchStations(options)
+
+    expect(stations.find((station) => station.id === 2)?.levelDatum).toBe('ngf')
+    expect(stations.find((station) => station.id === 84)?.levelDatum).toBe('gauge')
   })
 
   it('records a detail that failed and keeps the other stations', async () => {
@@ -137,6 +173,20 @@ describe('the rain gauge referential', () => {
 
     expect(gauges.find((gauge) => gauge.id === 4)?.quantities).toEqual(['rainfall'])
   })
+
+  /** Gauge 5 is a SAFRAN cell, gauge 693 an ERA5 one. */
+  it('leaves out the gauges Aquasys simulates, before any detail call, and says so', async () => {
+    const options = collect({ '/pluviometer/': { json: fixture('aquasys/rain-gauges.json') } })
+    const gauges = await fetchRainGauges(options)
+
+    expect(gauges.map((gauge) => gauge.id)).toEqual([4, 737, 744])
+    expect(options.fetch.calls.some((call) => /\/pluviometer\/(5|693)$/.test(call))).toBe(false)
+    expect(options.collector.seal().fallbacks).toContainEqual({
+      subject: '2 rain gauge(s)',
+      rule: 'simulated, recognised by a SAFRAN_ or X…Y… code pending a stated rule',
+      applied: 'rain gauges left out',
+    })
+  })
 })
 
 describe('the networks a station belongs to', () => {
@@ -144,7 +194,7 @@ describe('the networks a station belongs to', () => {
     const fetch = fetchStub({
       '/hydrologicalStation/networkLink': { json: fixture('aquasys/network-links.json') },
     })
-    const client = new AquasysClient({ config: CONFIG, fetch })
+    const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
     const links = z.array(rawNetworkLinkSchema).parse(await client.networkLinks())
 
     expect(links.filter((link) => link.idStation === 3).map((link) => link.idNetwork)).toEqual([
@@ -190,11 +240,15 @@ describe('the extent of a replay', () => {
 })
 
 describe('a source that cannot be placed', () => {
+  // The simulated gauges of the same listing are reported too, and are not this.
+  const positionsOf = (fallbacks: Fallback[]) =>
+    fallbacks.filter((one) => one.rule === 'no usable coordinates in the referential')
+
   it('says its position is missing when no extent is in play', async () => {
     const options = collect({ '/pluviometer/': { json: fixture('aquasys/rain-gauges.json') } })
     await fetchRainGauges(options)
 
-    expect(options.collector.seal().fallbacks).toEqual([
+    expect(positionsOf(options.collector.seal().fallbacks)).toEqual([
       {
         subject: 'rain gauge 744',
         rule: 'no usable coordinates in the referential',
@@ -217,12 +271,37 @@ describe('a source that cannot be placed', () => {
     const gauges = await fetchRainGauges(options)
 
     expect(gauges.map((gauge) => gauge.id)).not.toContain(744)
-    expect(options.collector.seal().fallbacks).toEqual([
+    expect(positionsOf(options.collector.seal().fallbacks)).toEqual([
       {
         subject: 'rain gauge 744',
         rule: 'no usable coordinates in the referential',
         applied: 'source dropped, an extent was given',
       },
     ])
+  })
+})
+
+describe('the calls to Aquasys', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('are spaced by default, as a production service asks', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'Date'] })
+    const sent: number[] = []
+    const client = new AquasysClient({
+      config: CONFIG,
+      fetch: async () => {
+        sent.push(Date.now())
+        return Response.json([])
+      },
+    })
+
+    const both = Promise.all([client.networkLinks(), client.networkLinks()])
+    await vi.runAllTimersAsync()
+    await both
+
+    expect(sent).toHaveLength(2)
+    expect(sent[1]! - sent[0]!).toBeGreaterThanOrEqual(500)
   })
 })

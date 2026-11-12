@@ -190,10 +190,12 @@ describe('following a build', () => {
     const api = await anApi()
 
     await withServer(appOn(api), async (base) => {
-      const response = await fetch(`${base}/replays/never-built/progress`)
+      const response = await fetch(`${base}/replays/5d1e7c4a-0000-4000-8000-000000000000/progress`)
 
       expect(response.status).toBe(404)
-      expect(((await response.json()) as Problem).detail).toBe('no replay never-built')
+      expect(((await response.json()) as Problem).detail).toBe(
+        'no replay 5d1e7c4a-0000-4000-8000-000000000000',
+      )
     })
   })
 })

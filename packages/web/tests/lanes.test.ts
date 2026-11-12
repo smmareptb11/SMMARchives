@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
+import { countOf } from '../src/tracks/heading.ts'
 import {
-  assumedCrossings,
   heldIn,
+  isQuiet,
   lanesOf,
   placeOf,
   spacedOut,
+  speaking,
   tiled,
 } from '../src/tracks/lanes.ts'
 import type { FrozenWebcamImage } from '@smmarchives/shared/contracts/webcam.ts'
@@ -59,10 +61,10 @@ describe('the lanes of a replay', () => {
   it('gives a station a lane whether it crossed a threshold or not', () => {
     const watercourses = shown(lanesOf(aParc()), 'watercourse')
 
-    expect(watercourses?.lanes.map((one) => one.label)).toEqual(['Trèbes', 'Narbonne'])
+    expect(watercourses?.lanes.map((one) => one.label)).toEqual(['Narbonne', 'Trèbes'])
     // An empty lane says something: the station was there, and nothing crossed.
-    expect(watercourses?.lanes[1]?.marks).toEqual([])
-    expect(watercourses?.lanes[0]?.marks).toHaveLength(1)
+    expect(watercourses?.lanes[0]?.marks).toEqual([])
+    expect(watercourses?.lanes[1]?.marks).toHaveLength(1)
   })
 
   /**
@@ -75,6 +77,16 @@ describe('the lanes of a replay', () => {
 
     expect(watercourses?.lanes.map((one) => one.label)).toEqual(['Trèbes'])
     expect(watercourses?.held).toBe(1)
+  })
+
+  /** Carcassonne Pont-Neuf on Gloria: measured all along, and under its thresholds. */
+  it('keeps the lane of a station that measured and crossed nothing', () => {
+    const content = { ...aParc(), measuredStations: new Set([91]) }
+    const watercourses = shown(lanesOf(content), 'watercourse', false)
+
+    expect(watercourses?.lanes.map((one) => one.label)).toEqual(['Narbonne', 'Trèbes'])
+    expect(watercourses?.lanes[0]?.marks).toEqual([])
+    expect(heldIn(lanesOf(content))).toBe(0)
   })
 
   it('keeps a family whose every lane it held back, or the replay reads as holding none', () => {
@@ -194,6 +206,9 @@ describe('a crossing whose threshold was classified by guesswork', () => {
       origin: 'automatic' as const,
       category: 'threshold-crossing' as const,
       title: 'Débit de crise',
+      description: null,
+      producerKind: null,
+      link: null,
       severity: 1,
       color: '#ff0000',
       from: '2019-10-22T06:00:00.000Z',
@@ -211,12 +226,18 @@ describe('a crossing whose threshold was classified by guesswork', () => {
    * an ordinary flow. The replay says it assumed; the screen must too, or a
    * guess reads as a fact.
    */
-  it('is marked as assumed, and counted', () => {
+  it('is marked as assumed', () => {
     const families = lanesOf(held({ stations: [aStation(84, 'Trèbes')], events: [anEvent(true)] }))
 
     expect(families[0]?.lanes[0]?.marks[0]?.assumed).toBe(true)
-    expect(assumedCrossings(held({ stations: [], events: [anEvent(true), anEvent(false)] }))).toBe(
-      1,
+  })
+
+  /** The hatching says it on the lane; the count says how many, to whoever asks. */
+  it('is counted in what its family heading leaves unsaid', () => {
+    const [family] = lanesOf(held({ stations: [aStation(84, 'Trèbes')], events: [anEvent(true)] }))
+
+    expect(family === undefined ? undefined : countOf(family, 1).more).toBe(
+      '1 franchissement porte sur un seuil dont la source ne précise pas le type : le type a été déduit. Il est hachuré.',
     )
   })
 
@@ -374,5 +395,66 @@ describe('the frames a strip still shows once thinned', () => {
       { left: 20, width: 20, at: '2019-10-22T02:00:00.000Z' },
       { left: 40, width: 10, at: '2019-10-22T04:00:00.000Z' },
     ])
+  })
+})
+
+describe('the count in a family heading', () => {
+  const content = held({
+    stations: [aStation(84, 'Trèbes'), aStation(85, 'Limoux'), aStation(86, 'Quillan')],
+    events: [aCrossing({ sourceId: 84 })],
+  })
+  const [stations] = lanesOf(content)
+
+  it('counts the lanes when none is held back', () => {
+    expect(stations === undefined ? undefined : countOf(stations, 3)).toEqual({
+      said: '3 pistes',
+      more: undefined,
+    })
+  })
+
+  /** Three lanes out of ninety-four would otherwise read as a replay of three sources. */
+  it('says the lanes shown out of the lanes held, and why the others are not', () => {
+    const shown = stations === undefined ? 0 : speaking(stations).length
+
+    expect(stations === undefined ? undefined : countOf(stations, shown)).toEqual({
+      said: '1 / 3 pistes',
+      more: '2 stations n’ont aucune donnée sur cette période. Cochez « Sources sans données » pour les afficher.',
+    })
+  })
+
+  it('names apart the lanes that crossed nothing and those with no data', () => {
+    const measured = lanesOf({ ...content, measuredStations: new Set([84, 85]) })[0]
+
+    expect(measured === undefined ? undefined : countOf(measured, 1, 1)).toEqual({
+      said: '1 / 3 pistes',
+      more:
+        '1 station n’a aucune donnée sur cette période. Cochez « Sources sans données » pour l’afficher. ' +
+        '1 station n’a franchi aucun seuil sur cette période. Cochez « Pistes sans franchissement » pour l’afficher.',
+    })
+  })
+
+  it('counts what agents reported in events rather than in lanes', () => {
+    expect(countOf({ id: 'report', label: 'Événements saisis', lanes: [], count: 2 }, 1)).toEqual({
+      said: '2 événements',
+      more: undefined,
+    })
+  })
+})
+
+describe('a lane that crossed nothing', () => {
+  const content = held({
+    stations: [aStation(84, 'Trèbes'), aStation(85, 'Limoux'), aStation(86, 'Quillan')],
+    events: [aCrossing({ sourceId: 84 })],
+    measuredStations: new Set([84, 85]),
+  })
+  const quiet = (lanesOf(content)[0]?.lanes ?? []).filter(isQuiet).map((one) => one.label)
+
+  it('is one whose source measured and crossed no threshold', () => {
+    expect(quiet).toEqual(['Limoux'])
+  })
+
+  it('is neither one with a crossing nor one with no data', () => {
+    expect(quiet).not.toContain('Trèbes')
+    expect(quiet).not.toContain('Quillan')
   })
 })
