@@ -6,10 +6,9 @@ type Environment = Record<string, string | undefined>
 /**
  * Extent shared by every radar rainfall image, live and delivered alike.
  *
- * There is no world file, and no specification carries this extent: it is a
- * reading, not an authority. A wrong one shifts the whole rainfall layer, and
- * the shift is invisible on an image of rain — hence a parameter, not a
- * constant, and reported with every collection.
+ * A reading, not an authority: no world file or specification carries it. A
+ * wrong one shifts the whole layer invisibly, hence a parameter, reported with
+ * every collection.
  */
 export const DEFAULT_RADAR_RAINFALL_EXTENT: BoundingBox = {
   minLon: -9.9729843329,
@@ -57,20 +56,15 @@ export function lizmapConfig(env: Environment = process.env): LizmapConfig {
 
 export type RadarRainfallConfig = {
   root: string
-  /**
-   * The extent shared by every raster, reported with the data because a wrong
-   * one shifts the whole layer without anything on screen saying so.
-   */
+  /** The extent shared by every raster, reported with the data. */
   extent: BoundingBox
   /** Whether no `RADAR_RAINFALL_BBOX` was given, and the extent is the code's own. */
   extentIsDefault?: boolean | undefined
 }
 
 /**
- * The delivered radar rainfall, or nothing when no root is set.
- *
- * The delivery directory exists only once Predict has delivered, so a build has
- * to be able to carry on without it.
+ * The delivered radar rainfall, or nothing when no root is set: the directory
+ * exists only once Predict has delivered.
  */
 export function radarRainfallConfig(
   env: Environment = process.env,
@@ -109,9 +103,8 @@ export type ApiConfig = {
 }
 
 /**
- * Refused rather than coerced: `listen(NaN)` binds an arbitrary free port and
- * reports it as `NaN`, so a typo in the variable becomes an API that is up,
- * unreachable at the port asked for, and says nothing about why.
+ * Refuses a port that is not one rather than coercing it: `listen(NaN)` binds an
+ * arbitrary free port and reports it as `NaN`.
  */
 export function apiConfig(env: Environment = process.env): ApiConfig {
   const value = optionalEnv('API_PORT', '3000', env)

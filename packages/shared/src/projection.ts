@@ -6,14 +6,8 @@ import type { Position } from './contracts/geometry.ts'
  * Sandre projection codes Aquasys carries, and their EPSG match.
  *
  * The `projection` / `projectionType` fields hold a Sandre code, not an EPSG
- * one, and the fleet is not homogeneous: all 94 hydrological stations are in
- * Lambert 93, while 222 of the 229 rain gauges are already in degrees and only
- * 6 are in Lambert 93. Reprojecting a rain gauge that is already in WGS84 drops
- * it in the Atlantic.
- *
- * Code 26 was confirmed to be EPSG:2154 by applying the inverse Lambert 93 and
- * checking the stations land on the communes their names announce — Matemale,
- * Axat, Salses-le-Château.
+ * one, and a fleet mixes both. Code 26 is EPSG:2154 by observation, not by any
+ * specification: read as such, the stations land on the communes they name.
  */
 export const SANDRE_LAMBERT_93 = 26
 export const SANDRE_WGS84 = 16
@@ -30,19 +24,15 @@ function lambert93ToWgs84(x: number, y: number): Position {
 }
 
 /**
- * Brings Aquasys coordinates onto WGS84, refusing any code we have not verified.
- *
- * A wrong projection selects the wrong sources for an extent and nothing on
- * screen signals it, so an unknown code is a failure for that source rather
- * than a guess.
+ * Brings Aquasys coordinates onto WGS84, refusing any code we have not verified:
+ * a wrong projection selects the wrong sources for an extent, with nothing on
+ * screen to say so.
  */
 export function sandreToWgs84(x: number, y: number, sandreCode: number): Position {
   switch (sandreCode) {
     case SANDRE_LAMBERT_93:
       return lambert93ToWgs84(x, y)
     case SANDRE_WGS84:
-      // A source that declares degrees and holds metres would land in the
-      // Atlantic with nothing on screen to say so.
       if (Math.abs(x) > 180 || Math.abs(y) > 90) {
         throw new RangeError(
           `Source declares Sandre ${SANDRE_WGS84} (WGS84) but holds ${x}, ${y}, which is not degrees`,

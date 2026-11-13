@@ -4,11 +4,9 @@ import { instantSchema, toEpochMilliseconds } from '../clock.ts'
 import { thresholdSchema } from './threshold.ts'
 
 /**
- * Where an event came from.
- *
- * The two share one structure, on purpose: a crossing a computation detected and
- * an analysis an agent wrote carry the same attributes, so the timeline and the
- * event feed hold one kind of thing. What differs is who may edit it.
+ * Where an event came from: a crossing a computation detected, or an analysis an
+ * agent wrote. Both share one structure, so the timeline and the event feed hold
+ * one kind of thing; what differs is who may edit it.
  */
 export const eventOriginSchema = z.enum(['automatic', 'manual'])
 
@@ -46,11 +44,9 @@ function isClosed(ring: Vertex[]): boolean {
 }
 
 /**
- * Whether a closed ring has an area: three distinct vertices that are not all
- * on one line. Shared so the form judges a traced area as the API will.
- *
- * Neither is caught by the closing rule, and PostGIS stores either as a
- * geometry the map fills with nothing: an event placed, and never seen.
+ * Whether a closed ring has an area, which being closed does not ensure: PostGIS
+ * stores a flat ring as a geometry the map never shows. Shared so the form
+ * judges a traced area as the API will.
  */
 export function enclosesSomething(ring: readonly Vertex[]): boolean {
   return Math.abs(twiceTheArea(ring)) > 0
@@ -68,10 +64,9 @@ function twiceTheArea(ring: readonly Vertex[]): number {
 }
 
 /**
- * Whether two sides of a closed ring meet anywhere but at the vertex they
- * share — a bow tie, or a side doubling back over another.
- *
- * A vertex repeated in a row is a side of no length, and is dropped first.
+ * Whether two sides of a closed ring meet anywhere but at the vertex they share:
+ * a bow tie, or a side doubling back over another. A vertex repeated in a row
+ * does not count.
  */
 export function crossesItself(ring: readonly Vertex[]): boolean {
   const vertices = ring.filter(
@@ -125,11 +120,9 @@ function within(a: Vertex, b: Vertex, c: Vertex): boolean {
 }
 
 /**
- * Whether a link an agent joins opens a web page, and nothing else. Shared so
- * the form judges a link as the API will.
- *
- * The sheet makes it a link anyone reading the replay may follow: a
- * `javascript:` address would run in their page.
+ * Whether a link an agent joins opens a web page, and nothing else: anyone
+ * reading the replay may follow it, and a `javascript:` address would run in
+ * their page. Shared so the form judges a link as the API will.
  */
 export function isWebAddress(value: string): boolean {
   try {
@@ -141,42 +134,31 @@ export function isWebAddress(value: string): boolean {
 }
 
 /**
- * What a crossing rests on, kept with the event it produced.
- *
- * Editing or deleting an event never alters the observation behind it, so the
- * event carries a copy of what it read rather than a pointer to it: the measure
- * and the threshold as they were when the replay was generated.
+ * What a crossing rests on, copied into the event it produced rather than
+ * pointed to: the measure and the threshold as they were when the replay was
+ * generated.
  */
 export const thresholdCrossingSchema = thresholdSchema
   .pick({ label: true, quantity: true, value: true, natureIsFallback: true })
   .extend({
     thresholdId: z.number().int(),
     /**
-     * The value of the measure that crossed it, and nothing else.
-     *
-     * The judgement bears on the value at the instant, with no accumulation, so
-     * this cannot be a maximum over the episode: `value: 2.8, measured: 3.604`
-     * would read as a Vigilance crossed with the flood peak.
+     * The value of the measure that crossed it, never a maximum over the episode:
+     * `value: 2.8, measured: 3.604` would read as a Vigilance crossed with the
+     * flood peak.
      */
     measured: z.number(),
     /** The highest value observed while above, which is the crest of the episode. */
     peak: z.number(),
     /**
-     * How many rungs the ladder has.
-     *
-     * A rank alone says nothing across stations: rank 2 of 2 is the top of the
-     * scale, rank 2 of 5 is not, and a feed sorting on the rank would put a
-     * minor alert above a Crise.
+     * How many rungs the ladder has, without which a rank says nothing across
+     * stations: rank 2 of 2 is the top of the scale, rank 2 of 5 is not.
      */
     ladderHeight: z.number().int().positive(),
     /**
-     * It never came back below within the period, so the end is the last instant
-     * measured, which may fall well short of the period's own end.
-     *
-     * Not derivable from the event: only the series says whether `to` is the
-     * last measurement or a genuine fall. Whether the crossing predates the
-     * period, by contrast, is `from <= period.from` and the period is on the
-     * manifest, so nothing stores it.
+     * It never came back below within the period: `to` is then the last instant
+     * measured, not a fall, and only the series could tell the two apart.
+     * Whether it predates the period needs no field: it is `from <= period.from`.
      */
     stillActiveAtEnd: z.boolean(),
   })
@@ -184,11 +166,9 @@ export const thresholdCrossingSchema = thresholdSchema
 export type ThresholdCrossing = z.infer<typeof thresholdCrossingSchema>
 
 /**
- * A fact that matters to the analysis.
- *
- * Deliberately not the observation that produced it: editing or deleting an
- * event leaves the measure alone, and a station can be added by a connector
- * without touching the timeline.
+ * A fact that matters to the analysis, deliberately not the observation that
+ * produced it: editing or deleting an event leaves the measure alone, and a
+ * connector can add a station without touching the timeline.
  */
 export const eventSchema = z
   .object({
@@ -208,10 +188,8 @@ export const eventSchema = z
     link: z.string().refine(isWebAddress, 'must be an http or https address').nullable(),
     /**
      * The rank of the threshold in the ladder of its station and quantity, 1
-     * being the lowest.
-     *
-     * A rank, not a business category: the mapping onto Situation, Informatif
-     * and Contrôle is established nowhere, and nothing here invents it.
+     * being the lowest: a rank, not a business category, since nothing
+     * establishes its mapping onto Situation, Informatif and Contrôle.
      */
     severity: z.number().int().positive().nullable(),
     /** `htmlColor` as the API gives it, so a replay matches what agents read elsewhere. */

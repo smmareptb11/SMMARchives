@@ -8,12 +8,9 @@ export type DataType = {
 }
 
 /**
- * Maps the `typeId` of one source family to the quantities we collect.
- *
- * A `typeId` absent from the table is not decoded. That is the whole safety
- * mechanism: nothing outside the application's scope can be read by accident,
- * and an unknown identifier surfaces as a reported fallback rather than as a
- * value of the wrong nature.
+ * Maps the `typeId` of one source family to the quantities we collect. A
+ * `typeId` absent from the table is not decoded: it surfaces as a reported
+ * fallback rather than as a value of the wrong nature.
  */
 export class DataTypeTable {
   readonly #byTypeId: ReadonlyMap<number, DataType>
@@ -38,13 +35,9 @@ export class DataTypeTable {
 }
 
 /**
- * The two tables are separate on purpose, and must never be merged.
- *
- * `typeId` 4 is a water level on a hydrological station and a temperature on a
- * rain gauge; `typeId` 5 is a flow and an actual evapotranspiration. A shared
- * table would ingest temperatures as water levels — a replay that reads as
- * plausible and is wrong. A `typeId` absent from a table is not decoded, which
- * is what keeps a quantity outside this application's scope out of it.
+ * The two tables are separate on purpose, and must never be merged: `typeId` 4
+ * is a water level on a hydrological station and a temperature on a rain gauge,
+ * `typeId` 5 a flow and an actual evapotranspiration.
  */
 export const HYDROLOGICAL_STATION_DATA_TYPES = new DataTypeTable([
   { typeId: 4, quantity: 'level', unit: 'm' },
@@ -56,12 +49,9 @@ export const RAIN_GAUGE_DATA_TYPES = new DataTypeTable([
 ])
 
 /**
- * What a quantity is read in, whichever family measures it.
- *
- * A unit belongs to the quantity and not to the source: a screen showing a
- * value knows what it is showing, rarely which family produced it. Written out
- * rather than looked up, so that a fourth quantity added to the enum fails to
- * compile instead of showing a value with no unit beside it.
+ * What a quantity is read in, whichever family measures it. Written out rather
+ * than looked up, so that a quantity added to the enum fails to compile instead
+ * of showing a value with no unit.
  */
 export const UNITS: Record<Quantity, string> = {
   level: 'm',

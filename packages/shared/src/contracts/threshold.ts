@@ -3,11 +3,9 @@ import { z } from 'zod'
 import { quantitySchema } from './quantity.ts'
 
 /**
- * What a threshold actually is, which the API mixes in one set.
- *
- * Treating the three alike would invent a crossing at every historical flood
- * mark and invert the logic on drought scales, whose values decrease as the
- * situation worsens.
+ * What a threshold actually is, which the API mixes in one set: treated alike,
+ * flood marks would invent a crossing at every past flood, and drought scales,
+ * which decrease as the situation worsens, would read inverted.
  */
 export const thresholdNatureSchema = z.enum(['alert-level', 'flood-mark', 'drought-threshold'])
 

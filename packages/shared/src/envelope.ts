@@ -4,10 +4,8 @@ import { instantSchema } from './clock.ts'
 import { ExitCode, SourceError } from './errors.ts'
 
 /**
- * A rule the collector could not apply as written, and what it did instead.
- *
- * Several classifications degrade rather than fail — an untyped station, a
- * threshold without `category`. The degraded path is reported, never applied in
+ * A rule the collector could not apply as written, and what it did instead: a
+ * classification that degrades rather than fails is reported, never applied in
  * silence.
  */
 export const fallbackSchema = z.object({
@@ -29,15 +27,12 @@ export const failureSchema = z.object({
 export type Failure = z.infer<typeof failureSchema>
 
 /**
- * What the run did, beside what it returned.
+ * What the run did, beside what it returned: only what `data` cannot show, such
+ * as absences, degraded rules, failed calls, rows that never reached the output
+ * and the parameters actually used. Never a count of what `data` holds.
  *
- * The rule that decides what belongs here: **the report carries what `data`
- * cannot show.** Absences, degraded rules, failed calls, rows that never
- * reached the output, and the parameters actually used. A count of what is in
- * `data` is not a finding — the caller holds `data`.
- *
- * Open on purpose, because each collection has its own non-derivable measurements:
- * the density obtained per source, whether a period predates a retention.
+ * Open, for what one collection alone measures: the density obtained per source,
+ * whether a period predates a retention.
  */
 export const reportSchema = z.looseObject({
   ranAt: instantSchema,
@@ -60,11 +55,8 @@ export function envelopeSchema<T extends z.ZodType>(data: T) {
 }
 
 /**
- * Raised when a collector produced data its own contract refuses.
- *
- * Not a source failure: the source answered, and the mapping between it and
- * the contract is what broke. Which is why the message points at the mapper
- * rather than at the schema.
+ * Raised when a collector produced data its own contract refuses: not a source
+ * failure, since the source answered and the mapping is what broke.
  */
 export class ContractError extends Error {
   constructor(readonly detail: string) {
@@ -74,12 +66,8 @@ export class ContractError extends Error {
 }
 
 /**
- * Checks an envelope against the contract its data set is stored under.
- *
- * A contract nothing parses declares bounds and formats that nothing enforces:
- * a coordinate out of range would be stored as if it were one. Measured cost
- * on the largest run the project has: 42 ms for 175 000 measures, against 40
- * to 60 s of sequential HTTP.
+ * Checks an envelope against the contract its data set is stored under, so that
+ * the bounds and formats the contract declares are enforced before storage.
  */
 export function checkEnvelope<T>(schema: z.ZodType, envelope: Envelope<T>): void {
   const parsed = envelopeSchema(schema).safeParse(envelope)
@@ -109,10 +97,8 @@ export function checkEnvelope<T>(schema: z.ZodType, envelope: Envelope<T>): void
 }
 
 /**
- * The exit code a report implies.
- *
- * An empty result is a success; a truncated one is not. Derived from the report
- * rather than declared by the caller, so a run that recorded a failure cannot
+ * The exit code a report implies: an empty result is a success, a truncated one
+ * is not. Derived rather than declared, so a run that recorded a failure cannot
  * present itself as complete.
  */
 export function exitCodeFor(report: Report): ExitCode {
@@ -125,12 +111,9 @@ export type ReportCollectorOptions = {
 }
 
 /**
- * Accumulates a {@link Report} while a collection runs, and carries the run's
- * progress channel.
- *
- * Collectors note as they go and the caller seals once. The progress sink lives
- * here rather than in the collection modules so that a server-side job can
- * route connector progress into a job log instead of onto stderr.
+ * Accumulates a {@link Report} while a collection runs, and carries its progress
+ * channel, so that a server-side job can route a connector's progress into its
+ * own log rather than onto stderr.
  */
 export class ReportCollector {
   readonly #request: Record<string, unknown>

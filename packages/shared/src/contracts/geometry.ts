@@ -21,16 +21,10 @@ export const boundingBoxSchema = z
 export type BoundingBox = z.infer<typeof boundingBoxSchema>
 
 /**
- * Reads `minLon,minLat,maxLon,maxLat` in WGS84.
- *
- * The caller supplies the error, because the same format arrives from two
- * places with two consequences: a `--bbox` flag is a usage error, an
- * environment variable a configuration one.
- *
- * Coordinates are range-checked, not merely counted. An extent nobody could
- * mean — a longitude of 1000 — otherwise passes, matches nothing, and returns
- * an empty collection indistinguishable from an extent that legitimately holds
- * nothing.
+ * Reads `minLon,minLat,maxLon,maxLat` in WGS84, failing with the caller's own
+ * error: a `--bbox` flag is a usage error, an environment variable a
+ * configuration one. Coordinates are range-checked: an extent nobody could mean
+ * would otherwise pass for one that holds nothing.
  */
 export function parseBoundingBox(value: string, fail: (reason: string) => Error): BoundingBox {
   const numbers = value.split(',').map((part) => Number(part.trim()))

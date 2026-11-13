@@ -16,9 +16,8 @@ export const measureSchema = z.object({
 export type Measure = z.infer<typeof measureSchema>
 
 /**
- * The stations holding at least one measure over a replay's period.
- *
- * What a screen that does not load the measures needs of them to tell a
- * station that measured and crossed nothing from one that measured nothing.
+ * The stations holding at least one measure over a replay's period: what tells,
+ * without loading the measures, a station that crossed nothing from one that
+ * measured nothing.
  */
 export const measuredStationsSchema = z.array(z.number().int())

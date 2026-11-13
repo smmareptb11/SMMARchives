@@ -7,11 +7,8 @@ import { thresholdNatureSchema } from './threshold.ts'
 
 /**
  * The identifier of a replay: the UUID the database minted for it, lower case
- * as PostgreSQL writes it.
- *
- * Nothing else is one. It names a directory of media and a path segment of the
- * API, so a separator or a space in it would escape both — and a name the
- * database could never have minted is refused here rather than looked up.
+ * as PostgreSQL writes it. It names a media directory and an API path segment,
+ * so anything else is refused here rather than looked up.
  */
 export const replayIdSchema = z
   .string()
@@ -21,9 +18,7 @@ export const replayIdSchema = z
   )
 
 /**
- * One stored data set of a replay.
- *
- * Each name is a stored file and will be an API route. A collection that no
+ * One stored data set of a replay, each name an API route. A collection no
  * replay writes yet has no name here: the manifest describes what a replay
  * holds, never what it might one day hold.
  */
@@ -42,12 +37,9 @@ export type DatasetName = z.infer<typeof datasetNameSchema>
 
 /**
  * One strand of the build, named after what it reads rather than what it
- * produces.
- *
- * `aquasys` carries three because they come from one host and one referential,
- * and `lizmap` two because they come from one host. `events`
- * and `media` read no source at all: they work on what the others returned, and
- * they are lanes so that a failure in one of them stays theirs. What must stay sequential is an access, not a subject.
+ * produces: what must stay sequential is an access to a host, not a subject.
+ * `events` and `media` read no source, and are lanes so that a failure in one
+ * of them stays theirs.
  */
 export const laneNameSchema = z.enum(['aquasys', 'lizmap', 'radar-rainfall', 'events', 'media'])
 
@@ -78,10 +70,7 @@ export const mediaTallySchema = z.object({
 
 export type MediaTally = z.infer<typeof mediaTallySchema>
 
-/**
- * An empty replay is a success and a truncated one is not — the same rule a
- * report follows with the exit code it implies.
- */
+/** An empty replay is `complete`; a truncated one is `partial`. */
 export const replayStateSchema = z.enum(['running', 'complete', 'partial', 'failed'])
 
 export const replayIdentitySchema = z.object({
@@ -120,10 +109,8 @@ export const severitySchema = z.enum(['vigilance', 'alert', 'reinforced-alert', 
 export type Severity = z.infer<typeof severitySchema>
 
 /**
- * What an administrator says of a replay as it is constituted, each optional.
- *
- * Not part of its identity: a build needs none of it, and none of it reaches
- * the build.
+ * What an administrator says of a replay as it is constituted, each optional,
+ * and nothing a build reads.
  */
 export const replayAboutSchema = z.object({
   description: z.string().optional(),
@@ -134,10 +121,8 @@ export const replayAboutSchema = z.object({
 export type ReplayAbout = z.infer<typeof replayAboutSchema>
 
 /**
- * One family of the fleet, and how much of it spoke.
- *
- * Per family because the two number their sources independently, and a reader
- * told « 263 stations » would count the rain gauges among them.
+ * One family of the fleet, and how much of it spoke: counted apart, or the rain
+ * gauges would be read as stations.
  */
 const fleetCountSchema = z.object({
   inExtent: z.number().int().nonnegative(),
@@ -145,11 +130,8 @@ const fleetCountSchema = z.object({
 })
 
 /**
- * What a replay holds and how it came to hold it.
- *
- * The index of the replay: the API serves it without reading a single data set,
- * and the administration reads the state and the reports from it rather than
- * replaying the build.
+ * What a replay holds and how it came to hold it: its index, served without
+ * reading a single data set.
  */
 export const replayManifestSchema = replayIdentitySchema.extend({
   ...replayAboutSchema.shape,
@@ -163,12 +145,10 @@ export const replayManifestSchema = replayIdentitySchema.extend({
   datasets: z.partialRecord(datasetNameSchema, datasetStatusSchema),
   media: mediaTallySchema,
   /**
-   * The fleet of the replay, and how much of it spoke.
-   *
-   * Deduced from the measures, never from referential dates, which are not
-   * reliable on this source. Sources that answered nothing are
-   * kept — an absence has to be explainable — so the two counts are what says
-   * the difference. Absent until a lane collects a referential.
+   * The fleet of the replay per family, deduced from the measures and never from
+   * referential dates, which this source does not keep reliable. Sources that
+   * answered nothing are counted, so an absence can be explained. Absent until a
+   * lane collects a referential.
    */
   fleet: z
     .object({
@@ -177,12 +157,9 @@ export const replayManifestSchema = replayIdentitySchema.extend({
     })
     .optional(),
   /**
-   * The facts the replay's own data implied.
-   *
-   * Absent until the crossings are derived, which needs both the thresholds and
-   * the measures — so absent on a replay built without the Aquasys lane. The
-   * thresholds set aside are counted per nature because a nature is a reason:
-   * a flood mark would invent a crossing at every historical high-water mark.
+   * The facts the replay's own data implied. Absent until the crossings are
+   * derived from the thresholds and the measures, so on a replay built without
+   * the Aquasys lane. Thresholds set aside are counted per nature, which is why.
    */
   events: z
     .object({
@@ -193,18 +170,13 @@ export const replayManifestSchema = replayIdentitySchema.extend({
     })
     .optional(),
   /**
-   * The radar rainfall images the replay holds, over every series.
-   *
-   * Not the count of `radar-rainfall`, which is an array of series. Absent
-   * unless that data set was collected.
+   * The radar rainfall images the replay holds over every series, which the
+   * count of `radar-rainfall` is not. Absent unless that data set was collected.
    */
   radarFrames: z.number().int().nonnegative().optional(),
   /**
-   * Why the journal is incomplete, when it could not be written.
-   *
-   * Here rather than in the journal itself, which is precisely what was
-   * unavailable. A replay whose trace was lost is incomplete; the data it
-   * stored is not affected.
+   * Why the journal is incomplete, when it could not be written: here, since the
+   * journal is what was unavailable. The data the replay stored is not affected.
    */
   journalError: z.string().optional(),
 })

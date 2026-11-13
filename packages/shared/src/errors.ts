@@ -1,9 +1,6 @@
 /**
- * Process exit codes shared by every command of the worker.
- *
- * `partial` exists so that a caller can tell "94 stations, all answered" from
- * "94 stations, 93 answered" without parsing the report: an empty result is a
- * success, a truncated one is not.
+ * Process exit codes shared by every command of the worker. `partial` tells a
+ * run where some calls failed from a complete one without parsing the report.
  */
 export const ExitCode = {
   success: 0,
@@ -34,11 +31,9 @@ export function redactUrl(url: string): string {
 }
 
 /**
- * An external source answered in a way we cannot use, or did not answer.
- *
- * Carries what is needed to diagnose the failure without replaying the call:
- * Aquasys returns opaque HTTP 500s and Lizmap returns HTTP 200 bodies holding a
- * `ServiceException`, so neither the status nor the body alone is enough.
+ * An external source answered in a way we cannot use, or did not answer. Carries
+ * both the status and the body: Aquasys fails with opaque HTTP 500s, Lizmap with
+ * HTTP 200 bodies holding a `ServiceException`.
  */
 export class SourceError extends Error {
   readonly url: string

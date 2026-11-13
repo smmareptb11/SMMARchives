@@ -25,36 +25,21 @@ export const webcamImageSchema = z.object({
 export type WebcamImage = z.infer<typeof webcamImageSchema>
 
 /**
- * An image once a replay holds its own copy.
- *
- * Separate from {@link webcamImageSchema} rather than a field on it, because
- * where a copy lives is not a property of the observation: the source reader
- * would have to carry a slot it can only ever leave empty, and a consumer of
- * the raw image would inherit a field meaningless outside a replay. The radar
- * frames make the same distinction the other way round — their `path` is the
- * address they came from, not the one they were frozen at.
- *
- * `uri` points at `media.ceneau.test`, which keeps an image for a month: a
- * replay holding only the URL empties itself without warning once that month
- * has passed, which is what the copy is for.
+ * An image once a replay holds its own copy, which it needs because Ceneau keeps
+ * an image for a month only. Apart from {@link webcamImageSchema}, since where a
+ * copy lives is not a property of the observation.
  */
 export const frozenWebcamImageSchema = webcamImageSchema.extend({
   /**
-   * Where the copy lives, relative to the replay's `media/`.
-   *
-   * Null in two cases: a run asked for no media, and an image the fetch did not
-   * return. A period older than the retention yields no entry at all rather
-   * than a null one, so it is not one of them.
+   * Where the copy lives, relative to the replay's `media/`. Null when the run
+   * asked for no media or the fetch failed; a period older than the retention
+   * yields no entry at all.
    */
   storedPath: z.string().nullable(),
   /**
-   * Where the copy of Ceneau's own reduction lives, under the same root.
-   *
-   * A field of its own rather than a path derived from `storedPath`, because a
-   * reader has to tell a reduction the replay holds from one it never had:
-   * `thumbUri` is not always published, and a download of it is allowed to fail
-   * without costing the observation. Null is that, and the full image stands in
-   * for it — at some six hundred kilobytes against four.
+   * Where the copy of Ceneau's own reduction lives, under the same root. Null
+   * when the replay has none, `thumbUri` being unpublished or its download
+   * failed: the full image then stands in for it.
    */
   storedThumbPath: z.string().nullable(),
 })

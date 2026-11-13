@@ -1,12 +1,9 @@
 import { z } from 'zod'
 
 /**
- * An absolute instant, ISO 8601 with an explicit `Z`.
- *
- * The single clock of the application. Every source is normalised to it on
- * import: Aquasys returns epoch milliseconds, Ceneau ISO 8601 UTC, radar
- * deliveries epoch seconds in the filename. Mixing them desynchronises the map,
- * the timeline and the charts without anything on screen saying so.
+ * An absolute instant, ISO 8601 with an explicit `Z`: the single clock every
+ * source is normalised to on import, whatever it sends. Mixed clocks
+ * desynchronise the map, the timeline and the charts without a sign on screen.
  */
 export type Instant = string
 
@@ -17,12 +14,9 @@ export const timeWindowSchema = z.object({ from: instantSchema, to: instantSchem
 export type TimeWindow = z.infer<typeof timeWindowSchema>
 
 /**
- * Epoch values outside this range are a unit mistake, not data.
- *
- * Seconds read as milliseconds land in January 1970, milliseconds read as
- * seconds land past the year 50000; both decode without complaint and produce a
- * replay that looks plausible and is wrong. The floor sits above January 1970
- * and below 1979, the oldest chronicle start Aquasys serves.
+ * Epoch values outside this range are a unit mistake, not data: seconds read as
+ * milliseconds land in 1970, milliseconds read as seconds past the year 50000.
+ * The floor stays under 1979, the oldest chronicle start Aquasys serves.
  */
 const PLAUSIBLE_RANGE_MILLISECONDS = {
   from: Date.UTC(1975, 0, 1),
@@ -44,11 +38,8 @@ export function fromEpochSeconds(value: number): Instant {
 const ZONED = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/i
 
 /**
- * Normalises a date string naming its zone onto the single clock.
- *
- * Refused without one: `Date.parse` reads a wall time in the zone of the
- * process and a bare date as UTC, so the same text would name an instant that
- * shifts with the host.
+ * Normalises a date string naming its zone onto the single clock, and refuses
+ * one that names none: `Date.parse` would read it in the zone of the host.
  */
 export function parseInstant(value: string, subject = 'date'): Instant {
   const milliseconds = ZONED.test(value) ? Date.parse(value) : Number.NaN
@@ -71,10 +62,8 @@ export function windowOf(from: string, to: string): TimeWindow {
 }
 
 /**
- * A replay's period: a window that lasts.
- *
- * Stricter than {@link windowOf}, which a filter on one instant needs: a replay
- * of no duration replays nothing, and the database refuses to store one.
+ * A replay's period: a window that lasts, which the database requires, where
+ * {@link windowOf} accepts a single instant as a filter needs.
  */
 export function periodOf(from: string, to: string): TimeWindow {
   const window = windowOf(from, to)
@@ -91,18 +80,15 @@ export function isWithin(instant: Instant, window: TimeWindow): boolean {
 }
 
 /**
- * Drops what falls outside the requested window.
- *
- * Aquasys widens request bounds to whole UTC days and ignores the time part
- * altogether, so up to two extra days come back on every call and the trimming
- * has to happen here.
+ * Drops what falls outside the requested window, which Aquasys widens to whole
+ * UTC days whatever the time asked for.
  */
 export function cropToWindow<T>(
   items: readonly T[],
   window: TimeWindow,
   instantOf: (item: T) => Instant,
 ): T[] {
-  // Bounds parsed once, not twice per item: this runs over 175 000 measures.
+  // Bounds parsed once rather than per item: this runs over every measure of a run.
   const from = toEpochMilliseconds(window.from)
   const to = toEpochMilliseconds(window.to)
   return items.filter((item) => {
@@ -112,23 +98,14 @@ export function cropToWindow<T>(
 }
 
 /**
- * Median interval between consecutive instants, in minutes, or `null` below two
- * instants.
- *
- * Aquasys series are event-driven — 5, 25 and 120 minute gaps within the same
- * 48 hours — so a replay has to report the density it actually obtained.
+ * Median interval between consecutive instants, in minutes to a tenth, or `null`
+ * below two: the density a series actually has, Aquasys's being event-driven.
  */
 export function medianStepMinutes(instants: readonly Instant[]): number | null {
   return medianStepOf(instants.map(toEpochMilliseconds))
 }
 
-/**
- * The same, for a caller already holding epoch milliseconds.
- *
- * The interface runs its gauges' totals up as numbers and would otherwise write
- * them back out as strings for this one answer to parse them again — two thirds
- * of the cost of reading a whole parc's rain.
- */
+/** The same, for a caller already holding epoch milliseconds. */
 export function medianStepOf(milliseconds: readonly number[]): number | null {
   if (milliseconds.length < 2) return null
 

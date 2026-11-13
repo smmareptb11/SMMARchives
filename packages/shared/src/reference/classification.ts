@@ -1,19 +1,14 @@
 import type { StationCategory } from '../contracts/station.ts'
 
 /**
- * The rules that sort what Aquasys does not sort itself, frozen here.
- *
- * Neither the networks a station belongs to nor the label of a threshold is a
- * classification the source states: these tables are this application's
- * reading of them. A build copies them into the report of what they sorted, so
- * a replay says which reading it was made with.
+ * The rules that sort what Aquasys does not sort itself: this application's
+ * reading of a station's networks and a threshold's label. A build copies them
+ * into its report, so a replay says which reading it was made with.
  */
 
 /**
  * The networks that type a station, by the code a link's `idNetwork` refers to.
- *
- * A station belonging to none of them bears on no flood, and a replay never
- * holds it. The other networks a station may also belong to change nothing.
+ * A station on none of them bears on no flood, and a replay never holds it.
  */
 export const NETWORK_CATEGORIES: ReadonlyMap<number, StationCategory> = new Map([
   [1, 'watercourse'], // Étiage

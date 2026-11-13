@@ -12,19 +12,15 @@ const PERIMETERS: BoundingBox = {
 }
 
 /**
- * How far past the perimeters the fleet reaches, in degrees.
- *
- * Rain gauges watch the slopes that drain into the basin from outside it, the
- * farthest — Béziers-Vias — a tenth of a degree east of the perimeters. The
- * margin keeps each of them within an extent's reach.
+ * How far past the perimeters the fleet reaches, in degrees: rain gauges watch
+ * the slopes that drain into the basin from outside it, the farthest a tenth of
+ * a degree east.
  */
 const FLEET_MARGIN = 0.15
 
 /**
  * The only ground a replay covers: the perimeters and the fleet around them.
- *
- * Frozen rather than fetched: an extent is checked before any build runs, and
- * a replay must not depend on a production service to be refused.
+ * Frozen rather than fetched, so refusing an extent depends on no service.
  */
 export const SMMAR_TERRITORY: BoundingBox = {
   minLon: PERIMETERS.minLon - FLEET_MARGIN,

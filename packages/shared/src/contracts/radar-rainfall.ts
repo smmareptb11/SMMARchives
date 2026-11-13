@@ -11,11 +11,9 @@ export const radarRainfallFrameSchema = z.object({
 export type RadarRainfallFrame = z.infer<typeof radarRainfallFrameSchema>
 
 /**
- * One product of one delivery, its frames sorted by instant.
- *
- * Sorted because filenames are production times, not slots: the consumer picks
- * the nearest neighbour within a tolerance and never computes a filename from a
- * target time.
+ * One product of one delivery, its frames sorted by instant: filenames are
+ * production times, not slots, so a consumer picks the nearest frame within a
+ * tolerance and never computes a filename from a time.
  */
 export const radarRainfallSeriesSchema = z.object({
   delivery: z.string(),

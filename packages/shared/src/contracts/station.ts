@@ -4,11 +4,8 @@ import { positionSchema } from './geometry.ts'
 import { quantitySchema } from './quantity.ts'
 
 /**
- * The two families of Aquasys source.
- *
- * They are addressed by different endpoints, spell the same field differently,
- * and above all read the same `typeId` as different quantities. Nothing that
- * decodes a measure may ignore which family it came from.
+ * The two families of Aquasys source. They read the same `typeId` as different
+ * quantities: nothing that decodes a measure may ignore which family it came from.
  */
 export const sourceFamilySchema = z.enum(['hydro', 'rain-gauge'])
 
@@ -21,10 +18,8 @@ export const SOURCE_LABEL: Record<SourceFamily, string> = {
 }
 
 /**
- * How a station is rendered on the map.
- *
- * Read from the networks a station belongs to in Aquasys, since no field of the
- * station states it: `stationType` is `1` for the whole fleet.
+ * How a station is rendered on the map, read from the networks it belongs to in
+ * Aquasys: no field of the station states it, `stationType` least of all.
  */
 export const stationCategorySchema = z.enum(['watercourse', 'structure'])
 

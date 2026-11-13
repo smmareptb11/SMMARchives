@@ -6,28 +6,21 @@ import {
   type Feature,
   type FeatureCollection,
 } from '../contracts/geometry.ts'
+// Frozen from the Lizmap layer `perimetre_syndicats` by a WFS `GetFeature`, each
+// feature rewritten through PostGIS, keeping only `ref_smmar`, `nom` and
+// `etiquette`, sorted by `ref_smmar`:
+//
+//     ST_AsGeoJSON(ST_SimplifyPreserveTopology(
+//       ST_SetSRID(ST_GeomFromGeoJSON(geometry), 4326), 0.0005), 5)
 import unions from './perimetre_syndicats.json' with { type: 'json' }
 
 /**
- * The perimeter of one of the seven basin unions.
+ * The perimeter of one of the seven basin unions, carried by the application
+ * rather than by each replay, and simplified to some fifty metres: its bounds
+ * are an extent a user picks, not a measurement.
  *
- * Frozen reference data, read once from the Lizmap layer `perimetre_syndicats`.
- * It changes rarely, so the application carries it rather than each replay.
- *
- * Simplified when frozen, to fifty metres at five decimals with topology
- * preserved: the outline is drawn at six percent opacity, and the bounding box
- * is an extent a user picks, not a measurement.
- *
- * To refreeze it, read the layer with a WFS `GetFeature` on the Lizmap, then
- * rewrite every feature through PostGIS:
- *
- *     ST_AsGeoJSON(ST_SimplifyPreserveTopology(
- *       ST_SetSRID(ST_GeomFromGeoJSON(geometry), 4326), 0.0005), 5)
- *
- * keeping only `ref_smmar`, `nom` and `etiquette`, and sorting by `ref_smmar`.
- *
- * Not exported from the package index: the web reaches it by its own path, so
- * the outlines stay in the map's chunk instead of every page's.
+ * Not exported from the package index, so the outlines stay in the map's chunk
+ * instead of every page's.
  */
 export type Perimeter = {
   /** `ref_smmar`, as the remote project spells it. */
@@ -47,10 +40,8 @@ const propertiesSchema = z.object({
 })
 
 /**
- * The smallest rectangle holding every vertex of a GeoJSON geometry.
- *
- * Walks the coordinates whatever the nesting, so a polygon and a multipolygon
- * are read alike. A geometry with no vertex has no rectangle.
+ * The smallest rectangle holding every vertex of a GeoJSON geometry, whatever
+ * its nesting; nothing for a geometry with no vertex.
  */
 export function boundingBoxOf(geometry: unknown): BoundingBox | undefined {
   const coordinates =
@@ -101,11 +92,8 @@ export function isUnion(territory: string): boolean {
 }
 
 /**
- * The rectangle of the whole basin, which the seven unions cover together.
- *
- * Derived rather than frozen beside them: the Lizmap's own `perimetre_smmar`
- * gives the same rectangle to the simplification, and a second outline would be
- * a second truth to keep in step.
+ * The rectangle of the whole basin, which the seven unions cover together:
+ * derived, since the Lizmap's own `perimetre_smmar` gives the same rectangle.
  */
 export const BASIN_BOUNDS: BoundingBox = {
   minLon: Math.min(...UNIONS.map((one) => one.bounds.minLon)),
