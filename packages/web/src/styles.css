@@ -2832,6 +2832,11 @@ button.danger {
     margin-left: 20px;
   }
 
+  /* « Chronologie » fits the phone's narrow label column only with its letters closer. */
+  .replay-montage .ruler .lane-label {
+    letter-spacing: 0.02em;
+  }
+
   /* Three lines of a phone's width over the first lanes: the stripes go unexplained there. */
   .replay-montage .assumed-note {
     display: none;

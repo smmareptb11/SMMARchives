@@ -275,7 +275,7 @@ function Ruler({
 
   return (
     <div className="lane ruler">
-      <div className="lane-label">Sources</div>
+      <div className="lane-label">Chronologie</div>
       {/*
         No `slider` role and no tab stop. The role promises a value and keyboard
         handling this element cannot give: it is memoised away from the cursor
