@@ -69,8 +69,7 @@ export function createApp(options: ApiOptions): Express {
 
 /**
  * Where a change comes from, the session, then who may change anything, ahead
- * of the routes themselves: a stranger is turned away before a replay is looked
- * up, so the answer says nothing about which replays exist.
+ * of the routes, so a stranger learns nothing of which replays exist.
  */
 function registerAccess(app: Express, auth: Auth, trustedProxy: string): void {
   // The reverse proxy's `X-Forwarded-Proto` is what tells a session cookie it

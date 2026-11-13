@@ -12,13 +12,7 @@ export type BlobOptions = {
 
 const UNNAMED = 'application/octet-stream'
 
-/**
- * Sends stored bytes without decoding them.
- *
- * Its own module rather than the data sets': media are served the same way,
- * with another content type and another cache policy, and nothing here knows
- * about either.
- */
+/** Sends stored bytes without decoding them, whatever their type and cache policy. */
 export async function sendBlob(
   req: Request,
   res: Response,
@@ -29,30 +23,26 @@ export async function sendBlob(
   res.setHeader('Cache-Control', options.cacheControl)
   res.type(options.contentType)
 
-  // Everything this API answers is bytes a source outside it produced, under a
-  // type nobody here chose. Without this a browser sniffs, and it sniffs
-  // hardest at what could not be named — which is then handed over rather than
-  // rendered.
+  // These bytes come from outside sources, under a type nobody here chose: no
+  // sniffing, and what could not be named is downloaded rather than rendered.
   res.setHeader('X-Content-Type-Options', 'nosniff')
   if (res.getHeader('Content-Type') === UNNAMED) {
     res.setHeader('Content-Disposition', 'attachment')
   }
 
-  // Express reads the ETag just set. Hand-rolling the comparison would miss
-  // `*`, a list of tags, and the weak prefix an intermediary may add — and it
-  // would ignore a client asking not to be answered from a cache.
+  // Express reads the ETag just set, and knows `*`, tag lists, weak prefixes
+  // and `no-cache`, which a hand-rolled comparison would miss.
   if (req.fresh) return without(res.status(304), blob)
 
   res.setHeader('Content-Length', String(blob.size))
-  // Express answers HEAD through the GET handler, and reading a 19 MB body to
-  // throw it away is the whole cost of the request.
+  // Express answers HEAD through the GET handler, which must not read a body
+  // only to throw it away.
   if (req.method === 'HEAD') return without(res, blob)
 
   try {
     await pipeline(blob.body, res)
   } catch (error) {
-    // A client that closes its tab aborts the pipeline. Nothing failed, and a
-    // log line per abandoned download would bury the ones that matter.
+    // A client that closes its tab aborts the pipeline, and nothing failed.
     if ((error as NodeJS.ErrnoException).code !== 'ERR_STREAM_PREMATURE_CLOSE') throw error
   }
 }

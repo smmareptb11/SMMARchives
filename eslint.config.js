@@ -3,8 +3,7 @@ import tseslint from 'typescript-eslint'
 
 /**
  * A promise nobody waits for loses its rejection, and an unhandled rejection
- * takes the process down. The four rules below are the ones a repository this
- * full of async file work cannot hold by reading.
+ * takes the process down: no review holds that in this much async work.
  */
 const promises = {
   '@typescript-eslint/no-floating-promises': 'error',
@@ -32,24 +31,11 @@ const NO_PIPE_ON_A_RESPONSE = [
 ].join(' ')
 
 /**
- * Sizes a function may not exceed. They name no error already made here: they
- * exist so a function that grows past reading cannot do it quietly.
+ * Sizes a function may not exceed, so that none grows past reading quietly.
  *
- * They are errors, and nothing is tolerated anonymously. Every threshold the
- * repository crosses today carries, on the line above it, the reason it is
- * crossed — and `reportUnusedDisableDirectives` takes that reason away again
- * the day the function comes back under the line.
- *
- * They were warnings until 12/09/2026, and warnings were a check with the plug
- * out: `eslint .` exits 0 whatever the count, so twenty crossings became
- * twenty-nine in the thirty-two hours that followed, unseen. Writing thirty-two
- * reasons is the price of the count meaning something.
- *
- * What those reasons say, read together: a threshold sometimes measures the
- * wrong thing. Sixteen of `writeManifest`'s nineteen branches are an optional
- * field becoming a SQL null, and a `describe` body counts its cases plus the
- * scaffolding they share. Raising a threshold is a decision, and it is made
- * here rather than by adding one more reason.
+ * Errors, not warnings, which `eslint .` passes whatever their count. Each
+ * crossing carries its reason on the line above it. Raising a threshold is a
+ * decision made here, not by adding one more reason.
  */
 const limits = {
   complexity: ['error', 8],
@@ -108,18 +94,10 @@ export default tseslint.config(
     },
   },
   {
-    // `describe` and `it` nest functions mechanically, and a test file holds one
-    // case per behaviour rather than one function per idea. Four limits are
-    // widened for that reason alone; the three that measure a single function's
+    // `describe` and `it` nest functions mechanically, and a `describe` body is
+    // a list of cases that `max-statements` counts as steps. Four limits are
+    // widened for that alone; the three that measure a single function's
     // difficulty are not.
-    //
-    // `max-statements` is the fourth, and it was the last to move. A `describe`
-    // body is a list of cases, so the rule counted behaviours and called them
-    // steps — twenty-two in the largest suite here. Exempting the two that
-    // crossed would have left them with no ceiling at all rather than a higher
-    // one, which is the wrong trade in a repository agents write in. Twenty-five
-    // is the round value above what the suites hold today, and it still catches
-    // a helper that grows past reading.
     files: ['packages/*/tests/**/*.ts'],
     rules: {
       'max-statements': ['error', 25],
@@ -127,10 +105,7 @@ export default tseslint.config(
       'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
       'max-lines': ['error', { max: 350, skipBlankLines: true, skipComments: true }],
 
-      // These catch something real: a test that reads `any` cannot notice a
-      // contract drifting under it. They were warnings while 75 of them stood;
-      // the typed reading helper that replaced the bare `JSON.parse` calls has
-      // since taken every one, so they hold the ground it won.
+      // A test that reads `any` cannot notice a contract drifting under it.
       '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/no-unsafe-assignment': 'error',
       '@typescript-eslint/no-unsafe-call': 'error',
@@ -142,15 +117,9 @@ export default tseslint.config(
   },
   {
     // A dependency list is the one contract of a component that neither the
-    // compiler nor a test of a pure module can read: `web/tests/` covers what
-    // decides, and a hook watching the wrong value decides nothing wrong — it
-    // redraws at the wrong moment, or reads a value from a frame that is gone.
-    //
-    // Four lists were already wrong when this landed, found one at a time by
-    // hand. The plugin's own message says what to correct but not that a
-    // `eslint-disable` is not the answer; a deliberate omission carries its
-    // reason on the line above it, and `reportUnusedDisableDirectives` takes it
-    // away again the day the code stops needing it.
+    // compiler nor `web/tests/` can read: a wrong one redraws at the wrong
+    // moment, or reads a value from a frame that is gone. A deliberate omission
+    // carries its reason on the line above it.
     files: ['packages/web/src/**/*.ts', 'packages/web/src/**/*.tsx'],
     plugins: { 'react-hooks': reactHooks },
     rules: {

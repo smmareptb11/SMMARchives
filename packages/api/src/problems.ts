@@ -12,14 +12,10 @@ type Problem = {
 }
 
 /**
- * The only way an error body leaves this API, and the one place its rule can be
- * held: **`detail` carries only values that have passed one of the API's own
- * schemas.** A replay identifier may appear, having cleared `replayIdSchema`;
- * a media path, a data set name and a build's `stderr` may not.
- *
- * Stated that way because the absolute version — never any client text — is
- * not what the code does, and a rule nobody follows teaches nothing. What
- * cannot be said in the response goes to the log.
+ * The only way an error body leaves this API, under one rule: **`detail` carries
+ * only values that have passed one of the API's own schemas.** A replay
+ * identifier may appear; a media path, a data set name and a build's `stderr`
+ * may not. What cannot be said in the response goes to the log.
  */
 function sendProblem(res: Response, problem: Problem): void {
   res.status(problem.status).type('application/problem+json').json(problem)
@@ -36,10 +32,8 @@ export function badRequest(res: Response, detail: string, refusals?: unknown): v
 }
 
 /**
- * Which field a schema refused, and why — never the value it was sent, which
- * is the rule above applied to the one place a request's own text would slip
- * through. Nor the name of a field the request is not to send: that name is
- * the client's own text too, and the refusal says only that there is one.
+ * Which field a schema refused, and why: never the value it was sent, nor the
+ * name of a field the request was not to send, both the client's own text.
  */
 export function refusalsIn(error: ZodError): { path: string; message: string }[] {
   return error.issues.flatMap((issue) =>
@@ -87,24 +81,19 @@ export function onUnknownRoute(_req: Request, res: Response): void {
 }
 
 /**
- * The last word on any failure, a rejected promise included: Express 5 forwards
- * those here on its own.
- *
- * An unexpected error carries what its thrower had in hand — an `fs` error
- * names an absolute path, a refused contract names fields and values — so it
- * reaches the log and never the response.
+ * The last word on any failure, a rejected promise included. An unexpected
+ * error carries what its thrower had in hand, an absolute path or a refused
+ * value, so it reaches the log and never the response.
  */
 export function errorHandler(log: (message: string) => void): ErrorRequestHandler {
   return (error, req, res, _next) => {
-    // A malformed percent-escape makes Express throw a URIError carrying its
-    // own 400, and a body too large a 413. Blaming the server for a request
-    // nobody could read would also log a stack for every crawler that tries.
+    // A malformed percent-escape or a body too large comes with its own 400 or
+    // 413: neither is the server's fault, nor worth a stack in the log.
     const status = blamedOnTheClient(error)
     if (status === undefined) log(`${req.method} ${req.originalUrl} failed: ${describe(error)}`)
 
-    // Headers gone means a body is already on its way, so nothing can be said
-    // in it. Destroyed rather than left open: a half-written response the
-    // client would wait on forever.
+    // A body already on its way can say nothing more; destroyed, or the client
+    // would wait on it forever.
     if (res.headersSent) {
       res.destroy()
       return

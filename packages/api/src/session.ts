@@ -66,12 +66,9 @@ export function registerSession(app: Express, auth: Auth): void {
 }
 
 /**
- * Runs the attempts to sign in one after the other.
- *
- * The wait after a refusal holds back one request, not the one sending it:
- * attempts sent side by side would each wait their second together, and each
- * run scrypt, which takes the thread pool the rest of the API reads files on.
- * In a line, a refusal holds back every attempt behind it.
+ * Runs the attempts to sign in one after the other, so a refusal's wait holds
+ * back every attempt behind it, and parallel ones cannot fill with scrypt the
+ * thread pool the rest of the API reads files on.
  */
 function oneAtATime(): <T>(task: () => Promise<T>) => Promise<T> {
   let last: Promise<unknown> = Promise.resolve()
@@ -101,11 +98,9 @@ export function isAdmin(res: Response): boolean {
 const READING = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /**
- * Every request that changes something needs the administrator: a route added
- * later is closed until it is opened, never open until someone remembers it.
- *
- * Placed before the routes' own checks, so nothing about the replay is said to
- * a stranger.
+ * Every request that changes something needs the administrator, so a route
+ * added later is closed until it is opened. Before the routes' own checks, so
+ * nothing about the replay is said to a stranger.
  */
 export const requireAdminToChange: RequestHandler = (req, res, next) => {
   if (READING.has(req.method) || isAdmin(res)) next()
@@ -113,13 +108,9 @@ export const requireAdminToChange: RequestHandler = (req, res, next) => {
 }
 
 /**
- * Turns away a change another site asked for.
- *
- * `SameSite=Strict` keeps the cookie off a request from another *site*, and a
- * sibling subdomain is the same site: its plain HTML form, sent as multipart,
- * would carry the cookie and need no preflight. The browser says where a
- * request comes from; a client that is not a browser says nothing, and holds no
- * cookie another site could lend it.
+ * Turns away a change another origin asked for. `SameSite=Strict` lets through
+ * a sibling subdomain, which is the same *site*. A client that is not a browser
+ * sends no `Sec-Fetch-Site`, and holds no cookie another site could lend it.
  */
 export const refuseOtherSites: RequestHandler = (req, res, next) => {
   const from = req.get('sec-fetch-site')

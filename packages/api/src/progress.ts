@@ -46,11 +46,8 @@ export function registerProgress(
 }
 
 /**
- * Pushes what a build writes, by reading what it wrote.
- *
- * Polled rather than watched: `fs.watch` answers differently from one platform
- * to the next, and it would put a file system notion inside a port a database
- * is meant to implement. The client is pushed to either way.
+ * Pushes what a build writes, by polling what it wrote: watching files would put
+ * a file system notion inside a port a database implements.
  */
 async function follow(
   store: ReplayStore,
@@ -80,9 +77,8 @@ async function pushWhatWasWritten(
 
   for (const entry of await store.readJournal(stream.line)) stream.journal(entry)
 
-  // A replay with no manifest yet is a build in its first moments, since one
-  // is published before anything is collected. Ending here would call a build
-  // that is starting a build that failed.
+  // No manifest yet is a build in its first moments, not a failed one: one is
+  // published before anything is collected.
   return manifest?.state === 'running' ? undefined : manifest?.state
 }
 
@@ -104,9 +100,8 @@ function streamTo(res: Response, from: number) {
     },
 
     /**
-     * Sent on opening, and again on every transition: a client connecting late
-     * must not have to guess what it missed, and the lane states and media
-     * counts a manifest carries are what feeds a progress bar.
+     * Sent on opening and on every transition, so a client connecting late
+     * misses nothing: its lane states and media counts feed a progress bar.
      */
     manifest(manifest: ReplayManifest): void {
       if (manifest.updatedAt === published) return

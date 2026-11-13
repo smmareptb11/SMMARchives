@@ -33,11 +33,9 @@ const UNREADABLE: Refusal = { status: 400, detail: 'the form could not be read' 
 const MISSHAPEN: Refusal = { status: 400, detail: 'a form carries one event, then its photos' }
 
 /**
- * The event and its photos, from either of the two shapes a client sends.
- *
- * JSON when there is no photo, a multipart form when there are: a photo has no
- * place in JSON but as base64, a third heavier, and held whole before it can
- * be checked.
+ * The event and its photos, as JSON when there is no photo and as a multipart
+ * form when there are: in JSON a photo would be base64, a third heavier, and
+ * held whole before it can be checked.
  */
 export function readReport<T>(req: Request, reader: ReportReader<T>): Promise<ReadReport<T>> {
   if (req.is('application/json')) {
@@ -54,10 +52,8 @@ export function readReport<T>(req: Request, reader: ReportReader<T>): Promise<Re
 }
 
 /**
- * The type a photo's own bytes declare.
- *
- * Never the name or the type the client gave: the extension chosen here is the
- * type the photo is served under, for good, and an HTML page called `x.png`
+ * The type a photo's own bytes declare, never the one the client gave: it is
+ * the type the photo is served under, for good, and an HTML page called `x.png`
  * must not become one.
  */
 export function photoExtensionOf(bytes: Uint8Array): PhotoExtension | undefined {
@@ -158,11 +154,9 @@ function readForm<T>(req: Request, reader: ReportReader<T>): Promise<ReadReport<
 }
 
 /**
- * One form as it arrives, part after part.
- *
- * The event comes first so that it is judged before a single photo is written:
- * an event refused leaves nothing behind. A photo refused after others were
- * kept leaves those, which no event names and the replay's deletion removes.
+ * One form as it arrives, the event first, so that a refused event leaves no
+ * photo behind. A photo refused after others leaves those, which no event names
+ * and the replay's deletion removes.
  */
 class FormReading<T> {
   readonly #reader: ReportReader<T>
@@ -219,11 +213,8 @@ class FormReading<T> {
   }
 
   /**
-   * Writes a photo as it arrives, never holding more of it than a chunk.
-   *
-   * Its type is read off its first bytes before anything is written. A photo
-   * that turns out too heavy is cut short in the middle of its write, which
-   * then leaves nothing on the volume.
+   * Writes a photo as it arrives, a chunk at a time, once its first bytes have
+   * given its type. One too heavy is cut short mid-write, which leaves nothing.
    */
   async #keep(stream: Readable): Promise<void> {
     const chunks = stream[Symbol.asyncIterator]() as AsyncIterator<Buffer>

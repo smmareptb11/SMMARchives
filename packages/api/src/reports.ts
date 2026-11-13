@@ -61,22 +61,17 @@ const REPORT_FIELDS = {
 }
 
 /**
- * What an agent reports, judged against the replay it is reported on.
- *
- * Bound to the manifest because an event outside the period would sit off the
- * timeline, and one outside the extent off the map: stored, and never seen.
+ * What an agent reports, judged against its replay: an event outside the period
+ * or the extent would be stored, and never seen on the timeline or the map.
  */
 export function reportSchemaFor(manifest: ReplayManifest) {
   return z.strictObject(REPORT_FIELDS).superRefine(withinReplay(manifest))
 }
 
 /**
- * A report again, with the photos it keeps.
- *
- * Required rather than defaulted: an amendment that forgot the field would
- * otherwise remove every photo, which nobody asked for. Only the event's own
- * photos may be kept, so a client cannot attach a webcam image or another
- * event's photo by naming it.
+ * A report again, with the photos it keeps: required, or an amendment that
+ * forgot them would remove them all; and only the event's own, or a client
+ * could attach any medium by naming it.
  */
 export function amendmentSchemaFor(manifest: ReplayManifest, held: readonly string[]) {
   return z

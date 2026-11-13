@@ -10,11 +10,9 @@ export function pipedPassword(input: string): string {
 export type Keyed = { typed: string } | { done: string } | { interrupted: true }
 
 /**
- * What one key does to a password typed without echo.
- *
- * Erasing comes as DEL or as BS depending on the terminal, and Ctrl-D, which
- * ends input elsewhere, stops here as Ctrl-C does: kept as characters, either
- * would end up in a hash nobody can sign in with.
+ * What one key does to a password typed without echo. Erasing comes as DEL or
+ * BS depending on the terminal; Ctrl-D stops as Ctrl-C does. Kept as
+ * characters, they would end up in a hash nobody can sign in with.
  */
 export function keyed(typed: string, key: string): Keyed {
   if (key === '\u0003' || key === '\u0004') return { interrupted: true }

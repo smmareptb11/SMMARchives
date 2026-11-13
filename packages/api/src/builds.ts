@@ -12,10 +12,9 @@ export type BuildHandle = {
 export type BuildLauncher = (identity: ReplayIdentity) => BuildHandle
 
 /**
- * Resolved from this file, which assumes the API runs from the checkout: the
- * workspaces and a hoisted `tsx` at the root, and the worker's sources beside
- * the API's. A packaged install with `--omit=dev` has neither, and a build
- * would then fail to spawn on every request.
+ * Resolved from this file, so the API must run from the checkout: a hoisted
+ * `tsx` at the root, the worker's sources beside the API's. An install with
+ * `--omit=dev` has neither, and no build would spawn.
  */
 const CHECKOUT = fileURLToPath(new URL('../../..', import.meta.url))
 export const RUNNER = fileURLToPath(new URL('../../../node_modules/.bin/tsx', import.meta.url))
@@ -27,12 +26,9 @@ export const SCRIPT = fileURLToPath(
 export const STDERR_KEPT = 8_192
 
 /**
- * The flags `build-replay` reads, each as `--name=value`.
- *
- * Not as two words: `parseArgs` runs strict, and refuses a value beginning
- * with a dash as ambiguous. An extent west of Greenwich — which the API
- * validates and accepts — would otherwise fail every build it starts, with
- * the reason confined to the server log.
+ * The flags `build-replay` reads, each as `--name=value` rather than two words:
+ * strict `parseArgs` refuses a value beginning with a dash, which an extent west
+ * of Greenwich has.
  */
 export function buildArguments(identity: ReplayIdentity): string[] {
   return [
@@ -51,16 +47,13 @@ function toBbox(extent: BoundingBox): string {
 }
 
 export const spawnBuild: BuildLauncher = (identity) => {
-  // Detached: a restart of the API must not kill a collection that runs for
-  // minutes. Its trace is the journal, not this process. Not across a
-  // container restart, which takes every process of the container with it.
+  // Detached, so a restart of the API does not kill a collection; a container
+  // restart still does. Its trace is the journal, not this process.
   const child = spawn(RUNNER, ['--env-file-if-exists=.env', SCRIPT, ...buildArguments(identity)], {
     detached: true,
     stdio: ['ignore', 'ignore', 'pipe'],
-    // Fixed, not inherited: `--env-file-if-exists` is read against it, and a
-    // working directory of `packages/api` would load no `.env` at all — the
-    // `-if-exists` suffix means it would not say so either, and every build
-    // would then die on a variable the operator had set.
+    // Fixed, not inherited: `--env-file-if-exists` is read against it, and from
+    // `packages/api` it would load no `.env`, silently.
     cwd: CHECKOUT,
   })
   child.unref()
@@ -68,17 +61,14 @@ export const spawnBuild: BuildLauncher = (identity) => {
 }
 
 /**
- * Follows a child until its output is in, not merely until it is gone.
- *
- * `close` rather than `exit`: only the first is emitted once the pipes are
- * closed. What a build that refused to start wrote last is the whole reason it
- * did, and `exit` makes no promise about having delivered it.
+ * Follows a child until its output is in, not merely until it is gone: `close`
+ * rather than `exit`, which may come before the last of stderr, where a build
+ * that could not start says why.
  */
 export function watch(child: ChildProcess): BuildHandle {
   let stderr = ''
   child.stderr?.on('data', (chunk: Buffer) => {
-    // Sliced rather than skipped: appending a whole chunk once under the
-    // limit let a single 64 kB burst through it.
+    // Sliced, so a single large chunk cannot run past the limit.
     stderr = `${stderr}${chunk.toString('utf8')}`.slice(0, STDERR_KEPT)
   })
 
@@ -91,11 +81,8 @@ export function watch(child: ChildProcess): BuildHandle {
 }
 
 /**
- * The builds this instance started.
- *
- * In memory on purpose: a replay's state lives on its manifest, and this only
- * answers what is running here — enough to refuse a second build of the same
- * replay, and a deletion while one is under way.
+ * The builds this instance started, in memory: a replay's state lives on its
+ * manifest, and this only refuses a second build, or a deletion, while one runs.
  */
 export class BuildRegistry {
   readonly #running = new Set<string>()
@@ -106,11 +93,8 @@ export class BuildRegistry {
   }
 
   /**
-   * Claims an identifier, or answers that someone else holds it.
-   *
-   * Synchronous on purpose, and before anything is awaited: asking then
-   * starting leaves a gap two requests fit through, and each one that does
-   * spawns a collection against the same sources and the same directory.
+   * Claims an identifier, or answers that someone else holds it. Synchronous on
+   * purpose: asking then starting leaves a gap two requests fit through.
    */
   reserve(id: string): boolean {
     if (this.#running.has(id)) return false
@@ -132,8 +116,8 @@ export class BuildRegistry {
       this.release(identity.id)
       throw error
     }
-    // Let go whatever happened, and never on a rejection nobody catches: a
-    // launcher that throws would otherwise take the process down.
+    // Released either way, the rejection caught: left uncaught, it would take
+    // the process down.
     handle.exited.then(
       () => this.release(identity.id),
       () => this.release(identity.id),

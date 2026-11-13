@@ -25,11 +25,8 @@ export function registerJournal(app: Express, catalog: ReplayCatalog): void {
 }
 
 /**
- * Where to resume from, the whole journal being the answer to anything that is
- * not a line number.
- *
- * Lenient rather than refused: what a client that miscounted gets back is
- * everything it already has, never a gap it cannot see.
+ * Where to resume from: anything but a line number gets the whole journal, so a
+ * client that miscounted is sent again what it has, never left with a gap.
  */
 function lineAskedFor(asked: unknown): number {
   const line = Number(asked)

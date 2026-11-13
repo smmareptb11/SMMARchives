@@ -16,8 +16,7 @@ export function registerDatasets(app: Express, catalog: ReplayCatalog): void {
   app.get(
     '/replays/:id/:dataset',
     // Here rather than on the application: a data set is the only payload
-    // worth compressing — 19 MB of measures — and an event stream is one that
-    // compression would hold in a buffer until it overflows.
+    // worth compressing, and compression would hold an event stream back.
     compression(),
     // Spelled out because a route with more than one handler no longer infers
     // its parameters, and Express types an uninferred one as possibly an array.
@@ -41,9 +40,8 @@ export function registerDatasets(app: Express, catalog: ReplayCatalog): void {
       const opened = await openReplay(catalog, res, req.params.id)
       if (opened === undefined) return
 
-      // The manifest answers whether a lane produced it, which nothing else
-      // can: a data set nobody collected and one collected empty hold the same
-      // number of rows, and only the manifest tells them apart.
+      // Only the manifest tells a data set nobody collected from one collected
+      // empty: both hold no rows.
       if (opened.manifest.datasets[name.data] === undefined) {
         notFound(res, `replay ${req.params.id} holds no ${name.data}`)
         return
@@ -63,11 +61,9 @@ export function registerDatasets(app: Express, catalog: ReplayCatalog): void {
 }
 
 /**
- * What the query narrows the data set by, or why it could not.
- *
- * A filter a data set does not answer to is refused rather than dropped: served
- * the whole set instead, a client that misspelled `source` would read a station
- * it never asked for as if it had.
+ * What the query narrows the data set by, or why it could not. A filter the data
+ * set does not take is refused rather than dropped: a client that misspelled
+ * `source` would otherwise read the whole set as if it had asked for it.
  */
 function filterFor(name: DatasetName, query: Request['query']): DatasetFilter | string {
   const narrows = MAPPINGS[name].narrows

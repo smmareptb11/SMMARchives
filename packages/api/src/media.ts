@@ -11,12 +11,10 @@ import { badRequest, notFound } from './problems.ts'
 import { cachedFor, openReplay } from './replays.ts'
 
 /**
- * A medium is never rewritten. A replay is built once, so each path is written
- * once, and no two media share a path: a webcam image is addressed by its
- * camera and its instant, a raster by its delivery, and an agent's photos by a
- * folder drawn at random for each sending. One address, one set of bytes, for
- * good. Let a path be written twice and this header becomes a lie no client can
- * catch for a year.
+ * Immutable, which holds only while no path is written twice: a webcam image is
+ * addressed by its camera and instant, a raster by its delivery, an agent's
+ * photos by a random folder per sending. A rewritten path makes this header a
+ * lie no client can catch.
  */
 const FOREVER = 'public, max-age=31536000, immutable'
 

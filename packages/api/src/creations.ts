@@ -19,16 +19,11 @@ import type { BuildRegistry } from './builds.ts'
 import { badRequest, describe as describeError, internalError, refusalsIn } from './problems.ts'
 
 /**
- * What a creation accepts: what a replay is about, and nothing a build derives.
+ * What a creation accepts: what a replay is about, and nothing a build derives,
+ * not even an identifier, which the store gives.
  *
- * No identifier: a replay is named by what stores it, so a client cannot pick
- * a name, cannot collide with another, and never has one refused.
- *
- * The period goes through `periodOf`, the one place that orders a window: the
- * shared schema does not, and comparing the two instants as strings would let
- * `00:00:00.500Z → 00:00:00Z` through, `.` sorting before `Z`. It also
- * normalises them onto the single clock, so what a build receives is what a
- * manifest will carry.
+ * The period goes through `periodOf`, which orders it and puts it on the single
+ * clock: compared as strings, `00:00:00.500Z → 00:00:00Z` would pass.
  */
 const creationSchema = z
   .strictObject({
@@ -48,8 +43,7 @@ const creationSchema = z
       })
       .nullish()
       .transform((value) => value ?? null),
-    // Served back on every card. Line breaks are what a description is
-    // written with; every other control character is refused, as in the title.
+    // Served back on every card: line breaks, but no other control character.
     description: z
       .string()
       .max(2000)
@@ -120,12 +114,8 @@ export function registerCreation(app: Express, routes: CreationRoutes): void {
 }
 
 /**
- * Runs the build and waits only for the news that changes the answer.
- *
- * The replay exists the moment it is created, so a creation has no need to wait
- * to hear that one does: what is worth waiting for is a build that could not
- * start at all — a missing token, an unreachable volume — because the replay it
- * would have filled must not be left behind as an empty one.
+ * Runs the build and waits only for the news that changes the answer: a build
+ * that could not start at all, whose empty replay must not be left behind.
  */
 async function answer(
   routes: CreationRoutes,

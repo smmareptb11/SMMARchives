@@ -63,9 +63,8 @@ export function registerEvents(app: Express, routes: EventRoutes): void {
       // The photos kept, in the order the agent left them, then the new ones.
       const { media: kept, ...report } = read.report
       const amended = await written(async () => {
-        // Judged again on the event as it is now: another amendment, written
-        // while these photos arrived, may have taken one of them away with its
-        // file, and keeping it would point at nothing.
+        // Judged again: another amendment, written while these photos arrived,
+        // may have removed a kept one with its file.
         if (!holdsAll(await store.getManualEvent(previous.id), kept)) return CHANGED
         return store.updateManualEvent(previous.id, { ...report, media: [...kept, ...read.media] })
       }, read.media)
@@ -107,13 +106,10 @@ type Written = <T>(
 ) => Promise<{ done: T } | undefined>
 
 /**
- * Runs a change on a replay that can take one, or answers why it cannot.
- *
- * The replay is held only while the change is written, not while its photos
- * arrive: a phone on a slow link takes tens of seconds to send three, and a
- * second agent reporting on the same replay meanwhile would be turned away.
- * Held, it cannot be deleted or built underneath the write, which is checked
- * again once it is held.
+ * Runs a change on a replay that can take one, or answers why it cannot. The
+ * replay is held while the change is written, so it cannot be deleted or built
+ * underneath it, but not while photos arrive, which would turn away a second
+ * agent reporting meanwhile.
  */
 async function withReportable(
   routes: EventRoutes,
@@ -171,10 +167,9 @@ function noSuchEvent(res: Response, manifest: ReplayManifest): void {
 }
 
 /**
- * Judges the event against its replay, and keeps its photos where nothing else
- * will ever be written: a folder of their own for each sending, named at
- * random, so the address of a photo never names other bytes and its
- * `immutable` header stays true.
+ * Judges the event against its replay, and keeps its photos in a random folder
+ * of their own per sending, so a photo's address never names other bytes and
+ * its `immutable` header stays true.
  */
 function readerFor<T>(schema: z.ZodType<T>, store: ReplayStore): ReportReader<T> {
   const folder = `field-reports/${randomUUID()}`
@@ -203,9 +198,8 @@ function dropped(change: ManualEventChange): string[] {
 }
 
 /**
- * After the rows, never before: a photo left behind is bytes nothing shows,
- * where the other order would leave an event showing a photo that is gone. So
- * a failure here is logged, and the change it follows still stands.
+ * After the rows, never before, so a failure leaves bytes nothing shows rather
+ * than an event showing a photo that is gone: it is logged, and the change stands.
  */
 async function removePhotos(
   routes: EventRoutes,

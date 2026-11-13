@@ -4,11 +4,8 @@ import { ConfigurationError } from '@smmarchives/shared'
 
 /**
  * The administrator's password, as the environment carries it:
- * `scrypt:N:r:p:salt:key`, salt and key in base64url.
- *
- * Colons rather than the usual `$`: the `.env` is read by tools that expand a
- * `$` as a variable, and a hash cut short there refuses every password without
- * saying why.
+ * `scrypt:N:r:p:salt:key`, salt and key in base64url. Colons rather than the
+ * usual `$`, which tools reading the `.env` expand as a variable.
  */
 export type PasswordHash = {
   options: Required<Pick<ScryptOptions, 'N' | 'r' | 'p'>>
@@ -46,9 +43,8 @@ export function parsePasswordHash(value: string): PasswordHash {
   const [N = NaN, r = NaN, p = NaN] = match.slice(1, 4).map(Number)
   const options = { N, r, p }
   const salt = Buffer.from(match[4] ?? '', 'base64url')
-  // Tried once here, at start-up: settings scrypt refuses — a cost that is not
-  // a power of two, or that needs more memory than Node allows — would
-  // otherwise let the API start, and answer every sign-in with a 500.
+  // Tried once at start-up: settings scrypt refuses would otherwise let the API
+  // start, and answer every sign-in with a 500.
   try {
     scryptSync('', salt, 1, options)
   } catch {

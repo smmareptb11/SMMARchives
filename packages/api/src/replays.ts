@@ -9,13 +9,9 @@ import { badRequest, conflict, notFound } from './problems.ts'
 import { isAdmin } from './session.ts'
 
 /**
- * Resolves an identifier into a replay whose content can be served, or answers
- * why it could not.
- *
- * A syntactically impossible identifier is a 400 — it names nothing, and never
- * reaches storage — and a well-formed one nobody built is a 404. The manifest
- * comes back with the store because reading it is how the question was
- * answered.
+ * Resolves an identifier into a replay whose content can be served, with its
+ * manifest, or answers why not: an impossible identifier is a 400 that never
+ * reaches storage, a well-formed one nobody built a 404.
  */
 export async function openReplay(
   catalog: ReplayCatalog,
@@ -62,10 +58,8 @@ export function cachedFor(manifest: ReplayManifest, policy: string): string {
 const PER_SESSION = 'private, no-cache'
 
 /**
- * A name that could not address a replay, refused before storage is touched.
- *
- * The message is the contract's own, so a route never restates a rule that
- * lives in `replayIdSchema`.
+ * A name that could not address a replay, refused before storage is touched,
+ * in the words of `replayIdSchema` rather than a route's own.
  */
 export function checkedReplayId(res: Response, id: string): boolean {
   const parsed = replayIdSchema.safeParse(id)
@@ -119,11 +113,9 @@ export function registerReplays(app: Express, routes: ReplayRoutes): void {
     const { id } = req.params
     if (!checkedReplayId(res, id)) return
 
-    // Not through `openReplay`, which turns away exactly what most needs
-    // removing. Claimed rather than asked about, so nothing can start a build
-    // on this name while it is going away — and refused on that claim, never
-    // on the manifest. What it does not promise: this registry lives in
-    // memory, and knows only what this instance started.
+    // Not through `openReplay`, which turns away what most needs removing.
+    // Claimed, so no build starts on this name while it goes; the registry
+    // knows only what this instance started.
     if (!builds.reserve(id)) {
       conflict(res, `replay ${id} is being built`)
       return
