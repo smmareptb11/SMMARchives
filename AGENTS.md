@@ -24,7 +24,7 @@ tests cover; the React components are not tested.
 
 ```bash
 npm install                 # workspaces, at the root
-docker compose up -d db     # PostgreSQL with PostGIS
+docker compose up -d db     # PostgreSQL
 npm run migrate             # apply the schema
 npm run dev:api
 npm run dev:web

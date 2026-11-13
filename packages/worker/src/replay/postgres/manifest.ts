@@ -130,20 +130,17 @@ const REPLAY = `
          journal_error,
          media_copied, media_failed, media_bytes,
          fleet,
-         ST_XMin(extent) as min_lon, ST_YMin(extent) as min_lat,
-         ST_XMax(extent) as max_lon, ST_YMax(extent) as max_lat
+         min_lon, min_lat, max_lon, max_lat
     from replay where id = $1`
 
 const UPSERT_REPLAY = `
-  insert into replay (id, label, extent, territory, period_from, period_to, created_at,
-                      updated_at, state, journal_error, media_copied, media_failed, media_bytes,
-                      fleet)
-  values ($1, $2,
-          case when $3::double precision is null then null
-               else ST_MakeEnvelope($3, $4, $5, $6, 4326) end,
-          $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb)
+  insert into replay (id, label, min_lon, min_lat, max_lon, max_lat, territory, period_from,
+                      period_to, created_at, updated_at, state, journal_error, media_copied,
+                      media_failed, media_bytes, fleet)
+  values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb)
   on conflict (id) do update set
-    label = excluded.label, extent = excluded.extent, territory = excluded.territory,
+    label = excluded.label, min_lon = excluded.min_lon, min_lat = excluded.min_lat,
+    max_lon = excluded.max_lon, max_lat = excluded.max_lat, territory = excluded.territory,
     updated_at = excluded.updated_at,
     state = excluded.state, journal_error = excluded.journal_error,
     media_copied = excluded.media_copied, media_failed = excluded.media_failed,

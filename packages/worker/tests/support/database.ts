@@ -66,9 +66,6 @@ let bootstrap: Pool | undefined
  * failure would land in whichever file lost the race. The pool is pinned to its
  * schema through the connection options — `set search_path` would bind the one
  * connection that ran it, not the pool.
- *
- * `public` stays on the path behind it: that is where PostGIS installs its
- * types and its functions.
  */
 export async function freshDatabase(
   schema: string,
@@ -121,7 +118,7 @@ export function urlPinnedTo(schema: string): string {
 }
 
 function searchPathOf(schema: string): string {
-  return `-c search_path=${schema},public`
+  return `-c search_path=${schema}`
 }
 
 /** Closes every pool a suite opened, for an `afterAll`. */

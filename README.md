@@ -39,7 +39,7 @@ variables d'environnement, décrites dans
 ## Stack technique
 
 React, Vite et TypeScript · MapLibre GL JS · Node.js, Express et Zod ·
-PostgreSQL et PostGIS · Docker Compose.
+PostgreSQL · Docker Compose.
 
 Les échanges utilisent des formats ouverts : REST, JSON, GeoJSON et CSV.
 
@@ -50,7 +50,7 @@ Deux parcours, au choix, qui donnent la même application :
 | | Avec Docker | Sans Docker |
 |---|---|---|
 | Pour | Essayer, recetter, ou héberger avec Docker seul | Installer sur un serveur Debian |
-| Base de données | Incluse | La vôtre : PostgreSQL 14 ou plus récent avec PostGIS, déjà en place ou installée pour l'occasion |
+| Base de données | Incluse | La vôtre : PostgreSQL 14 ou plus récent, déjà en place ou installée pour l'occasion |
 | Procédure | [`lancer-avec-docker.md`](docs/lancer-avec-docker.md) | [`lancer-sans-docker.md`](docs/lancer-sans-docker.md) |
 
 Docker n'est requis que par le premier. Les deux se configurent de la même
@@ -61,7 +61,7 @@ administrateur. Chaque procédure dit quand et comment le remplir.
 ## Développer
 
 Node.js 24 ou plus récent, et Docker Compose pour la base de développement — ou
-un PostgreSQL 14 ou plus récent avec PostGIS déjà installé, à la place du
+un PostgreSQL 14 ou plus récent déjà installé, à la place du
 service `db`.
 
 ```bash
@@ -69,7 +69,7 @@ npm install
 cp .env.sample .env       # les sources se renseignent avant le premier rejeu
 npm run hash-password     # coller la ligne dans ADMIN_PASSWORD_HASH
 openssl rand -base64 48   # coller la ligne dans SESSION_SECRET
-docker compose up -d db   # PostgreSQL avec PostGIS
+docker compose up -d db   # PostgreSQL
 npm run migrate           # applique le schéma
 npm run dev:api           # http://localhost:3000
 npm run dev:web           # http://localhost:5180, dans un second terminal

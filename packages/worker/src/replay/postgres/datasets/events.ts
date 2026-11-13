@@ -13,8 +13,7 @@ export async function writeEvents(db: Queryable, replayId: string, data: unknown
                         crossing)
      select $1, r.id, r.origin, r.category, r.title, r.description, r.producer_kind,
             r.link, r.severity, r.color, r.starts_at, r.ends_at,
-            ST_SetSRID(ST_GeomFromGeoJSON(r.position::text), 4326), r.source_id, r.media,
-            r.crossing
+            r.position, r.source_id, r.media, r.crossing
        from jsonb_to_recordset($2::jsonb) as r(id text, origin text, category text,
             title text, description text, producer_kind text, link text, severity integer,
             color text, starts_at timestamptz, ends_at timestamptz, position jsonb,
@@ -73,13 +72,13 @@ async function selectEvents(
       color: string | null
       starts_at: string
       ends_at: string | null
-      position: string | null
+      position: unknown
       source_id: string | null
       media: string[]
       crossing: unknown
     }>(
       `select id, origin, category, title, description, producer_kind, link, severity, color,
-              starts_at, ends_at, ST_AsGeoJSON(position) as position, source_id, media, crossing
+              starts_at, ends_at, position, source_id, media, crossing
          from event where replay_id = $1 and ($2::text is null or id = $2)
         order by starts_at, id`,
       [replayId, eventId],
@@ -99,7 +98,7 @@ async function selectEvents(
       color: row.color,
       from: row.starts_at,
       to: row.ends_at,
-      position: row.position === null ? null : (JSON.parse(row.position) as unknown),
+      position: row.position,
       sourceId: row.source_id === null ? null : Number(row.source_id),
       media: row.media,
       crossing: row.crossing,
@@ -116,8 +115,7 @@ export async function insertManualEvent(
   const inserted = await db.query<{ id: string }>(
     `insert into event (replay_id, origin, category, title, description, producer_kind,
                         link, starts_at, ends_at, position, media)
-     values ($1, 'manual', 'field-report', $2, $3, $4, $5, $6, $7,
-             ST_SetSRID(ST_GeomFromGeoJSON($8), 4326), $9::text[])
+     values ($1, 'manual', 'field-report', $2, $3, $4, $5, $6, $7, $8::jsonb, $9::text[])
      returning id`,
     [
       replayId,
@@ -144,8 +142,7 @@ export async function updateManualEvent(
   await db.query(
     `update event
         set title = $3, description = $4, producer_kind = $5, link = $6, starts_at = $7,
-            ends_at = $8, position = ST_SetSRID(ST_GeomFromGeoJSON($9), 4326),
-            media = $10::text[]
+            ends_at = $8, position = $9::jsonb, media = $10::text[]
       where replay_id = $1 and id = $2 and origin = 'manual'`,
     [
       replayId,

@@ -40,12 +40,10 @@ export function openPostgresCatalog(options: PostgresCatalogOptions): PostgresCa
     async create(identity, about = {}): Promise<{ id: string; store: ReplayStore }> {
       const extent = identity.extent
       const created = await pool.query<{ id: string }>(
-        `insert into replay (label, extent, territory, period_from, period_to, created_at,
-                             updated_at, state, description, phenomenon, severity)
-         values ($1,
-                 case when $2::double precision is null then null
-                      else ST_MakeEnvelope($2, $3, $4, $5, 4326) end,
-                 $6, $7, $8, now(), now(), 'running', $9, $10, $11)
+        `insert into replay (label, min_lon, min_lat, max_lon, max_lat, territory, period_from,
+                             period_to, created_at, updated_at, state, description, phenomenon,
+                             severity)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, now(), now(), 'running', $9, $10, $11)
          returning id`,
         [
           identity.label,

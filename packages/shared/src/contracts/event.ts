@@ -44,8 +44,8 @@ function isClosed(ring: Vertex[]): boolean {
 }
 
 /**
- * Whether a closed ring has an area, which being closed does not ensure: PostGIS
- * stores a flat ring as a geometry the map never shows. Shared so the form
+ * Whether a closed ring has an area, which being closed does not ensure: a flat
+ * ring would be stored, and the map would never show it. Shared so the form
  * judges a traced area as the API will.
  */
 export function enclosesSomething(ring: readonly Vertex[]): boolean {

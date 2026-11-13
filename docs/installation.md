@@ -6,7 +6,7 @@
 |---|---|
 | Node.js | **24 ou plus récent** — `fetch`, `parseArgs` et `--env-file` viennent du runtime |
 | npm | Les paquets sont des *workspaces* npm : une seule installation, à la racine |
-| PostgreSQL | **14 ou plus récent**, avec l'extension **PostGIS** : voir [la base de données](#la-base-de-données) |
+| PostgreSQL | **14 ou plus récent**, sans extension : voir [la base de données](#la-base-de-données) |
 | Docker et Docker Compose | Facultatifs : pour la base de développement, et pour le déploiement par conteneurs |
 
 Rien n'est compilé côté serveur : l'API et le worker s'exécutent par `tsx`,
@@ -22,7 +22,6 @@ parcours Docker fournit la sienne, qui les remplit déjà.
 | Exigence | Détail |
 |---|---|
 | Version | PostgreSQL **14 ou plus récent** |
-| PostGIS | Le paquet installé sur le serveur, et l'extension activée dans la base par un superutilisateur : `create extension postgis`. Sans elle, le schéma tente de l'activer lui-même, ce qui demande d'être superutilisateur |
 | Droits du compte | Créer des tables et des index dans le schéma `public`. Depuis PostgreSQL 15, seul le propriétaire de la base le peut par défaut : le plus simple est que le compte de l'application soit propriétaire de sa base |
 | Encodage | UTF-8, l'encodage par défaut |
 
@@ -33,18 +32,16 @@ vérifie qu'aucun nom n'y est déjà pris :
   `source`, `threshold`, `measure`, `measured_station`, `event`,
   `webcam_image`, `radar_series`, `radar_frame` et `session` ;
 - la table `schema_migration`, registre de ce qui a été appliqué ;
-- la table `spatial_ref_sys`, que PostGIS crée en s'activant ;
-- les index `measure_by_source`, `event_by_start` et `source_position`.
+- les index `measure_by_source` et `event_by_start`.
 
 **Une base réservée à l'application est recommandée**, sur un serveur existant
 ou non : ces noms sont génériques, et une base seule se sauvegarde et se
 restaure sans toucher aux autres. Sur un serveur existant, son administrateur la
-crée en trois commandes :
+crée en deux commandes :
 
 ```bash
 sudo -u postgres createuser --pwprompt smmarchives
 sudo -u postgres createdb --owner smmarchives smmarchives
-sudo -u postgres psql -d smmarchives -c 'create extension postgis'
 ```
 
 La base se sauvegarde avec le répertoire des médias : voir
@@ -56,7 +53,7 @@ En développement, seul le service `db` de `docker-compose.yml` est lancé :
 
 | Élément | Valeur |
 |---|---|
-| Image | `imresamu/postgis:17-3.5-alpine` — un build multi-architecture, l'image officielle n'étant publiée qu'en amd64 |
+| Image | `postgres:17-alpine`, l'image officielle |
 | Compte, mot de passe, base | `DB_USER`, `DB_PASSWORD`, `DB_NAME` |
 | Port publié | `DB_PORT`, par défaut `5432`, sur `127.0.0.1` seulement |
 | Volume | `db`, sur le répertoire de données de PostgreSQL |
@@ -65,7 +62,7 @@ En développement, seul le service `db` de `docker-compose.yml` est lancé :
 L'API et le worker tournent alors sur l'hôte. Les autres services du fichier
 servent au [déploiement](#déployer-avec-docker).
 
-Un PostgreSQL 14 ou plus récent avec PostGIS déjà installé sur la machine
+Un PostgreSQL 14 ou plus récent déjà installé sur la machine
 convient aussi : il suffit que `DATABASE_URL` le désigne, et
 `docker compose up -d db` est alors inutile.
 
@@ -322,7 +319,7 @@ Prérequis sur l'hôte cible :
   est décrite pas à pas dans [`lancer-sans-docker.md`](lancer-sans-docker.md) ;
 - un reverse proxy HTTPS, avec nom de domaine et certificat ;
 - un volume persistant pour les médias et les rasters ;
-- une base PostgreSQL avec l'extension PostGIS.
+- une base PostgreSQL 14 ou plus récent.
 
 ### Dimensionnement du stockage
 

@@ -17,8 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        # The image docker-compose.yml runs, so the suites see the same PostGIS.
-        image: imresamu/postgis:17-3.5-alpine
+        # The image docker-compose.yml runs, so the suites see the same PostgreSQL.
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: smmarchives
           POSTGRES_PASSWORD: smmarchives

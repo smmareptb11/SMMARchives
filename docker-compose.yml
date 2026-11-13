@@ -7,10 +7,7 @@ name: smmarchives
 
 services:
   db:
-    # Le build multi-architecture de PostGIS : l'image `postgis/postgis` n'est
-    # publiée qu'en amd64, et une machine de développement Apple Silicon ne peut
-    # pas la lancer sans émulation.
-    image: imresamu/postgis:17-3.5-alpine
+    image: postgres:17-alpine
     # Les identifiants se règlent dans `.env` ; vides, ils valent `smmarchives`.
     # PostgreSQL ne les applique qu'à la création du volume : les changer
     # ensuite n'a aucun effet tant que le volume `db` existe.

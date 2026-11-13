@@ -11,7 +11,7 @@ document en est le chemin pas à pas.
 ## Prérequis
 
 - Debian 12, avec un accès à Internet pour les paquets.
-- Une base PostgreSQL 14 ou plus récent avec PostGIS, déjà en place ou à
+- Une base PostgreSQL 14 ou plus récent, déjà en place ou à
   installer à l'étape 2 : ses exigences sont dans
   [les prérequis de la base](installation.md#la-base-de-données).
 - Un reverse proxy HTTPS devant le serveur, avec nom de domaine et certificat.
@@ -38,28 +38,24 @@ node --version          # v24.…
 
 L'application n'a besoin que de l'adresse d'une base qui remplit
 [ses prérequis](installation.md#la-base-de-données) : PostgreSQL 14 ou plus
-récent, PostGIS activé, et un compte qui peut y créer des tables.
+récent, et un compte qui peut y créer des tables.
 
 **Vous avez déjà un serveur PostgreSQL** : demandez à son administrateur une
 base qui remplit ces prérequis, et son adresse. Passez à l'étape 3.
 
-**Vous n'en avez pas** : installez-en un sur ce serveur. PostgreSQL 17 et
-PostGIS viennent du dépôt de l'éditeur ; le script demande une confirmation.
+**Vous n'en avez pas** : installez-en un sur ce serveur. Celui de Debian 12,
+PostgreSQL 15, suffit.
 
 ```bash
-sudo apt install -y postgresql-common
-sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
-sudo apt install -y postgresql-17 postgresql-17-postgis-3
+sudo apt install -y postgresql
 ```
 
 Puis créez un compte et une base au nom de l'application. Le compte est
-propriétaire de sa base, et PostGIS est activé par le superutilisateur : le
-compte n'a pas besoin de l'être.
+propriétaire de sa base, sans être superutilisateur.
 
 ```bash
 sudo -u postgres createuser --pwprompt smmarchives   # un mot de passe en lettres et chiffres
 sudo -u postgres createdb --owner smmarchives smmarchives
-sudo -u postgres psql -d smmarchives -c 'create extension postgis'
 ```
 
 L'adresse de cette base est
@@ -234,7 +230,6 @@ sudo systemctl restart smmarchives-api
 
 | Symptôme | Cause et correction |
 |---|---|
-| `npm run migrate` : `permission denied to create extension` | PostGIS n'est pas activé dans la base : son administrateur l'active, avec le superutilisateur (voir [les prérequis de la base](installation.md#la-base-de-données)) |
 | `npm run migrate` : `permission denied for schema public` | Le compte de `DATABASE_URL` ne peut pas créer de tables : depuis PostgreSQL 15, seul le propriétaire de la base le peut par défaut. Voir [les prérequis de la base](installation.md#la-base-de-données) |
 | `npm run migrate` : `password authentication failed` | Le mot de passe de `DATABASE_URL` n'est pas celui du compte de la base |
 | L'API redémarre en boucle | `journalctl -u smmarchives-api -n 20` : la validation de la configuration nomme la variable manquante ou invalide |

@@ -15,11 +15,9 @@ const AQUASYS = ['hydro', 'rain-gauge']
 
 const INSERT = `
   insert into source (replay_id, family, external_id, code, name, comment, town_code,
-                      category, altitude, position, quantities, extra)
+                      category, altitude, lon, lat, quantities, extra)
   select $1, r.family, r.external_id, r.code, r.name, r.comment, r.town_code, r.category,
-         r.altitude,
-         case when r.lon is null then null else ST_SetSRID(ST_MakePoint(r.lon, r.lat), 4326) end,
-         r.quantities, r.extra
+         r.altitude, r.lon, r.lat, r.quantities, r.extra
     from jsonb_to_recordset($2::jsonb) as r(family text, external_id text, code text,
          name text, comment text, town_code text, category text, altitude double precision,
          lon double precision, lat double precision, quantities jsonb, extra jsonb)`
@@ -42,7 +40,7 @@ type SourceInsert = {
 
 const SELECT = `
   select family, external_id, code, name, comment, town_code, category, altitude,
-         ST_X(position) as lon, ST_Y(position) as lat, quantities, extra
+         lon, lat, quantities, extra
     from source where replay_id = $1 and family = any($2::text[])`
 
 type SourceRow = {

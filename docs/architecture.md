@@ -1,9 +1,9 @@
 # Architecture
 
 SMMARchives se compose d'une interface web, d'une API, d'une construction de
-rejeu lancée par l'API, et d'un stockage : une base PostgreSQL avec PostGIS pour
-les données, un répertoire pour les images. Le code est réparti en workspaces
-npm sous `packages/`.
+rejeu lancée par l'API, et d'un stockage : une base PostgreSQL pour les
+données, un répertoire pour les images. Le code est réparti en workspaces npm
+sous `packages/`.
 
 ## Vue d'ensemble
 
@@ -16,7 +16,7 @@ flowchart LR
     web["Interface<br/>React · MapLibre · uPlot"]
     api["API<br/>Node · Express"]
     build["Construction d'un rejeu<br/>processus lancé par l'API"]
-    db[("PostgreSQL + PostGIS<br/>données des rejeux")]
+    db[("PostgreSQL<br/>données des rejeux")]
     media[("Répertoire des médias<br/>images copiées")]
   end
 

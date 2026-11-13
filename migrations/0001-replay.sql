@@ -3,13 +3,15 @@
 -- values already checked against their contract, and a shared contract must not
 -- pay a migration for each value it gains.
 
-create extension if not exists postgis;
-
 create table replay (
   id            uuid primary key default gen_random_uuid(),
   label         text,
-  -- Null is the whole SMMAR fleet, which is the territory's own extent.
-  extent        geometry(Polygon, 4326),
+  -- In WGS84 degrees. Null is the whole SMMAR fleet, which is the territory's
+  -- own extent.
+  min_lon       double precision,
+  min_lat       double precision,
+  max_lon       double precision,
+  max_lat       double precision,
   -- The basin union the extent was framed on. Null when no union names it.
   territory     text,
   -- What the administrator said of it on constituting it, each optional and
@@ -37,7 +39,9 @@ create table replay (
   -- The fleet a replay rests on, per family, as the lane that collected it
   -- counted it.
   fleet         jsonb,
-  check (period_from < period_to)
+  check (period_from < period_to),
+  check ((min_lon is null and min_lat is null and max_lon is null and max_lat is null)
+      or (min_lon < max_lon and min_lat < max_lat))
 );
 
 create table replay_lane (
@@ -86,12 +90,15 @@ create table source (
   town_code            text,
   category             text,
   altitude             double precision,
-  position             geometry(Point, 4326),
+  -- In WGS84 degrees.
+  lon                  double precision,
+  lat                  double precision,
   quantities           jsonb,
   -- What one family has and the others do not: a webcam's commune, its url and
   -- whether it is operational. Columns would be null on every other row.
   extra                jsonb,
-  primary key (replay_id, family, external_id)
+  primary key (replay_id, family, external_id),
+  check ((lon is null) = (lat is null))
 );
 
 create table threshold (
@@ -146,8 +153,8 @@ create table event (
   starts_at     timestamptz not null,
   -- Null is a point in time; a value means it stayed active until then.
   ends_at       timestamptz,
-  -- A point or an area: a flooded field is not a spot.
-  position      geometry(Geometry, 4326),
+  -- A GeoJSON point or polygon, in WGS84: a flooded field is not a spot.
+  position      jsonb,
   -- A station of the hydro fleet, with no family beside it: only a crossing
   -- names a source, and a crossing joins that fleet alone.
   source_id     text,
@@ -195,7 +202,6 @@ create table radar_frame (
 
 create index measure_by_source on measure (replay_id, source_id, at);
 create index event_by_start on event (replay_id, starts_at);
-create index source_position on source using gist (position);
 
 -- One row per signed-in browser. The token stays in the cookie: what is kept
 -- is its digest keyed by the session secret, so a copy of this table opens
