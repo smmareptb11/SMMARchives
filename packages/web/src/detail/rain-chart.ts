@@ -41,7 +41,7 @@ export function statesAt(steps: readonly Step[], at: Cursor): BarState[] {
  */
 const HEADROOM = 1.1
 
-/** What a window of the chart shows, in the seconds uPlot counts. */
+/** What a window of the chart shows. */
 export type Framed = {
   /** The rain summed measure by measure from the first inside the window; nothing outside it. */
   totals: (number | null)[]
@@ -55,7 +55,8 @@ export type Framed = {
  * The running total over a window, from its first measure, and the tops of both
  * scales, as the Acycliq widget works them out; one millimetre when the window
  * holds no rain. A bar counts towards its scale wherever it crosses the window:
- * a daily measure covers a whole window of six hours.
+ * a daily measure covers a whole window of six hours. The window is in the
+ * seconds uPlot counts.
  */
 export function framedIn(steps: readonly Step[], window: { min: number; max: number }): Framed {
   const totals: (number | null)[] = []

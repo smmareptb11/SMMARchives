@@ -122,7 +122,8 @@ const EPOCHS = new Map<Instant, number>()
 
 /**
  * An instant as milliseconds since the epoch, read once per instant: the map and
- * the history ask it of every event on every frame.
+ * the history ask it of every event on every frame. The cache keeps the events'
+ * instants of every replay the tab opens, a few hundred each.
  */
 export function epochOf(instant: Instant): number {
   let epoch = EPOCHS.get(instant)

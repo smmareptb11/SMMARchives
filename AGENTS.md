@@ -135,7 +135,8 @@ data, where a replay is frozen.
   from a frame that is gone. A deliberate omission carries its reason after
   `--`, and is one of three kinds: a memoised member of an object rebuilt on
   every render; the fields read rather than the record holding them; a value
-  read once to draw a first frame. Read `useCursor`'s comment before adding one.
+  read once to draw a first frame. The three in `ReplayScreen.tsx`,
+  `useReplayContent.ts` and `detail/StationChart.tsx` show the form.
 
 ## Rules
 

@@ -22,10 +22,9 @@ const NO_DOUBLE_ASSERTION = [
 ].join(' ')
 
 const NO_PIPE_ON_A_RESPONSE = [
-  '`.pipe()` neither forwards the source error nor destroys the source.',
-  'On a response path that means two failures already met here: a closed tab',
-  'leaked a descriptor per download, and a read that failed after the headers',
-  'were sent killed the process.',
+  '`.pipe()` neither forwards the source error nor destroys the source: on a',
+  'response, a closed tab leaks a descriptor per download, and a read that fails',
+  'after the headers are sent kills the process.',
   'Fix: `await pipeline(source, res)` from `node:stream/promises`, which',
   'propagates the error and destroys both ends.',
 ].join(' ')
