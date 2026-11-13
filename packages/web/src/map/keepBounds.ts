@@ -1,6 +1,12 @@
-import type { LngLatBounds, Map as MapLibreMap } from 'maplibre-gl'
-
 import { PHONE } from '../phone.ts'
+
+/** What keeping a map's places reads of it: its view, its size, two of its events. */
+export type Resizable<Bounds> = {
+  getBounds(): Bounds
+  getContainer(): { clientWidth: number; clientHeight: number }
+  on(event: 'moveend' | 'resize', listener: () => void): unknown
+  fitBounds(bounds: Bounds, options: { animate: boolean }): unknown
+}
 
 /** How long resizes in a row are read as one, the bounds held through them. */
 const SETTLE_MS = 300
@@ -14,9 +20,9 @@ const SETTLE_MS = 300
  * the hundred steps of a drag do not each widen the view a little. Not on a
  * phone, where the map is shown and hidden rather than resized.
  */
-export function keepBoundsOnResize(map: MapLibreMap): void {
+export function keepBoundsOnResize<Bounds>(map: Resizable<Bounds>): void {
   let before = map.getBounds()
-  let held: LngLatBounds | undefined
+  let held: Bounds | undefined
   let settling: ReturnType<typeof setTimeout> | undefined
 
   map.on('moveend', () => {
