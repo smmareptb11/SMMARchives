@@ -18,8 +18,10 @@ Le détail de chaque variable et de chaque contrainte est dans
 
 ## Installer les paquets
 
-Debian 12 ne fournit ni Node 24 ni PostgreSQL 17 : les deux viennent du dépôt
-de leur éditeur.
+Debian 12 ne fournit pas Node 24 : il vient du dépôt de son éditeur, comme le
+PostgreSQL 17 installé ici. L'application demande PostgreSQL 14 ou plus récent :
+un serveur qui en a déjà un, avec PostGIS, saute les deux lignes PostgreSQL
+ci-dessous et la vérification de sa version.
 
 ```bash
 sudo apt update

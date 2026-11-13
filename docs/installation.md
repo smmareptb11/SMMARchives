@@ -6,7 +6,7 @@
 |---|---|
 | Node.js | **24 ou plus récent** — `fetch`, `parseArgs` et `--env-file` viennent du runtime |
 | npm | Les paquets sont des *workspaces* npm : une seule installation, à la racine |
-| PostgreSQL | **17**, avec l'extension **PostGIS** |
+| PostgreSQL | **14 ou plus récent**, avec l'extension **PostGIS** |
 | Docker et Docker Compose | Facultatifs : pour la base de développement, et pour le déploiement par conteneurs |
 
 Rien n'est compilé côté serveur : l'API et le worker s'exécutent par `tsx`,
@@ -32,9 +32,9 @@ En développement, seul le service `db` de `docker-compose.yml` est lancé :
 L'API et le worker tournent alors sur l'hôte. Les autres services du fichier
 servent au [déploiement](#déployer-avec-docker).
 
-Un PostgreSQL 17 avec PostGIS déjà installé sur la machine convient aussi : il
-suffit que `DATABASE_URL` le désigne, et `docker compose up -d db` est alors
-inutile.
+Un PostgreSQL 14 ou plus récent avec PostGIS déjà installé sur la machine
+convient aussi : il suffit que `DATABASE_URL` le désigne, et
+`docker compose up -d db` est alors inutile.
 
 ### Choisir les identifiants
 

@@ -27,7 +27,7 @@ une nouvelle version extraite ailleurs retrouve les volumes de la précédente.
 ## Installation
 
 ```bash
-git clone git@github.com:smmareptb11/SMMARchives.git && cd SMMARchives
+git clone https://github.com/smmareptb11/SMMARchives.git && cd SMMARchives
 cp .env.sample .env
 docker compose build
 ```

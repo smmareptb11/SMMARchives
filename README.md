@@ -27,13 +27,17 @@ durée, même lorsque les systèmes sources n'exposent plus la période concern�
 
 - Création d'un rejeu sur une période et une emprise rectangulaire, limitée au
   territoire du SMMAR : tout le territoire par défaut, ou à partir du territoire
-  d'un syndicat de bassin
+  d'un syndicat de bassin ; type de phénomène, gravité et description
+  facultatifs, affichés dans la liste des rejeux
 - Suivi de la construction d'un rejeu en direct
 - Collecte automatisée des hauteurs d'eau, débits, cumuls de pluie et seuils
 - Détection automatique des franchissements de seuils
 - Récupération des images de webcams et des lames d'eau radar
 - Rejeu synchronisé carte et frise, piloté par une seule horloge
 - Graphiques par station et par pluviomètre
+- Saisie manuelle d'événements et de témoignages géolocalisés, avec photos, par
+  l'administrateur
+- Export en PNG de la carte et des graphiques, pour les supports de présentation
 - Liste des rejeux constitués, du plus récent au plus ancien
 - Connexion de l'administrateur par un mot de passe unique : seul l'administrateur
   voit les rejeux non publiés, en constitue et en modifie les événements
@@ -45,8 +49,8 @@ durée, même lorsque les systèmes sources n'exposent plus la période concern�
 
 ### Ce qui est prévu et n'est pas écrit
 
-La saisie manuelle d'événements et de témoignages géolocalisés, l'export
-d'images pour les supports de présentation.
+La modification d'un rejeu après sa création : son titre, son type de
+phénomène, sa gravité et sa description.
 
 ## Les sources de données
 
@@ -76,7 +80,8 @@ pas. Sur un serveur Debian sans Docker :
 [`lancer-sans-docker.md`](docs/lancer-sans-docker.md).
 
 Pour développer : Node.js 24 ou plus récent, et Docker Compose — ou un
-PostgreSQL 17 avec PostGIS déjà installé, à la place du service `db`.
+PostgreSQL 14 ou plus récent avec PostGIS déjà installé, à la place du service
+`db`.
 
 ```bash
 npm install
