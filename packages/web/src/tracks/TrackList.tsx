@@ -9,7 +9,7 @@ import { Lane } from './Lane.tsx'
 import { isShape, swatchOf } from '../map/symbols.ts'
 import type { Dot } from '../transport/dots.ts'
 import { useDrag } from '../transport/useDrag.ts'
-import { assumedIn, countOf, HATCHED, quietLabel } from './heading.ts'
+import { assumedIn, countOf, HATCHED, opensOnNothing, quietLabel } from './heading.ts'
 import { isQuiet, speaking, type Family } from './lanes.ts'
 import { ticksOf } from './ruler.ts'
 import { Ticks } from './Ticks.tsx'
@@ -94,33 +94,58 @@ function FamilyLanes({
   const lanes = quietShown ? asked : asked.filter((one) => !isQuiet(one))
   const quiet = family.lanes.filter(isQuiet).length
   const glyph = useGlyph(family.id)
+  const empty = opensOnNothing(family, lanes.length)
 
   return (
     <details
+      // Closed when there is nothing left to show, even if it was open when there was.
+      open={empty ? false : undefined}
       onToggle={(event) => {
         setOpen(event.currentTarget.open)
       }}
     >
-      <summary>
-        {family.label}{' '}
-        <Count family={family} shown={lanes.length} quiet={asked.length - lanes.length} />
+      <FamilyHeading
+        family={family}
+        shown={lanes.length}
+        quiet={asked.length - lanes.length}
+        empty={empty}
+      >
         {open && quiet > 0 ? (
           <QuietSwitch family={family.id} shown={quietShown} onChange={setQuietShown} />
         ) : null}
-      </summary>
+      </FamilyHeading>
       <FamilyNotes family={family} />
       {lanes.map((lane) => (
-        <Lane
-          key={lane.id}
-          lane={lane}
-          glyph={glyph}
-          replayId={replayId}
-          onOpenReport={onOpenReport}
-          onSeek={onSeek}
-          onOpenLane={onOpenLane}
-        />
+        <Lane key={lane.id} {...{ lane, glyph, replayId, onOpenReport, onSeek, onOpenLane }} />
       ))}
     </details>
+  )
+}
+
+/** A family's title and count, which does not open the family when it would show nothing. */
+function FamilyHeading({
+  family,
+  shown,
+  quiet,
+  empty,
+  children,
+}: {
+  family: Family
+  shown: number
+  quiet: number
+  empty: boolean
+  children: ReactNode
+}) {
+  return (
+    <summary
+      aria-disabled={empty || undefined}
+      onClick={(event) => {
+        if (empty) event.preventDefault()
+      }}
+    >
+      {family.label} <Count family={family} shown={shown} quiet={quiet} />
+      {children}
+    </summary>
   )
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { countOf } from '../src/tracks/heading.ts'
+import { countOf, opensOnNothing } from '../src/tracks/heading.ts'
 import {
   heldIn,
   isQuiet,
@@ -439,6 +439,28 @@ describe('the count in a family heading', () => {
     expect(
       stations === undefined ? undefined : countOf({ ...stations, id: 'structure' }, 0).said,
     ).toBe('aucun sur 3')
+  })
+
+  it('opens on nothing only when no lane is shown and no note stands in', () => {
+    if (stations === undefined) throw new Error('no station family')
+
+    expect(opensOnNothing(stations, 0)).toBe(true)
+    expect(opensOnNothing(stations, 1)).toBe(false)
+    // A rain gauge family without rain has no lane, and a note saying why.
+    expect(opensOnNothing({ ...stations, lanes: [], silent: 88 }, 0)).toBe(false)
+    expect(
+      opensOnNothing({ id: 'report', label: 'Événements saisis', lanes: [], count: 2 }, 0),
+    ).toBe(false)
+  })
+
+  /** A replay where every station measured and none crossed: the family is greyed, its switch out of reach. */
+  it('does not point at the switch of a family that shows nothing', () => {
+    const calm = lanesOf({ ...content, events: [], measuredStations: new Set([84, 85, 86]) })[0]
+
+    expect(calm === undefined ? undefined : countOf(calm, 0, 3)).toEqual({
+      said: 'aucune sur 3',
+      more: '3 stations n’ont franchi aucun seuil sur cette période.',
+    })
   })
 
   it('counts what agents reported in events rather than in lanes', () => {

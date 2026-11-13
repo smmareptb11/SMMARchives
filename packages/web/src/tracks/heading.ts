@@ -65,12 +65,23 @@ function shownSaid(family: Family, shown: number, held: number): string {
   return `${String(shown)} sur ${all}`
 }
 
+/**
+ * Whether opening the family would show nothing: no lane shown, the count
+ * saying « aucune », and no note standing in for the lanes. The ones that
+ * crossed nothing are not offered back on a family that shows none: a band of
+ * « aucun franchissement » tells nothing its count does not.
+ */
+export function opensOnNothing(family: Family, shown: number): boolean {
+  return shown === 0 && family.count === undefined && family.silent === undefined
+}
+
 /** Why lanes are held back, and how many crossings rest on a guessed threshold. */
 function unsaid(family: Family, held: number, shown: number, quiet: number): string[] {
   const notes: string[] = []
   if (held > 0) notes.push(heldSaid(family.id, held))
   if (family.id === 'webcam' && held > 0 && shown === 0) notes.push(RETENTION)
-  if (quiet > 0) notes.push(quietSaid(family.id, quiet))
+  // On a family showing nothing, the switch is out of reach: it opens no more.
+  if (quiet > 0) notes.push(quietSaid(family.id, quiet, shown > 0))
 
   const assumed = assumedIn(family)
   if (assumed > 0) notes.push(assumedSaid(assumed))
@@ -94,11 +105,14 @@ function heldSaid(family: string, held: number): string {
     : `${String(held)} ${several} n’ont aucune donnée sur cette période. Cochez « ${MUTES} » pour les afficher.`
 }
 
-function quietSaid(family: string, quiet: number): string {
+function quietSaid(family: string, quiet: number, offered: boolean): string {
   const [one, several] = SOURCES[family] ?? ['source', 'sources']
-  return quiet === 1
-    ? `1 ${one} n’a franchi aucun seuil sur cette période. Cochez « ${quietLabel(family)} » pour l’afficher.`
-    : `${String(quiet)} ${several} n’ont franchi aucun seuil sur cette période. Cochez « ${quietLabel(family)} » pour les afficher.`
+  const said =
+    quiet === 1
+      ? `1 ${one} n’a franchi aucun seuil sur cette période.`
+      : `${String(quiet)} ${several} n’ont franchi aucun seuil sur cette période.`
+  if (!offered) return said
+  return `${said} Cochez « ${quietLabel(family)} » pour ${quiet === 1 ? 'l’afficher' : 'les afficher'}.`
 }
 
 function assumedSaid(count: number): string {

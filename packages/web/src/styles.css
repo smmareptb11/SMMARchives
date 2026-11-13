@@ -408,6 +408,12 @@ main:has(> .replay) {
   color: var(--night-ink-2);
 }
 
+/* A family with nothing to show greys out and does not open; its count still says why. */
+.replay-montage summary[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.45;
+}
+
 /* A count with more to say on hovering it. */
 .replay-montage summary .count[title] {
   cursor: help;
