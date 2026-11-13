@@ -8,7 +8,7 @@ import { NEUTRAL } from './state.ts'
  * The families a reader can cut off: what agents reported, the three sources
  * drawn, and the two others.
  */
-export const FAMILIES = ['report', ...KINDS, 'webcam', 'territory'] as const
+const FAMILIES = ['report', ...KINDS, 'webcam', 'territory'] as const
 
 export type Family = (typeof FAMILIES)[number]
 

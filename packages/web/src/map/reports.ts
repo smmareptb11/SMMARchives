@@ -15,7 +15,7 @@ import type { Cursor } from '../transport/reading.ts'
 export const POINT_HELD_MS = 15 * 60_000
 
 /** Not yet reported, under way, or over: the map draws nothing, green, then grey. */
-export type Phase = 'before' | 'during' | 'after'
+type Phase = 'before' | 'during' | 'after'
 
 export function phaseAt(report: ReplayEvent, at: Cursor): Phase {
   const from = epochOf(report.from)
@@ -100,7 +100,7 @@ export function reportUnder(features: readonly DrawnFeature[]): string | undefin
 }
 
 /** What a click on the map is about: a report, a source, or nothing. */
-export type Clicked<Source> = { report: string } | { source: Source } | undefined
+type Clicked<Source> = { report: string } | { source: Source } | undefined
 
 /**
  * Which of what lies under a click the reader meant: a diamond before a source,

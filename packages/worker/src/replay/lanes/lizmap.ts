@@ -24,7 +24,7 @@ export type LizmapSource = {
   fetch: Fetch
 }
 
-export type LizmapLaneOptions = {
+type LizmapLaneOptions = {
   build: ReplayBuild
   source: LizmapSource
   identity: ReplayIdentity

@@ -31,7 +31,7 @@ const PREVIEW_MARGIN = 8
  */
 const RESTING_MS = 150
 
-export type LaneProps = {
+type LaneProps = {
   lane: LaneModel
   /** The mark of its family, before its name. */
   glyph?: ReactNode

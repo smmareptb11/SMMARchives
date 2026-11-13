@@ -2,7 +2,7 @@ import { SourceError } from '@smmarchives/shared'
 
 export type Fetch = typeof globalThis.fetch
 
-export type HttpClientOptions = {
+type HttpClientOptions = {
   /** Injected so tests never reach a live source. */
   fetch?: Fetch | undefined
   timeoutMs?: number

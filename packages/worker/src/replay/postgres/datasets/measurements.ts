@@ -99,7 +99,7 @@ export async function writeMeasures(db: Queryable, replayId: string, data: unkno
   }
 }
 
-export type MeasureFilter = {
+type MeasureFilter = {
   family?: string | undefined
   source?: string | undefined
   quantity?: string | undefined

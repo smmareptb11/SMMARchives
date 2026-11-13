@@ -89,9 +89,6 @@ export function amendmentSchemaFor(manifest: ReplayManifest, held: readonly stri
     .superRefine(withinReplay(manifest))
 }
 
-export type Report = z.infer<ReturnType<typeof reportSchemaFor>>
-export type Amendment = z.infer<ReturnType<typeof amendmentSchemaFor>>
-
 type Placed = { from: Instant; to: Instant | null; position: EventPosition | null }
 
 function withinReplay(manifest: ReplayManifest) {

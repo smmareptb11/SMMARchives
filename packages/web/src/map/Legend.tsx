@@ -11,7 +11,7 @@ import { silencesOf } from './silences.ts'
  * phone from the start: read once, so turning the phone folds nothing. Folded, it
  * gives its room back and leaves the families as they were set.
  */
-export function Legend({ children }: { children: React.ReactNode }) {
+function Legend({ children }: { children: React.ReactNode }) {
   const [folded, setFolded] = useState(() => matchMedia(PHONE).matches)
 
   return (

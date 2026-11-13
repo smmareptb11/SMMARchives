@@ -47,13 +47,13 @@ export type Report = {
   position: EventPosition | null
 }
 
-export type Field =
+type Field =
   'title' | 'producerKind' | 'from' | 'to' | 'description' | 'link' | 'position' | 'photos'
 
 export type Refusals = Partial<Record<Field, string>>
 
 /** What a photo is, as far as the rules go: a file without its bytes. */
-export type PhotoFile = { size: number; type: string }
+type PhotoFile = { size: number; type: string }
 
 /** A blank form, starting where the reading stands: that is the moment the agent stopped on. */
 export function draftAt(at: Instant): Draft {
@@ -230,7 +230,7 @@ const FIELDS: readonly Field[] = [
 ]
 
 /** How far after the start an end is first proposed. */
-export const PROPOSED_SPAN_MS = 15 * 60_000
+const PROPOSED_SPAN_MS = 15 * 60_000
 
 /**
  * The end as the agent clicks into it: when there is none, a quarter of an hour

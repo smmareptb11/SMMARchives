@@ -5,8 +5,4 @@
  * the same server, and two copies of that setup would drift — one learning a
  * new table the other keeps emptying by hand.
  */
-export {
-  closeDatabase,
-  freshDatabase,
-  withDatabase,
-} from '../../../worker/tests/support/database.ts'
+export { closeDatabase, freshDatabase } from '../../../worker/tests/support/database.ts'

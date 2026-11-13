@@ -21,10 +21,10 @@ import type { ReplayStore } from '@smmarchives/worker/replay/store.ts'
 
 import { createApp, type ApiOptions } from '../../src/app.ts'
 import type { BuildLauncher } from '../../src/builds.ts'
-import { closeDatabase, freshDatabase, withDatabase } from './database.ts'
+import { closeDatabase, freshDatabase } from './database.ts'
 import { anAuth, asAdmin } from './session.ts'
 
-export { closeDatabase, withDatabase }
+export { closeDatabase }
 
 /** What one test file needs: a schema of its own, and a volume of its own. */
 export type Api = {

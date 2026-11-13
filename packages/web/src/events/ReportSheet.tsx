@@ -7,7 +7,7 @@ import { api } from '../api.ts'
 import { describe } from '../problems.ts'
 import { formatInstant } from '../time.ts'
 
-export type ReportSheetProps = {
+type ReportSheetProps = {
   report: ReplayEvent
   replayId: string
   onEdit: () => void

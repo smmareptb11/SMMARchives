@@ -2,12 +2,12 @@ import type { AquasysConfig, SourceFamily } from '@smmarchives/shared'
 
 import { HttpClient, type Fetch, withQuery } from '../../http.ts'
 
-export type AquasysClientOptions = {
+type AquasysClientOptions = {
   config: AquasysConfig
   fetch?: Fetch | undefined
 }
 
-export type MeasureRequest = {
+type MeasureRequest = {
   sourceId: number
   dataType: number
   startEpochMilliseconds: number

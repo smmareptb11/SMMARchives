@@ -3,7 +3,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { KINDS, type Kind } from './sources.ts'
 
 /** The three sources of the mockup, and the diamond of what an agent reported. */
-export type Shape = Kind | 'report'
+type Shape = Kind | 'report'
 
 const SHAPES: readonly Shape[] = [...KINDS, 'report']
 
@@ -22,10 +22,10 @@ const SIZE: Record<Shape, [number, number]> = {
  * How thick the white ring is, in pixels: a width rather than a scale, which
  * would make it thicker around a diamond than around a square.
  */
-export const RING = 2.5
+const RING = 2.5
 
 /** How far the outline of a selected source reaches past its ring, in pixels. */
-export const OUTLINE = 3
+const OUTLINE = 3
 
 /**
  * How far a mitred corner reaches past a shape, in widths of what is drawn

@@ -68,7 +68,7 @@ export function checkedReplayId(res: Response, id: string): boolean {
   return false
 }
 
-export type ReplayRoutes = {
+type ReplayRoutes = {
   catalog: ReplayCatalog
   builds: BuildRegistry
 }

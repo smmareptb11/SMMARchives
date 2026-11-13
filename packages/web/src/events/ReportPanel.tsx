@@ -10,7 +10,7 @@ import { extentOf, type Placement } from './placing.ts'
 import { ReportForm } from './ReportForm.tsx'
 import { formKeyOf, type PanelControl } from './usePanel.ts'
 
-export type ReportPanelProps = {
+type ReportPanelProps = {
   manifest: ReplayManifest
   content: ReplayContent
   control: PanelControl

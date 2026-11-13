@@ -7,7 +7,7 @@ export function pipedPassword(input: string): string {
   return input.replace(/\r?\n$/, '')
 }
 
-export type Keyed = { typed: string } | { done: string } | { interrupted: true }
+type Keyed = { typed: string } | { done: string } | { interrupted: true }
 
 /**
  * What one key does to a password typed without echo. Erasing comes as DEL or

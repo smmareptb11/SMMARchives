@@ -29,7 +29,7 @@ const propertiesSchema = z.looseObject({
   fonctionnel: z.unknown().optional(),
 })
 
-export type FetchWebcamsOptions = {
+type FetchWebcamsOptions = {
   client: LizmapClient
   collector: ReportCollector
   /** Keeps only the cameras inside it, so images are fetched for those alone. */

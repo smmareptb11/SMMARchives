@@ -16,7 +16,7 @@ export type Pointed = { source: Kind; id: number } | { report: string } | { came
  * map hears it. Outside React's state, or a pointer sweeping down the lanes would
  * render the whole screen once per lane crossed.
  */
-export type Pointer = {
+type Pointer = {
   get: () => Pointed | undefined
   set: (pointed: Pointed | undefined) => void
   subscribe: (listener: (pointed: Pointed | undefined) => void) => () => void

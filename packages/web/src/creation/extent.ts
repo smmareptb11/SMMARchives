@@ -6,7 +6,7 @@ import {
 } from '@smmarchives/shared/contracts/geometry.ts'
 
 /** A pixel of the map, from its top-left corner. */
-export type Point = { x: number; y: number }
+type Point = { x: number; y: number }
 
 export type Size = { width: number; height: number }
 
@@ -14,7 +14,7 @@ export type Size = { width: number; height: number }
  * Where the rectangle sits in the view, each side a fraction of it: held on the
  * screen, so that zooming or moving the map is how the extent is set.
  */
-export type Frame = { left: number; top: number; right: number; bottom: number }
+type Frame = { left: number; top: number; right: number; bottom: number }
 
 export const FRAME: Frame = { left: 0.1, top: 0.1, right: 0.9, bottom: 0.9 }
 

@@ -19,7 +19,7 @@ const STATE_SAID: Record<string, string> = {
   failed: 'En échec',
 }
 
-export type BuildScreenProps = {
+type BuildScreenProps = {
   manifest: ReplayManifest
   journal: readonly JournalEntry[]
 }

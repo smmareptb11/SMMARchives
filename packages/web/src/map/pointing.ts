@@ -96,7 +96,7 @@ function addLit(
  * when a reader asks where it will be. A camera is a marker, which
  * `WebcamMarkers` lights up.
  */
-export function pointAt(
+function pointAt(
   map: MapLibreMap,
   pointed: Pointed | undefined,
   shown: Shown,

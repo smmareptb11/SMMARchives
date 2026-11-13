@@ -7,7 +7,7 @@ import { NAMES } from './families.ts'
 import type { Kind } from './sources.ts'
 
 /** What a marker says when it is clicked: a name, and a line or two under it. */
-export type Callout = { title: string; lines: string[] }
+type Callout = { title: string; lines: string[] }
 
 /** What a measuring source says: its name, and its family under it. */
 export function calloutOfSource(source: { kind: Kind; name: string }): Callout {

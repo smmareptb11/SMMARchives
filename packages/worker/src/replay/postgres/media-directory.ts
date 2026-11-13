@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 
 import { relativeMediaPath, type MediaBody, type ReplayStore, type StoredBlob } from '../store.ts'
 
-export type MediaDirectoryOptions = {
+type MediaDirectoryOptions = {
   /** The volume holding every replay's bytes, one directory each. */
   root: string
   replayId: string
@@ -82,7 +82,7 @@ async function openBlob(path: string): Promise<StoredBlob | undefined> {
  * through a file, `a.jpg/b`. A file that cannot be read is an error, not a
  * medium the lane never produced.
  */
-export function isAbsence(error: unknown): boolean {
+function isAbsence(error: unknown): boolean {
   const code = (error as NodeJS.ErrnoException).code
   return code === 'ENOENT' || code === 'ENOTDIR'
 }

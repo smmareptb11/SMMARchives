@@ -41,7 +41,7 @@ export type ReplayContent = {
 }
 
 /** Where something sits on the ruler, in percent of the period. */
-export type Place = { left: number; width: number }
+type Place = { left: number; width: number }
 
 export type Mark = Place & {
   /** When it happened, for a screen that says every hour in French time. */
@@ -118,9 +118,9 @@ export function placeOf(period: TimeWindow, from: Instant, to: Instant): Place {
 }
 
 /** The period as the arithmetic wants it, read once for a whole lane of marks. */
-export type Bounds = { start: Cursor; ends: Cursor; span: number }
+type Bounds = { start: Cursor; ends: Cursor; span: number }
 
-export function boundsOf(period: TimeWindow): Bounds {
+function boundsOf(period: TimeWindow): Bounds {
   const start = Date.parse(period.from)
   const ends = Date.parse(period.to)
 
@@ -128,7 +128,7 @@ export function boundsOf(period: TimeWindow): Bounds {
 }
 
 /** The same, from instants already read as numbers: a parc's bars are too many for dates. */
-export function placedIn(bounds: Bounds, from: Cursor, to: Cursor): Place {
+function placedIn(bounds: Bounds, from: Cursor, to: Cursor): Place {
   const place = spanIn(bounds, from, to)
 
   return { ...place, width: Math.max(place.width, A_POINT_IN_TIME) }
@@ -153,7 +153,7 @@ const SEAM_LEAST = 1
  * point in time, close bars would cover one another and draw rain nobody
  * measured; only a bar with no width at all is left for the lane to widen.
  */
-export function barPlaceIn(bounds: Bounds, step: { from: Cursor; at: Cursor }): Mark {
+function barPlaceIn(bounds: Bounds, step: { from: Cursor; at: Cursor }): Mark {
   const place = spanIn(bounds, step.from, step.at)
 
   return {

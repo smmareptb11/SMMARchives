@@ -4,7 +4,7 @@ import type { Request, Response } from 'express'
 
 import type { StoredBlob } from '@smmarchives/worker/replay/store.ts'
 
-export type BlobOptions = {
+type BlobOptions = {
   /** A media type, or an extension Express resolves into one. */
   contentType: string
   cacheControl: string

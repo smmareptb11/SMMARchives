@@ -27,7 +27,7 @@ const imageListSchema = z.looseObject({
   pictures: z.array(pictureSchema).default([]),
 })
 
-export type FetchImagesOptions = {
+type FetchImagesOptions = {
   client: LizmapClient
   collector: ReportCollector
   /** The cameras to read, the exploitable ones from the positions layer. */
@@ -37,7 +37,7 @@ export type FetchImagesOptions = {
   now?: Date | undefined
 }
 
-export type ImagesResult = {
+type ImagesResult = {
   images: WebcamImage[]
   /** The window predates Ceneau's retention: the absence is expected, not a defect. */
   beyondRetention: boolean

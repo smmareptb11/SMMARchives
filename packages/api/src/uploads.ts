@@ -10,12 +10,12 @@ export const PHOTO_COUNT_LIMIT = 10
 /** What the JSON route accepts, so the two ways of sending an event agree. */
 const EVENT_SIZE_LIMIT = 64 * 1024
 
-export type PhotoExtension = 'jpg' | 'png' | 'webp'
+type PhotoExtension = 'jpg' | 'png' | 'webp'
 
 /** Why a request was turned away, said in a way `detail` may carry. */
 export type Refusal = { status: 400 | 413 | 415; detail: string; refusals?: unknown }
 
-export type Accepted<T> = { report: T } | { refusals: unknown }
+type Accepted<T> = { report: T } | { refusals: unknown }
 
 export type ReportReader<T> = {
   /** Judges the event, which arrives before any photo is kept. */
@@ -27,7 +27,7 @@ export type ReportReader<T> = {
   keep: (photo: ReadableStream<Uint8Array>, extension: PhotoExtension) => Promise<string>
 }
 
-export type ReadReport<T> = { report: T; media: string[] } | Refusal
+type ReadReport<T> = { report: T; media: string[] } | Refusal
 
 const UNREADABLE: Refusal = { status: 400, detail: 'the form could not be read' }
 const MISSHAPEN: Refusal = { status: 400, detail: 'a form carries one event, then its photos' }

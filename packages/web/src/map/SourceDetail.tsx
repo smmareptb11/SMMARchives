@@ -22,7 +22,7 @@ function useAsked(asked: Asked | undefined, detail: Detail): void {
   }, [asked, detail])
 }
 
-export type SourceDetailProps = {
+type SourceDetailProps = {
   map: MapLibreMap | undefined
   content: ReplayContent
   replayId: string

@@ -13,7 +13,7 @@ import { z } from 'zod'
 import type { AquasysClient } from './client.ts'
 import { rawThresholdSchema, type RawThreshold } from './raw.ts'
 
-export type FetchThresholdsOptions = {
+type FetchThresholdsOptions = {
   client: AquasysClient
   collector: ReportCollector
   family: SourceFamily

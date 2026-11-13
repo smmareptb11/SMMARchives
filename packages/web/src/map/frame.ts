@@ -22,10 +22,10 @@ const OPENED: Record<Opened, { width: number; height: number }> = {
 const BELOW_LEAST = 80
 
 /** What opens over the map with what it goes to: a station's detail, or a report's sheet. */
-export type Opened = 'detail' | 'sheet'
+type Opened = 'detail' | 'sheet'
 
 /** Where the map goes to show an event: a spot it centres on, or an area it frames. */
-export type Frame =
+type Frame =
   | { kind: 'spot'; at: [number, number] }
   | { kind: 'area'; bounds: [[number, number], [number, number]] }
 

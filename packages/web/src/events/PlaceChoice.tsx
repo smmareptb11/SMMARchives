@@ -13,7 +13,7 @@ import {
   type Spot,
 } from './placing.ts'
 
-export type PlaceChoiceProps = {
+type PlaceChoiceProps = {
   extent: BoundingBox
   value: EventPosition | null
   onChange: (position: EventPosition | null) => void

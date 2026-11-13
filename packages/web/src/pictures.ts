@@ -61,7 +61,7 @@ export function viewAt(views: Views, code: string, at: Cursor): View | undefined
 }
 
 /** Where the view at an instant stands among a camera's views, and the ones either side. */
-export type Steps = {
+type Steps = {
   /** Its rank among the views of the period, from 0; nothing when it is not one of them. */
   index: number | undefined
   /** How many views the camera holds within the period. */

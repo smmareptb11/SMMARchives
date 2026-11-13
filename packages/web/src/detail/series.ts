@@ -7,7 +7,7 @@ import type { Threshold, ThresholdNature } from '@smmarchives/shared/contracts/t
 import { lastBefore, type Cursor } from '../transport/reading.ts'
 import type { Pill } from './pills.ts'
 
-export type Reading = { at: Cursor; value: number }
+type Reading = { at: Cursor; value: number }
 
 /**
  * A measured value as the interface writes it: in French, and to the centilitre

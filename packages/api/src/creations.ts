@@ -82,7 +82,7 @@ const creationSchema = z
     path: ['territory'],
   })
 
-export type CreationRoutes = {
+type CreationRoutes = {
   catalog: ReplayCatalog
   builds: BuildRegistry
   /** How long a creation waits to see whether the build could start at all. */

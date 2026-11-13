@@ -1,6 +1,6 @@
 import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
-export type Publication = {
+type Publication = {
   /** Whether everyone sees it, said beside the button. */
   status: string
   action: 'publish' | 'withdraw'

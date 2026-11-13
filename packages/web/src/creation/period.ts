@@ -2,7 +2,7 @@ import type { TimeWindow } from '@smmarchives/shared/clock.ts'
 
 import { toInstant } from '../time.ts'
 
-export type Period = { period: TimeWindow } | { refusal: string }
+type Period = { period: TimeWindow } | { refusal: string }
 
 /**
  * What the two fields amount to, or why they amount to nothing. Nothing here

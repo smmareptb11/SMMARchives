@@ -10,7 +10,7 @@ import {
 
 import { api, sessionLost } from './api.ts'
 
-export type Admin = {
+type Admin = {
   /** Undefined until the API has said, which a screen waits for rather than guess. */
   signedIn: boolean | undefined
   /** The API refused a request for want of the session this browser held. */

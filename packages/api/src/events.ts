@@ -21,7 +21,7 @@ import { checkedReplayId, openReplay } from './replays.ts'
 import { amendmentSchemaFor, reportSchemaFor } from './reports.ts'
 import { readReport, type Refusal, type ReportReader } from './uploads.ts'
 
-export type EventRoutes = {
+type EventRoutes = {
   catalog: ReplayCatalog
   builds: BuildRegistry
   /** Where a photo that could not be removed is told of, since the response says the change is done. */

@@ -23,7 +23,7 @@ type Source = {
   mute: boolean
 }
 
-export type SourcesOnTheMap = {
+type SourcesOnTheMap = {
   geojson: FeatureCollection<Point>
   /** Sources the replay holds without a position, which the map cannot draw. */
   placeless: number
@@ -232,6 +232,6 @@ function drawnSourceOf(feature: DrawnFeature): DrawnSource | undefined {
   return lon === undefined || lat === undefined ? undefined : { kind, id, name, at: [lon, lat] }
 }
 
-export function isKind(one: unknown): one is Kind {
+function isKind(one: unknown): one is Kind {
   return KINDS.includes(one as Kind)
 }

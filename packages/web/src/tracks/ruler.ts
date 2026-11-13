@@ -13,7 +13,7 @@ const LONGEST = 336
 const AT_MOST = 24
 
 /** A graduation of the ruler: where it stands, and what it names. */
-export type Tick = {
+type Tick = {
   at: Instant
   /** Where it stands, as a fraction of the period. */
   fraction: number

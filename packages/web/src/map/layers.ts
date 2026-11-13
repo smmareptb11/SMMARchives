@@ -45,7 +45,7 @@ const layersOf = (kind: Kind): string[] => [
   shadowLayerOf(kind),
 ]
 
-export const TERRITORY_LAYER = 'syndicats'
+const TERRITORY_LAYER = 'syndicats'
 const lineLayerOf = (layer: string): string => `${layer}-line`
 
 /**

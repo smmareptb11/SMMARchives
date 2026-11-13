@@ -28,7 +28,7 @@ import {
 } from './raw.ts'
 import { typeStations, type StationTyping } from './station-typing.ts'
 
-export type FetchReferentialOptions = {
+type FetchReferentialOptions = {
   client: AquasysClient
   collector: ReportCollector
   /**

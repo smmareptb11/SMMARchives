@@ -10,7 +10,7 @@ import {
   type ThresholdNature,
 } from '@smmarchives/shared'
 
-export type DeriveCrossingsOptions = {
+type DeriveCrossingsOptions = {
   /** Both families' measures, as the replay stored them. */
   measures: readonly Measure[]
   thresholds: readonly Threshold[]
@@ -19,7 +19,7 @@ export type DeriveCrossingsOptions = {
   collector: ReportCollector
 }
 
-export type CrossingsResult = {
+type CrossingsResult = {
   events: ReplayEvent[]
   /** Thresholds a nature excludes from producing anything, per nature. */
   setAside: Partial<Record<ThresholdNature, number>>

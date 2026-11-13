@@ -19,7 +19,7 @@ import { historyAt, inkOn, type HistoryEntry } from './history.ts'
 /** How near the foot of the list counts as being there, in pixels. */
 const AT_THE_FOOT = 30
 
-export type HistoryProps = {
+type HistoryProps = {
   /** Where reporting starts, in the heading. */
   action: ReactNode
   content: ReplayContent

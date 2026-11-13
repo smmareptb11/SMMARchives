@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import type { BoundingBox, ReplayIdentity } from '@smmarchives/shared'
 
 /** How a build ended, and what it said if it never got started. */
-export type BuildHandle = {
+type BuildHandle = {
   exited: Promise<{ code: number | null; stderr: string }>
 }
 

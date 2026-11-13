@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.ts'
 import { PHOTO_TYPES } from './draft.ts'
 
-export type PhotoPickerProps = {
+type PhotoPickerProps = {
   photos: File[]
   onChange: (photos: File[]) => void
   /** The photos an amended event already holds and keeps, by their paths. */

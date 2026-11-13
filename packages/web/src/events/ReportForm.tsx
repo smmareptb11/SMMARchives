@@ -22,7 +22,7 @@ import { PhotoPicker } from './PhotoPicker.tsx'
 import { PlaceChoice } from './PlaceChoice.tsx'
 import type { Placement } from './placing.ts'
 
-export type ReportFormProps = {
+type ReportFormProps = {
   replayId: string
   period: TimeWindow
   /** Where the event may be placed: the replay's extent, or the territory. */

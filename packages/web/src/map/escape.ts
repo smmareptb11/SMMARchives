@@ -1,5 +1,5 @@
 /** What the decision needs to know of the element a key was pressed on. */
-export type KeyTarget = {
+type KeyTarget = {
   tagName: string
   /** An input's `type`, lower case; absent on anything else. */
   type?: string | undefined

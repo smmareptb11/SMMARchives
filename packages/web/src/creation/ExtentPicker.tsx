@@ -16,7 +16,7 @@ import {
   type Picker,
 } from './viewfinder.ts'
 
-export type ExtentPickerProps = {
+type ExtentPickerProps = {
   onChange: Framed
   /** Whether the rectangle is moving, the extent it frames not yet told. */
   onMoving: (moving: boolean) => void

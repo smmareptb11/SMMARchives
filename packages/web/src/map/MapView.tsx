@@ -210,7 +210,7 @@ function says(held: Map<string, string>, next: Map<string, string>): boolean {
   return true
 }
 
-export type MapViewProps = {
+type MapViewProps = {
   content: ReplayContent
   colours: Map<string, string>
   replayId: string

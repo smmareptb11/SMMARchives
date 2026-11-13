@@ -9,10 +9,10 @@ import {
 import { HttpClient, type Fetch, withQuery } from '../../http.ts'
 
 /** The crisis project this application reads. Remote identifiers, not configuration. */
-export const REPOSITORY = 'crise'
-export const PROJECT = 'gestion_crise'
+const REPOSITORY = 'crise'
+const PROJECT = 'gestion_crise'
 
-export type LizmapClientOptions = {
+type LizmapClientOptions = {
   config: LizmapConfig
   fetch?: Fetch | undefined
 }

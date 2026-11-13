@@ -15,14 +15,14 @@ import {
 /** `<epoch in seconds>.png`, the only filename shape a delivery uses. */
 const FRAME_FILENAME = /^(\d+)\.png$/
 
-export type IndexOptions = {
+type IndexOptions = {
   root: string
   extent: BoundingBox
   collector: ReportCollector
   window: TimeWindow
 }
 
-export type IndexResult = {
+type IndexResult = {
   series: RadarRainfallSeries[]
   /** Entries that are not `<epoch>.png`; skipped rather than guessed at. */
   skipped: number

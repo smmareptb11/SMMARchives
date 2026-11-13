@@ -14,7 +14,7 @@ import {
 import type { AquasysClient } from './client.ts'
 import { MEASURE_COLUMN, rawMeasureRowsSchema } from './raw.ts'
 
-export type FetchMeasuresOptions = {
+type FetchMeasuresOptions = {
   client: AquasysClient
   collector: ReportCollector
   family: SourceFamily
@@ -23,7 +23,7 @@ export type FetchMeasuresOptions = {
   window: TimeWindow
 }
 
-export type Density = {
+type Density = {
   sourceId: number
   quantity: Quantity
   medianStepMinutes: number | null

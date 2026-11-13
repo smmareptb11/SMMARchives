@@ -8,12 +8,7 @@ import { collectRadarRainfall, type RadarRainfallSource } from './lanes/radar-ra
 import { copyLocalMedia } from './media.ts'
 import type { ReplayStore } from './store.ts'
 
-export type { BuildResult } from './build-state.ts'
-export type { AquasysSource } from './lanes/aquasys.ts'
-export type { LizmapSource } from './lanes/lizmap.ts'
-export type { RadarRainfallSource } from './lanes/radar-rainfall.ts'
-
-export type BuildOptions = {
+type BuildOptions = {
   identity: ReplayIdentity
   store: ReplayStore
   /** The sources to collect from: a lane runs when its source is given. */

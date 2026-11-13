@@ -36,7 +36,7 @@ async function refusalOf(response: Response): Promise<ApiError> {
   return new ApiError(await problemOf(response))
 }
 
-export type Creation = {
+type Creation = {
   label: string | null
   extent: BoundingBox | null
   /** The basin union the extent was framed on, absent when none names it. */

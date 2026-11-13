@@ -5,7 +5,7 @@ import {
   type ReportCollector,
 } from '@smmarchives/shared'
 
-export type PositionedRow = {
+type PositionedRow = {
   id: number
   x?: number | undefined
   y?: number | undefined

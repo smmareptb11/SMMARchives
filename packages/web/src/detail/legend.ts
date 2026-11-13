@@ -2,7 +2,7 @@ import { ASSUMED_NATURE } from '../tracks/crossing.ts'
 import { formatValue, type Rung } from './series.ts'
 
 /** One line of a chart's legend of thresholds. */
-export type LegendLine = { colour: string; said: string; why: string | undefined }
+type LegendLine = { colour: string; said: string; why: string | undefined }
 
 /**
  * The thresholds a chart rules, named: the highest first, as the chart reads

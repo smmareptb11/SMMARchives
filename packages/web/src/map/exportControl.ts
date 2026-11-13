@@ -15,7 +15,7 @@ const BASEMAP_SOURCE = 'openmaptiles'
  * draws, not the legend, windows or thumbnails laid over it. The name is asked on
  * each use, since the instant read moves between two clicks.
  */
-export function exportControl(name: () => string): IControl {
+function exportControl(name: () => string): IControl {
   const container = document.createElement('div')
   container.className = 'maplibregl-ctrl maplibregl-ctrl-group export'
   const button = document.createElement('button')

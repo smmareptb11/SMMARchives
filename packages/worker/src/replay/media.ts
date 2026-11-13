@@ -14,7 +14,7 @@ import {
 import { HttpClient, type Fetch } from '../http.ts'
 import type { ReplayStore } from './store.ts'
 
-export type CopyLocalMediaOptions = {
+type CopyLocalMediaOptions = {
   store: ReplayStore
   collector: ReportCollector
   /** The directory the paths are relative to. */
@@ -81,7 +81,7 @@ async function freezeOne(options: FreezeOneOptions): Promise<boolean> {
   }
 }
 
-export type DownloadMediaOptions = {
+type DownloadMediaOptions = {
   store: ReplayStore
   collector: ReportCollector
   images: readonly WebcamImage[]
@@ -94,7 +94,7 @@ export type DownloadMediaOptions = {
   concurrency?: number
 }
 
-export type DownloadResult = {
+type DownloadResult = {
   /** The same images, each pointing at its frozen copy, or at nothing. */
   images: FrozenWebcamImage[]
   tally: MediaTally

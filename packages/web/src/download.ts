@@ -37,13 +37,13 @@ export function mapExportName(label: string | null, at: Cursor): string {
 }
 
 /** How an entry of a legend is marked: the way the chart draws what it names. */
-export type Mark = 'dash' | 'line' | 'block'
+type Mark = 'dash' | 'line' | 'block'
 
 /** One entry of a legend drawn under a chart, faint where the chart draws it faint. */
 export type LegendEntry = { colour: string; text: string; mark: Mark; opacity?: number }
 
 /** Where an entry of a legend goes: its row, and how far from the left it starts. */
-export type Placed = { row: number; x: number }
+type Placed = { row: number; x: number }
 
 /**
  * The entries laid out in rows within the room given, each row centred as the
@@ -74,7 +74,7 @@ export function placeLegend(widths: readonly number[], room: number, gap: number
 }
 
 /** What is written around an image, beside the drawing itself. */
-export type Around = {
+type Around = {
   background?: string
   /** Device pixels per CSS pixel of the drawing, so the text is the size the page shows. */
   scale?: number

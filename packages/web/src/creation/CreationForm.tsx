@@ -10,7 +10,7 @@ import { ExtentPicker } from './ExtentPicker.tsx'
 import type { Framing } from './viewfinder.ts'
 import { endOnOpening, hoursBetween, lengthWarning, periodOf } from './period.ts'
 
-export type CreationFormProps = {
+type CreationFormProps = {
   onCreated: (manifest: ReplayManifest) => void
 }
 

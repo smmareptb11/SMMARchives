@@ -55,7 +55,7 @@ export function advanced(
  * The longest a frame may count for: a browser stops drawing a tab nobody looks
  * at, and the first frame back would count the whole absence.
  */
-export const LONGEST_FRAME_MS = 250
+const LONGEST_FRAME_MS = 250
 
 /** The time a frame accounts for, from the one before it. */
 export function frameElapsed(now: number, last: number): number {
@@ -63,7 +63,7 @@ export function frameElapsed(now: number, last: number): number {
 }
 
 /** How far a step of the keyboard moves the reading. */
-export const STEP_MS = 60 * 60_000
+const STEP_MS = 60 * 60_000
 
 /** The reading a step later, or earlier, held within the period. */
 export function stepped(period: TimeWindow, cursor: Cursor, direction: 1 | -1): Cursor {

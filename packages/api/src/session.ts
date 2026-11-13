@@ -17,7 +17,7 @@ export type Auth = {
   refusalDelayMs?: number | undefined
 }
 
-export const SESSION_COOKIE = 'smmarchives_session'
+const SESSION_COOKIE = 'smmarchives_session'
 const ADMIN = 'admin'
 
 /** A working day, and the evening of a flood. */

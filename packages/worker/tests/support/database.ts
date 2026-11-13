@@ -5,7 +5,7 @@ import { Pool } from 'pg'
 import { migrate } from '../../src/db/migrate.ts'
 import { openPool } from '../../src/db/pool.ts'
 
-export const MIGRATIONS = fileURLToPath(new URL('../../../../migrations', import.meta.url))
+const MIGRATIONS = fileURLToPath(new URL('../../../../migrations', import.meta.url))
 
 /**
  * The test database.
@@ -23,7 +23,7 @@ export const MIGRATIONS = fileURLToPath(new URL('../../../../migrations', import
  * `database-guard.test.ts` is what checks the list, and it needs no environment
  * to do it.
  */
-export function withDatabase(): string {
+function withDatabase(): string {
   const url = process.env.DATABASE_URL_TEST
   if (url === undefined || url === '') throw new Error(OUTSIDE_THE_DATABASE_SUITE)
   return url
