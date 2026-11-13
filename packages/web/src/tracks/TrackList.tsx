@@ -9,7 +9,7 @@ import { Lane } from './Lane.tsx'
 import { isShape, swatchOf } from '../map/symbols.ts'
 import type { Dot } from '../transport/dots.ts'
 import { useDrag } from '../transport/useDrag.ts'
-import { assumedIn, countOf, HATCHED, QUIET } from './heading.ts'
+import { assumedIn, countOf, HATCHED, quietLabel } from './heading.ts'
 import { isQuiet, speaking, type Family } from './lanes.ts'
 import { ticksOf } from './ruler.ts'
 import { Ticks } from './Ticks.tsx'
@@ -88,26 +88,27 @@ function FamilyLanes({
   onSeek: (fraction: number) => void
   onOpenLane: (named: Named) => void
 }) {
-  const [quietShown, setQuietShown] = useState(true)
+  const [open, setOpen] = useState(false)
+  const [quietShown, setQuietShown] = useState(false)
   const asked = mutesShown ? family.lanes : speaking(family)
   const lanes = quietShown ? asked : asked.filter((one) => !isQuiet(one))
   const quiet = family.lanes.filter(isQuiet).length
   const glyph = useGlyph(family.id)
 
   return (
-    <details>
+    <details
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open)
+      }}
+    >
       <summary>
         {family.label}{' '}
         <Count family={family} shown={lanes.length} quiet={asked.length - lanes.length} />
+        {open && quiet > 0 ? (
+          <QuietSwitch family={family.id} shown={quietShown} onChange={setQuietShown} />
+        ) : null}
       </summary>
-      <QuietSwitch count={quiet} shown={quietShown} onChange={setQuietShown} />
-      {family.silent === undefined ? null : <p className="note">{silenceOf(family.silent)}</p>}
-      {assumedIn(family) === 0 ? null : (
-        <p className="note assumed-note">
-          <span className="swatch" aria-hidden="true" />
-          {HATCHED}
-        </p>
-      )}
+      <FamilyNotes family={family} />
       {lanes.map((lane) => (
         <Lane
           key={lane.id}
@@ -120,6 +121,21 @@ function FamilyLanes({
         />
       ))}
     </details>
+  )
+}
+
+/** What a family says before its lanes: why it has none, and what its stripes mean. */
+function FamilyNotes({ family }: { family: Family }) {
+  return (
+    <>
+      {family.silent === undefined ? null : <p className="note">{silenceOf(family.silent)}</p>}
+      {assumedIn(family) === 0 ? null : (
+        <p className="note assumed-note">
+          <span className="swatch" aria-hidden="true" />
+          {HATCHED}
+        </p>
+      )}
+    </>
   )
 }
 
@@ -154,20 +170,26 @@ function silenceOf(count: number): string {
   return `${String(count)} pluviomètre${plural(count)} dans ce rejeu, sans piste : il ne porte aucune mesure de pluie.`
 }
 
-/** The switch on a family's lanes that crossed nothing, there only when it has some. */
+/**
+ * The switch on a family's lanes that crossed nothing, beside the count it
+ * changes. Inside the summary, so a click on it must not fold the family too.
+ */
 function QuietSwitch({
-  count,
+  family,
   shown,
   onChange,
 }: {
-  count: number
+  family: string
   shown: boolean
   onChange: (shown: boolean) => void
 }) {
-  if (count === 0) return null
-
   return (
-    <label className="note quiet-switch">
+    <label
+      className="quiet-switch"
+      onClick={(event) => {
+        event.stopPropagation()
+      }}
+    >
       <input
         type="checkbox"
         checked={shown}
@@ -175,7 +197,7 @@ function QuietSwitch({
           onChange(event.target.checked)
         }}
       />
-      {QUIET} ({count})
+      {quietLabel(family)}
     </label>
   )
 }

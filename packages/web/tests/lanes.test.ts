@@ -429,7 +429,7 @@ describe('the count in a family heading', () => {
       said: '1 / 3 pistes',
       more:
         '1 station n’a aucune donnée sur cette période. Cochez « Sources sans données » pour l’afficher. ' +
-        '1 station n’a franchi aucun seuil sur cette période. Cochez « Pistes sans franchissement » pour l’afficher.',
+        '1 station n’a franchi aucun seuil sur cette période. Cochez « Afficher les stations sans franchissement » pour l’afficher.',
     })
   })
 

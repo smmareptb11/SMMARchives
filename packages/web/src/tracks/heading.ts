@@ -15,8 +15,11 @@ const SOURCES: Record<string, [string, string]> = {
 
 const plural = (count: number) => (count > 1 ? 's' : '')
 
-/** What the switch on the lanes that crossed nothing is called, which the count points back at. */
-export const QUIET = 'Pistes sans franchissement'
+/** What a family's switch on its lanes that crossed nothing is called, which the count points back at. */
+export function quietLabel(family: string): string {
+  const [, several] = SOURCES[family] ?? ['source', 'sources']
+  return `Afficher les ${several} sans franchissement`
+}
 
 /**
  * What a family's heading counts, and what the count leaves unsaid.
@@ -83,8 +86,8 @@ function heldSaid(family: string, held: number): string {
 function quietSaid(family: string, quiet: number): string {
   const [one, several] = SOURCES[family] ?? ['source', 'sources']
   return quiet === 1
-    ? `1 ${one} n’a franchi aucun seuil sur cette période. Cochez « ${QUIET} » pour l’afficher.`
-    : `${String(quiet)} ${several} n’ont franchi aucun seuil sur cette période. Cochez « ${QUIET} » pour les afficher.`
+    ? `1 ${one} n’a franchi aucun seuil sur cette période. Cochez « ${quietLabel(family)} » pour l’afficher.`
+    : `${String(quiet)} ${several} n’ont franchi aucun seuil sur cette période. Cochez « ${quietLabel(family)} » pour les afficher.`
 }
 
 function assumedSaid(count: number): string {

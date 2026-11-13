@@ -423,9 +423,19 @@ main:has(> .replay) {
 .replay-montage .quiet-switch {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  width: fit-content;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  font-family: var(--body);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--night-ink-2);
   cursor: pointer;
+}
+
+.replay-montage .quiet-switch input {
+  margin: 0;
 }
 
 /*
@@ -2800,6 +2810,20 @@ button.danger {
     z-index: 5;
     box-sizing: border-box;
     width: 100cqi;
+  }
+
+  /* The switch beside the count leaves the title no room: it takes a line of its own. */
+  .replay-montage summary:has(.quiet-switch) {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 26px;
+    padding-block: 4px;
+    row-gap: 2px;
+  }
+
+  .replay-montage summary .quiet-switch {
+    flex-basis: 100%;
+    margin-left: 20px;
   }
 }
 
