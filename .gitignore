@@ -1,5 +1,4 @@
 /data
-/media
 .claude/
 node_modules/
 dist/
