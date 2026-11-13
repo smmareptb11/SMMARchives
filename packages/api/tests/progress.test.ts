@@ -44,8 +44,12 @@ function following(response: Response) {
      * The next `count` events, or fewer if the stream ends or falls quiet —
      * the latter being how a test asserts that nothing more is coming, rather
      * than waiting for the runner to give up on it.
+     *
+     * The wait is long when events are expected, since it ends on the last one
+     * and costs nothing then: a loaded machine slow between two polls must not
+     * read as a stream gone quiet. Asserting silence passes a short one.
      */
-    async take(count: number, quietMs = 200): Promise<string[]> {
+    async take(count: number, quietMs = 2_000): Promise<string[]> {
       const taken: string[] = []
       while (taken.length < count) {
         const next = arrived.shift()
@@ -84,6 +88,9 @@ async function aBuildUnderWay(journal: JournalEntry[] = []) {
     store: openPostgresStore({ pool: api.pool, replayId: manifest.id, mediaRoot: api.mediaRoot }),
   }
 }
+
+/** How long a stream must stay silent to count as having nothing more to say. */
+const SILENCE_MS = 200
 
 describe('following a build', () => {
   it('opens on the manifest, then carries the journal', async () => {
@@ -135,7 +142,7 @@ describe('following a build', () => {
       const stream = following(await fetch(`${base}/replays/${manifest.id}/progress`))
       await stream.take(2)
 
-      expect(await stream.take(1)).toEqual([])
+      expect(await stream.take(1, SILENCE_MS)).toEqual([])
       await stream.close()
     })
   })
@@ -181,7 +188,7 @@ describe('following a build', () => {
 
       // Nothing more: a replay that vanished says nothing about how its build
       // ended, and `end` would be an answer the stream does not have.
-      expect(await stream.take(1)).toEqual([])
+      expect(await stream.take(1, SILENCE_MS)).toEqual([])
       await stream.close()
     })
   })

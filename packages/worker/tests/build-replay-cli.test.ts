@@ -37,8 +37,7 @@ function run(
   extra: NodeJS.ProcessEnv = {},
   flags: string[] = [],
   { readerLeaves = false } = {},
-): Promise<{ code: number | null; took: number; stderr: string }> {
-  const started = Date.now()
+): Promise<{ code: number | null; lingered: number | undefined; stderr: string }> {
   const child = spawn(
     RUNNER,
     [SCRIPT, '--from=2019-10-22T00:00:00Z', '--to=2019-10-23T00:00:00Z', ...flags],
@@ -46,10 +45,19 @@ function run(
   )
 
   let stderr = ''
+  // When the command said why it stops: what follows is only its way out.
+  let said: number | undefined
   if (readerLeaves) child.stderr.destroy()
-  else child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString('utf8')))
+  else {
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+      said ??= /ConfigurationError/.test(stderr) ? Date.now() : undefined
+    })
+  }
   return new Promise((settle) => {
-    child.once('close', (code) => settle({ code, took: Date.now() - started, stderr }))
+    child.once('close', (code) => {
+      settle({ code, lingered: said === undefined ? undefined : Date.now() - said, stderr })
+    })
   })
 }
 
@@ -73,16 +81,17 @@ async function replays(): Promise<number> {
  */
 describe('the build command as the API spawns it', () => {
   it('gives its exit code back instead of holding the process open', async () => {
-    const { code, took, stderr } = await run()
+    const { code, lingered, stderr } = await run()
 
     // Which variable it names depends on the order the lanes are configured;
     // that it stopped on one of them is the point. Not the radar root, which
     // stops nothing.
     expect(stderr).toMatch(/ConfigurationError/)
     expect(code).toBe(1)
-    // Well under the ten seconds an idle connection pool would have held it:
-    // that pool is what this asserts the command closes.
-    expect(took).toBeLessThan(8_000)
+    // Timed from the error rather than from the spawn, which counts how long a
+    // cold `tsx` takes to start on the machine: an idle connection pool left
+    // open would hold the process ten seconds past it, whatever the machine.
+    expect(lingered).toBeLessThan(5_000)
   }, 30_000)
 
   it('writes the replay it creates to its own schema, not to the application', async () => {
@@ -212,9 +221,18 @@ describe('a build that stops before it settles', () => {
   it('leaves its replay failed when it is told to stop', async () => {
     const id = await aCreatedReplay()
     const { port } = silent.address() as AddressInfo
+    // Node itself, not the tsx command: that one relays a signal to the script,
+    // and answers 143 when the script takes more than 30 ms to acknowledge it.
     const child = spawn(
-      RUNNER,
-      [SCRIPT, '--from=2019-10-22T00:00:00Z', '--to=2019-10-23T00:00:00Z', `--id=${id}`],
+      process.execPath,
+      [
+        '--import',
+        'tsx',
+        SCRIPT,
+        '--from=2019-10-22T00:00:00Z',
+        '--to=2019-10-23T00:00:00Z',
+        `--id=${id}`,
+      ],
       {
         cwd: CHECKOUT,
         env: environment({
