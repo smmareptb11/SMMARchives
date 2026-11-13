@@ -9,6 +9,7 @@ import { BuildScreen } from './build/BuildScreen.tsx'
 import { EMPTY, followBuild, readThenFollow, type BuildState } from './build/progress.ts'
 import { CreationForm } from './creation/CreationForm.tsx'
 import { HomeScreen } from './home/HomeScreen.tsx'
+import { Loading } from './Loading.tsx'
 import {
   CREATION_PATH,
   goTo,
@@ -175,7 +176,7 @@ function Replaying({
   manifest: ReplayManifest | undefined
   build: BuildState
 }) {
-  if (manifest === undefined) return <p>Lecture du rejeu…</p>
+  if (manifest === undefined) return <Loading label="Chargement du rejeu…" />
 
   // What the stream published if it published anything, the manifest read at
   // the start otherwise: a replay already finished never opens a stream.

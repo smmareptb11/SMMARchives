@@ -47,6 +47,41 @@ main {
   padding: 1.5rem 1rem;
 }
 
+/* The band is 48px tall, and `main` pads 1.5rem above and below. */
+.loading {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  min-height: calc(100dvh - 48px - 3rem);
+  color: var(--ink);
+}
+
+.loading p {
+  margin: 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+
 /* The map wants the width a form's reading column is right to refuse. */
 main:has(.map) {
   max-width: 82rem;

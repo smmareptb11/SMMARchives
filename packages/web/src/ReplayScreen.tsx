@@ -17,6 +17,7 @@ import { useCursor, type Reading } from './transport/useCursor.ts'
 import { heldIn, lanesOf, type ReplayContent } from './tracks/lanes.ts'
 import { useBetweenColumnAndMap } from './useBetweenColumnAndMap.ts'
 import { ViewSwitch } from './ViewSwitch.tsx'
+import { Loading } from './Loading.tsx'
 import { Montage } from './Montage.tsx'
 import { useContent } from './useReplayContent.ts'
 
@@ -42,7 +43,7 @@ export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
   const [pointer] = useState(pointerOf)
 
   if (failure !== undefined) return <p className="refusal">{failure}</p>
-  if (content === undefined) return <p>Lecture du rejeu…</p>
+  if (content === undefined) return <Loading label="Chargement du rejeu…" />
 
   return (
     <PointerContext value={pointer}>
