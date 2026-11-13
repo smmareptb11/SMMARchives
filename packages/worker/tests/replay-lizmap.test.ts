@@ -105,7 +105,7 @@ async function build({
   const result = await buildReplay({
     identity: { id: replay.id, label: null, extent, period },
     store: wrap(replay.store),
-    lizmap: { client: new LizmapClient({ config: CONFIG, fetch, minIntervalMs: 0 }), fetch },
+    lizmap: { client: new LizmapClient({ config: CONFIG, fetch }), fetch },
     ...(withRadar
       ? {
           radarRainfall: {

@@ -11,7 +11,7 @@ const CONFIG = { baseUrl: 'https://crise.test' }
 function client(routes: Record<string, StubbedResponse>) {
   const fetch = fetchStub(routes)
   return {
-    client: new LizmapClient({ config: CONFIG, fetch, minIntervalMs: 0 }),
+    client: new LizmapClient({ config: CONFIG, fetch }),
     fetch,
     collector: new ReportCollector({}),
   }

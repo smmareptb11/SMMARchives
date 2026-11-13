@@ -7,7 +7,7 @@ const CONFIG = { baseUrl: 'https://crise.test' }
 
 function clientFor(response: StubbedResponse) {
   const fetch = fetchStub({ TYPENAME: response })
-  return { client: new LizmapClient({ config: CONFIG, fetch, minIntervalMs: 0 }), fetch }
+  return { client: new LizmapClient({ config: CONFIG, fetch }), fetch }
 }
 
 describe('reading a layer', () => {

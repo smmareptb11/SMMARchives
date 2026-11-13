@@ -35,7 +35,6 @@ function emptyFleet() {
     client: new AquasysClient({
       config: { baseUrl: 'https://api.test/api', token: 'jeton' },
       fetch: fetchStub({ '/hydrologicalStation/': { json: [] }, '/pluviometer/': { json: [] } }),
-      minIntervalMs: 0,
     }),
   }
 }
@@ -344,7 +343,6 @@ describe('a lane that cannot run', () => {
         client: new AquasysClient({
           config: { baseUrl: 'https://api.test/api', token: 'jeton' },
           fetch: fetchStub({ '/hydrologicalStation/': { status: 500 } }),
-          minIntervalMs: 0,
         }),
       },
     })

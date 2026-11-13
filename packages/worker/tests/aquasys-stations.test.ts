@@ -1,5 +1,5 @@
 import { ReportCollector, type BoundingBox, type Fallback } from '@smmarchives/shared'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { AquasysClient } from '../src/sources/aquasys/client.ts'
@@ -25,7 +25,7 @@ function collect(
 ) {
   const collector = new ReportCollector({})
   const fetch = fetchStub({ ...DETAILS, ...routes })
-  const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
+  const client = new AquasysClient({ config: CONFIG, fetch })
   return { client, collector, fetch, extent }
 }
 
@@ -194,7 +194,7 @@ describe('the networks a station belongs to', () => {
     const fetch = fetchStub({
       '/hydrologicalStation/networkLink': { json: fixture('aquasys/network-links.json') },
     })
-    const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
+    const client = new AquasysClient({ config: CONFIG, fetch })
     const links = z.array(rawNetworkLinkSchema).parse(await client.networkLinks())
 
     expect(links.filter((link) => link.idStation === 3).map((link) => link.idNetwork)).toEqual([
@@ -278,30 +278,5 @@ describe('a source that cannot be placed', () => {
         applied: 'source dropped, an extent was given',
       },
     ])
-  })
-})
-
-describe('the calls to Aquasys', () => {
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('are spaced by default, as a production service asks', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'Date'] })
-    const sent: number[] = []
-    const client = new AquasysClient({
-      config: CONFIG,
-      fetch: async () => {
-        sent.push(Date.now())
-        return Response.json([])
-      },
-    })
-
-    const both = Promise.all([client.networkLinks(), client.networkLinks()])
-    await vi.runAllTimersAsync()
-    await both
-
-    expect(sent).toHaveLength(2)
-    expect(sent[1]! - sent[0]!).toBeGreaterThanOrEqual(500)
   })
 })

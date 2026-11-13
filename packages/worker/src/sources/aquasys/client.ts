@@ -2,16 +2,9 @@ import type { AquasysConfig, SourceFamily } from '@smmarchives/shared'
 
 import { HttpClient, type Fetch, withQuery } from '../../http.ts'
 
-/**
- * Aquasys is a production service, and a whole fleet is several hundred calls:
- * they go one after another, never back to back.
- */
-const DEFAULT_MIN_INTERVAL_MS = 500
-
 export type AquasysClientOptions = {
   config: AquasysConfig
   fetch?: Fetch | undefined
-  minIntervalMs?: number
 }
 
 export type MeasureRequest = {
@@ -50,7 +43,6 @@ export class AquasysClient {
     this.#http = new HttpClient({
       fetch: options.fetch,
       headers: { Authorization: `Bearer ${options.config.token}` },
-      minIntervalMs: options.minIntervalMs ?? DEFAULT_MIN_INTERVAL_MS,
     })
     this.#routes = {
       hydro: {

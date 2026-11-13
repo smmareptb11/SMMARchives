@@ -7,13 +7,6 @@ export type HttpClientOptions = {
   fetch?: Fetch | undefined
   timeoutMs?: number
   headers?: Record<string, string>
-  /**
-   * Minimum delay between two requests.
-   *
-   * The SMMAR Lizmap is a crisis tool in production; its collectors space their
-   * calls rather than run flat out.
-   */
-  minIntervalMs?: number
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -22,14 +15,11 @@ export class HttpClient {
   readonly #fetch: Fetch
   readonly #timeoutMs: number
   readonly #headers: Record<string, string>
-  readonly #minIntervalMs: number
-  #nextAllowedAt = 0
 
   constructor(options: HttpClientOptions = {}) {
     this.#fetch = options.fetch ?? globalThis.fetch
     this.#timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
     this.#headers = options.headers ?? {}
-    this.#minIntervalMs = options.minIntervalMs ?? 0
   }
 
   async text(url: string, init: RequestInit = {}): Promise<string> {
@@ -60,8 +50,6 @@ export class HttpClient {
    * neither the status nor the body alone tells you what went wrong.
    */
   async response(url: string, init: RequestInit = {}): Promise<Response> {
-    await this.#waitForSlot()
-
     let response: Response
     try {
       response = await this.#fetch(url, {
@@ -81,14 +69,6 @@ export class HttpClient {
       })
     }
     return response
-  }
-
-  async #waitForSlot(): Promise<void> {
-    if (this.#minIntervalMs === 0) return
-
-    const wait = this.#nextAllowedAt - Date.now()
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
-    this.#nextAllowedAt = Date.now() + this.#minIntervalMs
   }
 }
 

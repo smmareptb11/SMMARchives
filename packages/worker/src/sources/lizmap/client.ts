@@ -12,16 +12,9 @@ import { HttpClient, type Fetch, withQuery } from '../../http.ts'
 export const REPOSITORY = 'crise'
 export const PROJECT = 'gestion_crise'
 
-/**
- * The Lizmap this reads is a crisis tool in production: requests stay spaced,
- * read-only, and low in volume.
- */
-const DEFAULT_MIN_INTERVAL_MS = 500
-
 export type LizmapClientOptions = {
   config: LizmapConfig
   fetch?: Fetch | undefined
-  minIntervalMs?: number
 }
 
 /** Addresses the SMMAR crisis Lizmap. */
@@ -31,10 +24,7 @@ export class LizmapClient {
 
   constructor(options: LizmapClientOptions) {
     this.#baseUrl = options.config.baseUrl
-    this.#http = new HttpClient({
-      fetch: options.fetch,
-      minIntervalMs: options.minIntervalMs ?? DEFAULT_MIN_INTERVAL_MS,
-    })
+    this.#http = new HttpClient({ fetch: options.fetch })
   }
 
   /**

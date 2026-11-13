@@ -23,7 +23,7 @@ async function collect(
 ) {
   const collector = new ReportCollector({})
   const fetch = fetchStub(routes)
-  const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
+  const client = new AquasysClient({ config: CONFIG, fetch })
   const result = await fetchMeasures({
     client,
     collector,
@@ -128,7 +128,7 @@ describe('the rain gauge path', () => {
     const fetch = fetchStub({
       '/pluviometer/chartMeasures': { json: [[4, 1, 1539561900000, 12.5, 12.5]] },
     })
-    const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
+    const client = new AquasysClient({ config: CONFIG, fetch })
 
     const { measures } = await fetchMeasures({
       client,
@@ -154,7 +154,7 @@ describe('the rain gauge path', () => {
   it('refuses a quantity the family does not carry rather than reading another', async () => {
     const collector = new ReportCollector({})
     const fetch = fetchStub({ '/pluviometer/chartMeasures': { json: [] } })
-    const client = new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 })
+    const client = new AquasysClient({ config: CONFIG, fetch })
 
     const { measures } = await fetchMeasures({
       client,
@@ -213,7 +213,6 @@ describe('the density a replay actually obtained', () => {
     const client = new AquasysClient({
       config: CONFIG,
       fetch: fetchStub({ '/chronic/measures': { json: LEVELS } }),
-      minIntervalMs: 0,
     })
     const { density } = await fetchMeasures({
       client,

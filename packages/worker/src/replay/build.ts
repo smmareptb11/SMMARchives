@@ -50,8 +50,7 @@ export async function buildReplay(options: BuildOptions): Promise<BuildResult> {
   await build.publish()
 
   // Lanes advance together because they read different places: one host, one
-  // volume. Each stays sequential inside, since a client spaces its own calls
-  // and that spacing is not concurrency-safe. `allSettled` rather than `all`:
+  // volume. `allSettled` rather than `all`:
   // the lanes catch their own failures, and a lane that threw anyway must not
   // take the other down with it.
   const radar = options.radarRainfall

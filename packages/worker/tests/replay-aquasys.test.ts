@@ -99,7 +99,7 @@ async function build({
     store: wrap(real),
     ...(sources === 'radar-rainfall'
       ? {}
-      : { aquasys: { client: new AquasysClient({ config: CONFIG, fetch, minIntervalMs: 0 }) } }),
+      : { aquasys: { client: new AquasysClient({ config: CONFIG, fetch }) } }),
     ...(sources === 'aquasys'
       ? {}
       : {
