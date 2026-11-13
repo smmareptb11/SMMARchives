@@ -13,6 +13,9 @@ const SOURCES: Record<string, [string, string]> = {
   webcam: ['webcam', 'webcams'],
 }
 
+/** The families whose sources are feminine, which « aucune » agrees with. */
+const FEMININE = new Set(['watercourse', 'webcam'])
+
 const plural = (count: number) => (count > 1 ? 's' : '')
 
 /** What a family's switch on its lanes that crossed nothing is called, which the count points back at. */
@@ -46,12 +49,20 @@ export function countOf(
   const notes = unsaid(family, held - quiet, shown, quiet)
 
   return {
-    said:
-      held === 0
-        ? `${String(shown)} piste${plural(shown)}`
-        : `${String(shown)} / ${String(family.lanes.length)} pistes`,
+    said: shownSaid(family, shown, held),
     more: notes.length === 0 ? undefined : notes.join(' '),
   }
+}
+
+/**
+ * How many sources the family shows, beside a title that already names them:
+ * the number alone when none is held back, out of how many when some are.
+ */
+function shownSaid(family: Family, shown: number, held: number): string {
+  const all = String(family.lanes.length)
+  if (held === 0) return all
+  if (shown === 0) return `${FEMININE.has(family.id) ? 'aucune' : 'aucun'} sur ${all}`
+  return `${String(shown)} sur ${all}`
 }
 
 /** Why lanes are held back, and how many crossings rest on a guessed threshold. */

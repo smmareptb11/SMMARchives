@@ -407,7 +407,7 @@ describe('the count in a family heading', () => {
 
   it('counts the lanes when none is held back', () => {
     expect(stations === undefined ? undefined : countOf(stations, 3)).toEqual({
-      said: '3 pistes',
+      said: '3',
       more: undefined,
     })
   })
@@ -417,7 +417,7 @@ describe('the count in a family heading', () => {
     const shown = stations === undefined ? 0 : speaking(stations).length
 
     expect(stations === undefined ? undefined : countOf(stations, shown)).toEqual({
-      said: '1 / 3 pistes',
+      said: '1 sur 3',
       more: '2 stations n’ont aucune donnée sur cette période. Cochez « Sources sans données » pour les afficher.',
     })
   })
@@ -426,11 +426,19 @@ describe('the count in a family heading', () => {
     const measured = lanesOf({ ...content, measuredStations: new Set([84, 85]) })[0]
 
     expect(measured === undefined ? undefined : countOf(measured, 1, 1)).toEqual({
-      said: '1 / 3 pistes',
+      said: '1 sur 3',
       more:
         '1 station n’a aucune donnée sur cette période. Cochez « Sources sans données » pour l’afficher. ' +
         '1 station n’a franchi aucun seuil sur cette période. Cochez « Afficher les stations sans franchissement » pour l’afficher.',
     })
+  })
+
+  /** A camera family of an old period shows none of its lanes: the images have expired. */
+  it('says none, agreed with what the family holds, when every lane is held back', () => {
+    expect(stations === undefined ? undefined : countOf(stations, 0).said).toBe('aucune sur 3')
+    expect(
+      stations === undefined ? undefined : countOf({ ...stations, id: 'structure' }, 0).said,
+    ).toBe('aucun sur 3')
   })
 
   it('counts what agents reported in events rather than in lanes', () => {

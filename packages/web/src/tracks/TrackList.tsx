@@ -157,8 +157,6 @@ function useGlyph(family: string): ReactNode {
   }, [family])
 }
 
-const plural = (count: number) => (count > 1 ? 's' : '')
-
 /**
  * What a family holds when it holds no lane at all.
  *
@@ -167,7 +165,9 @@ const plural = (count: number) => (count > 1 ? 's' : '')
  * anything on it or not, and the switch is what decides whether it is drawn.
  */
 function silenceOf(count: number): string {
-  return `${String(count)} pluviomètre${plural(count)} dans ce rejeu, sans piste : il ne porte aucune mesure de pluie.`
+  return count === 1
+    ? '1 pluviomètre dans ce rejeu, il ne porte aucune mesure de pluie.'
+    : `${String(count)} pluviomètres dans ce rejeu, aucun ne porte de mesure de pluie.`
 }
 
 /**

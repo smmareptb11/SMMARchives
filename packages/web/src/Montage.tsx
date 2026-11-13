@@ -143,7 +143,7 @@ function Player({
         onClick={sheet.toggle}
       >
         <span className="grip" aria-hidden="true" />
-        {sheet.open ? 'Masquer les pistes' : 'Afficher les pistes'}
+        {sheet.open ? 'Masquer la chronologie' : 'Afficher la chronologie'}
       </button>
       <Transport
         reading={{ ...reading, toNext: next, toPrevious: previous }}
