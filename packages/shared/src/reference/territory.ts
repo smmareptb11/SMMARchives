@@ -1,15 +1,5 @@
 import type { BoundingBox } from '../contracts/geometry.ts'
-
-/**
- * The rectangle around the perimeters of the SMMAR, read off the Lizmap layers
- * `perimetre_smmar` and `perimetre_syndicats`, which share it.
- */
-const PERIMETERS: BoundingBox = {
-  minLon: 1.797680218,
-  minLat: 42.533555008,
-  maxLon: 3.251962328,
-  maxLat: 43.472207966,
-}
+import { BASIN_BOUNDS } from './perimeters.ts'
 
 /**
  * How far past the perimeters the fleet reaches, in degrees: rain gauges watch
@@ -23,8 +13,8 @@ const FLEET_MARGIN = 0.15
  * Frozen rather than fetched, so refusing an extent depends on no service.
  */
 export const SMMAR_TERRITORY: BoundingBox = {
-  minLon: PERIMETERS.minLon - FLEET_MARGIN,
-  minLat: PERIMETERS.minLat - FLEET_MARGIN,
-  maxLon: PERIMETERS.maxLon + FLEET_MARGIN,
-  maxLat: PERIMETERS.maxLat + FLEET_MARGIN,
+  minLon: BASIN_BOUNDS.minLon - FLEET_MARGIN,
+  minLat: BASIN_BOUNDS.minLat - FLEET_MARGIN,
+  maxLon: BASIN_BOUNDS.maxLon + FLEET_MARGIN,
+  maxLat: BASIN_BOUNDS.maxLat + FLEET_MARGIN,
 }
