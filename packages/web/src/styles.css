@@ -1432,6 +1432,33 @@ textarea {
   background: #fff;
 }
 
+/*
+ * A form's list drawn alike in every browser: left to itself, each draws its
+ * own arrow, some of them against the border. The arrow is ours, with room.
+ */
+form select {
+  appearance: none;
+  padding-right: 2rem;
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%234a5a6a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 0.75rem center;
+  cursor: pointer;
+}
+
+form select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Nothing chosen yet: the placeholder reads as one, the choices as choices. */
+form select.unset {
+  color: var(--ink-2);
+}
+
+form select.unset option {
+  color: var(--ink);
+}
+
 .period {
   display: grid;
   gap: 0.75rem;

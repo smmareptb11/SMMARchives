@@ -128,7 +128,12 @@ function UnionSelect({ unions, value, disabled, onChange }: UnionSelectProps) {
   return (
     <label>
       Partir d’un syndicat
-      <select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+      <select
+        value={value}
+        className={value === '' ? 'unset' : undefined}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      >
         <option value="" disabled>
           Choisir un syndicat
         </option>

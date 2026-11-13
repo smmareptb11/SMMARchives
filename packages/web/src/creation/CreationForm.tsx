@@ -143,8 +143,12 @@ function ChoiceField<T extends string>({
       <span>
         {label} <small>facultatif</small>
       </span>
-      <select value={value ?? ''} onChange={(event) => onChange(event.target.value as T | '')}>
-        <option value="">—</option>
+      <select
+        value={value ?? ''}
+        className={value === undefined ? 'unset' : undefined}
+        onChange={(event) => onChange(event.target.value as T | '')}
+      >
+        <option value="">Non précisé</option>
         {choices.map((one) => (
           <option key={one.value} value={one.value}>
             {one.label}
