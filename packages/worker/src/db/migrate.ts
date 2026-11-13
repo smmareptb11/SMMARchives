@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import type { Pool, PoolClient } from 'pg'
 
-import { rolledBack } from './tx.ts'
+import { borrow, giveBack, rolledBack } from './tx.ts'
 
 /**
  * Applies the migrations the database has not seen yet, in name order.
@@ -18,7 +18,7 @@ import { rolledBack } from './tx.ts'
  * one database migrate side by side.
  */
 export async function migrate(pool: Pool, directory: string): Promise<string[]> {
-  const client = await pool.connect()
+  const client = await borrow(pool)
   let failed = false
   try {
     await client.query(`select pg_advisory_lock(hashtext('migrate ' || current_schema()))`)
@@ -33,7 +33,7 @@ export async function migrate(pool: Pool, directory: string): Promise<string[]> 
     if (!failed) {
       await client.query(`select pg_advisory_unlock(hashtext('migrate ' || current_schema()))`)
     }
-    client.release(failed)
+    giveBack(client, failed)
   }
 }
 

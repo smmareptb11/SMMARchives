@@ -17,7 +17,7 @@ export type Queryable = {
  * the insert must leave nothing rather than half of it.
  */
 export async function tx<T>(pool: Pool, work: (db: Queryable) => Promise<T>): Promise<T> {
-  const client = await pool.connect()
+  const client = await borrow(pool)
   let broken = false
   try {
     await client.query('begin')
@@ -28,9 +28,34 @@ export async function tx<T>(pool: Pool, work: (db: Queryable) => Promise<T>): Pr
     broken = !(await rolledBack(client))
     throw error
   } finally {
-    client.release(broken)
+    giveBack(client, broken)
   }
 }
+
+/**
+ * A connection taken from the pool, which losing does not end the process.
+ *
+ * The pool listens to a connection's errors only while it holds it: lent, a
+ * connection the server drops emits an `error` nobody hears, which Node raises
+ * as uncaught. The query in flight rejects with that same loss, and that is
+ * where it is handled; the listener only keeps it from being raised twice.
+ */
+export async function borrow(pool: Pool): Promise<PoolClient> {
+  const client = await pool.connect()
+  client.on('error', heardElsewhere)
+  return client
+}
+
+/**
+ * Hands a connection back, or destroys it when it is broken. A destroyed one
+ * keeps its listener: its socket may still report the loss after this.
+ */
+export function giveBack(client: PoolClient, broken: boolean): void {
+  if (!broken) client.off('error', heardElsewhere)
+  client.release(broken)
+}
+
+function heardElsewhere(): void {}
 
 /**
  * Rolls back, and answers whether it could.
