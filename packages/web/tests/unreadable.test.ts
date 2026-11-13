@@ -10,11 +10,15 @@ const NOT_FOUND = new ApiError({
   detail: 'no replay aa9282b7-908a-48bf-85b3-aaa9642c021c',
 })
 
+const problem = (status: number, detail: string) =>
+  new ApiError({ type: 'problem', title: 'Problem', status, detail })
+
 describe('a replay that cannot be shown', () => {
   it('may be unpublished to a stranger, who is offered to sign in', () => {
-    expect(unreadableReplay(NOT_FOUND, false)).toEqual({
-      said: 'Ce rejeu n’existe pas, ou il n’est pas public.',
+    expect(unreadableReplay(NOT_FOUND, false)).toMatchObject({
+      title: 'Ce rejeu n’est pas accessible',
       signIn: true,
+      retry: false,
     })
   })
 
@@ -22,31 +26,55 @@ describe('a replay that cannot be shown', () => {
     expect(unreadableReplay(NOT_FOUND, undefined)).toBeUndefined()
   })
 
-  it('does not exist, to the administrator', () => {
-    expect(unreadableReplay(NOT_FOUND, true)).toEqual({
-      said: 'Ce rejeu n’existe pas.',
+  it('does not exist, to the administrator, who is sent to the list', () => {
+    expect(unreadableReplay(NOT_FOUND, true)).toMatchObject({
+      title: 'Ce rejeu n’existe pas',
+      signIn: false,
+      retry: false,
+    })
+  })
+
+  /** An identifier the database never mints: the API's English sentence says why, the reader is told where. */
+  it('is a wrong address when its identifier is malformed, and says nothing of the API', () => {
+    const malformed = unreadableReplay(
+      problem(400, 'must be the identifier the database minted'),
+      true,
+    )
+
+    expect(malformed).toMatchObject({ title: 'Cette adresse ne mène à aucun rejeu', retry: false })
+    expect(JSON.stringify(malformed)).not.toContain('minted')
+  })
+
+  it('offers to try again when the server failed, without its own words', () => {
+    const failed = unreadableReplay(problem(500, 'the request could not be served'), true)
+
+    expect(failed).toMatchObject({
+      title: 'Ce rejeu ne peut pas être affiché',
+      retry: true,
+      signIn: false,
+    })
+    expect(JSON.stringify(failed)).not.toContain('could not be served')
+  })
+
+  it('offers to sign in again when the session ran out', () => {
+    expect(unreadableReplay(problem(401, 'sign in first'), true)).toMatchObject({
+      title: 'Votre session a expiré',
+      signIn: true,
+    })
+  })
+
+  it('says the server did not answer when nothing came back, and offers to try again', () => {
+    expect(unreadableReplay(new TypeError('Failed to fetch'), true)).toMatchObject({
+      title: 'Le serveur ne répond pas',
+      retry: true,
       signIn: false,
     })
   })
 
-  it('keeps what the API said of any other refusal', () => {
-    const refused = new ApiError({
-      type: 'internal',
-      title: 'Internal error',
-      status: 500,
-      detail: 'the request could not be served',
-    })
-    expect(unreadableReplay(refused, false)).toEqual({
-      said: 'the request could not be served',
-      signIn: false,
-    })
-  })
-
-  it('says the API did not answer when nothing came back', () => {
-    expect(unreadableReplay(new TypeError('Failed to fetch'), false)).toEqual({
-      said: "L'API n'a pas répondu.",
-      signIn: false,
-    })
+  it('offers the sign-in to whoever is not signed in, whatever kept the replay out of sight', () => {
+    for (const error of [problem(400, 'x'), problem(500, 'x'), new TypeError('Failed to fetch')]) {
+      expect(unreadableReplay(error, false)?.signIn).toBe(true)
+    }
   })
 })
 

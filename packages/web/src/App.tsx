@@ -4,26 +4,18 @@ import type { ReplayManifest } from '@smmarchives/shared/contracts/replay.ts'
 
 import { AdminProvider, useAdmin } from './admin.tsx'
 import { api, sessionLost } from './api.ts'
-import { AppLink } from './AppLink.tsx'
 import { BuildScreen } from './build/BuildScreen.tsx'
 import { EMPTY, followBuild, readThenFollow, type BuildState } from './build/progress.ts'
 import { CreationForm } from './creation/CreationForm.tsx'
 import { HomeScreen } from './home/HomeScreen.tsx'
 import { Loading } from './Loading.tsx'
-import {
-  CREATION_PATH,
-  goTo,
-  goToReplay,
-  replayPath,
-  routeOf,
-  signInPath,
-  type Route,
-} from './routing.ts'
+import { CREATION_PATH, goTo, goToReplay, routeOf, signInPath, type Route } from './routing.ts'
 import { withPublication } from './publication.ts'
 import { ReplayScreen } from './ReplayScreen.tsx'
 import { SignInScreen } from './SignInScreen.tsx'
 import { Topbar, TopbarSlotProvider } from './Topbar.tsx'
 import { confirmsSession, unreadableReplay } from './unreadable.ts'
+import { UnreadableNotice } from './UnreadableNotice.tsx'
 
 export function App() {
   return (
@@ -153,19 +145,7 @@ function Unreadable({ id, error }: { id: string; error: unknown }) {
 
   const unreadable = unreadableReplay(error, confirming ? undefined : signedIn)
   if (unreadable === undefined) return null
-  const { said, signIn } = unreadable
-
-  return (
-    <p className="refusal">
-      {said}
-      {signIn ? (
-        <>
-          {' '}
-          <AppLink href={signInPath(replayPath(id))}>Se connecter</AppLink>
-        </>
-      ) : null}
-    </p>
-  )
+  return <UnreadableNotice id={id} unreadable={unreadable} />
 }
 
 /** What there is to show of it: the wait, the trace or the replay. */

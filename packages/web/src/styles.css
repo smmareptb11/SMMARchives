@@ -82,6 +82,41 @@ main {
   }
 }
 
+/* A replay that cannot be shown: why, and the ways on, in the middle of the screen. */
+.unreadable {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  min-height: calc(100dvh - 48px - 3rem);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.unreadable h1 {
+  margin: 0;
+}
+
+.unreadable p {
+  margin: 0;
+}
+
+.unreadable .actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.unreadable .note {
+  margin-top: 1rem;
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
 /* The map wants the width a form's reading column is right to refuse. */
 main:has(.map) {
   max-width: 82rem;
@@ -1483,14 +1518,26 @@ button[disabled] {
   cursor: default;
 }
 
-a.action {
+a.action,
+button.action {
   display: inline-block;
+  font: inherit;
   font-weight: 600;
-  padding: 0.5rem 1rem;
+  /* The border inside the size the action had without one. */
+  padding: calc(0.5rem - 1px) calc(1rem - 1px);
+  border: 1px solid var(--brand);
   border-radius: 3px;
   background: var(--brand);
   color: #fff;
   text-decoration: none;
+  cursor: pointer;
+}
+
+/* The way on after the one most likely to help. */
+a.action.secondary,
+button.action.secondary {
+  background: #fff;
+  color: var(--brand);
 }
 
 .home-heading {
