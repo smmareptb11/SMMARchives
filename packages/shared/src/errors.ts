@@ -64,7 +64,7 @@ export class ConfigurationError extends Error {
   readonly variable: string
 
   constructor(variable: string, reason: string) {
-    super(`${variable}: ${reason}. See .env.sample.`)
+    super(`${variable}: ${reason}. See docs/installation.md.`)
     this.name = 'ConfigurationError'
     this.variable = variable
   }

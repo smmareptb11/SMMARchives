@@ -73,7 +73,7 @@ docker compose up -d
 
 ```bash
 docker compose ps -a        # db, api, web : Up ; migrate : Exited (0)
-curl -s localhost:8080/health
+curl -s localhost:8080/health   # {"status":"ok"}
 ```
 
 L'interface est sur <http://localhost:8080>. La connexion administrateur se

@@ -168,8 +168,8 @@ WantedBy=multi-user.target
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now smmarchives-api
-systemctl status smmarchives-api
-curl -s localhost:3000/health
+systemctl status smmarchives-api --no-pager   # Active: active (running)
+curl -s localhost:3000/health                  # {"status":"ok"}
 ```
 
 **L'API écoute sur toutes les interfaces.** Le port `3000` ne doit pas être
@@ -196,7 +196,7 @@ sudo nano /etc/nginx/sites-available/smmarchives
 ```bash
 sudo ln -s /etc/nginx/sites-available/smmarchives /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-curl -s localhost:8080/health
+curl -s localhost:8080/health   # {"status":"ok"}
 ```
 
 Le reverse proxy HTTPS vise `127.0.0.1:8080` et transmet `X-Forwarded-Proto` ;
@@ -213,7 +213,7 @@ actif : il se retire par `sudo rm /etc/nginx/sites-enabled/default`, puis
 |---|---|
 | Arrêter l'API | `sudo systemctl stop smmarchives-api` |
 | Relancer l'API | `sudo systemctl restart smmarchives-api` |
-| Journaux de l'API | `journalctl -u smmarchives-api -f` |
+| Journaux de l'API | `sudo journalctl -u smmarchives-api -f` |
 | Shell dans la base | `psql '<la valeur de DATABASE_URL>'` |
 
 Une mise à jour, depuis `/opt/smmarchives/app` :
@@ -232,7 +232,7 @@ sudo systemctl restart smmarchives-api
 |---|---|
 | `npm run migrate` : `permission denied for schema public` | Le compte de `DATABASE_URL` ne peut pas créer de tables : depuis PostgreSQL 15, seul le propriétaire de la base le peut par défaut. Voir [les prérequis de la base](installation.md#la-base-de-données) |
 | `npm run migrate` : `password authentication failed` | Le mot de passe de `DATABASE_URL` n'est pas celui du compte de la base |
-| L'API redémarre en boucle | `journalctl -u smmarchives-api -n 20` : la validation de la configuration nomme la variable manquante ou invalide |
+| L'API redémarre en boucle | `sudo journalctl -u smmarchives-api -n 20` : la validation de la configuration nomme la variable manquante ou invalide |
 | `EADDRINUSE` dans les journaux | Le port `API_PORT` est pris : en choisir un autre, et reporter le même dans `proxy_pass` |
 | Une page rechargée rend 404 | Le repli `try_files $uri /index.html` manque dans la configuration nginx |
 | Une construction échoue aussitôt | Les dépendances de développement manquent : relancer `npm ci` sans `--omit=dev` |

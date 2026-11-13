@@ -55,7 +55,7 @@ function publishing(api: Api): BuildLauncher {
 const refusing: BuildLauncher = () => ({
   exited: Promise.resolve({
     code: 1,
-    stderr: 'ACYCLIQ_TOKEN: is required and empty. See .env.sample.\n',
+    stderr: 'ACYCLIQ_TOKEN: is required and empty. See docs/installation.md.\n',
   }),
 })
 

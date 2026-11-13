@@ -100,7 +100,7 @@ Deux pièges, et le second coûte une demi-heure à qui l'ignore.
 ## Les variables d'environnement
 
 Toute la configuration passe par l'environnement. **Aucun secret n'est
-versionné.** `.env.sample` en tient la version commentée ; les commandes `npm run`
+versionné.** `.env.sample` en donne la liste, décrite ci-dessous ; les commandes `npm run`
 la lisent par `--env-file-if-exists=.env`, à la racine du dépôt.
 
 Une variable présente mais vide vaut une variable absente : obligatoire, elle
