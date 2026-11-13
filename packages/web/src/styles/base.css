@@ -1,0 +1,248 @@
+/* The palette, the type, and what every screen shares: elements, fields, buttons, notes. */
+
+/* The mockup's palette and type, the map's own colours apart. */
+:root {
+  --ink: #1c2833;
+  --ink-2: #536372;
+  --paper: #f6f8fa;
+  --paper-2: #eaeff3;
+  --line: #d5dde4;
+  /* The lighter border of a panel or a block, inside a page that already has one. */
+  --line-soft: #e3e8ed;
+  --brand: #004a73;
+  /* What a card, a field or a panel is laid on, and what is written on the dark ones. */
+  --surface: #fff;
+  --on-dark: #fff;
+  /* A failure, a refusal, and the action that cannot be undone. */
+  --danger: #b3261e;
+  /* Where the keyboard is, and what is selected. */
+  --focus: #ffb400;
+  /* The montage's dark ground, from the deepest to the lightest, and what is written on it. */
+  --night: #14202b;
+  --night-2: #1d2b38;
+  --night-3: #27384a;
+  --night-ink: #dfe7ee;
+  --night-ink-2: #8fa3b4;
+  /* Behind a webcam image, wherever one is drawn. */
+  --film: #0b1218;
+  /* The reading bar: the one over the lanes, and the one on a station's chart. */
+  --reading: #e8002a;
+  --rail: #f2f5f8;
+  /* The blue a rain gauge's bars are drawn in, taken from the map's own ramp. */
+  --rain: #2171b5;
+  /* The running total over a rain gauge's bars, the Acycliq widget's orange. */
+  --cumul: #ea580c;
+  /* The lane label column, which the reading bar has to clear to line up. */
+  --label-w: 210px;
+  /* What an agent reported, on the lanes and on the map: a colour no threshold uses. */
+  --report: #2e8540;
+  /* What the pointer rests on in the lanes or the history, on the map. */
+  --pointed: #14212b;
+  --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --body: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+main {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+/* The band is 48px tall, and `main` pads 1.5rem above and below. */
+.loading {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  min-height: calc(100dvh - 48px - 3rem);
+  color: var(--ink);
+}
+
+.loading p {
+  margin: 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A mark of about the size the map draws it at, whatever shape it is. */
+.swatch {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  object-fit: contain;
+}
+
+.swatch.territory {
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+h1 {
+  color: var(--brand);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 34rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+label small {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  /* What is typed or chosen is not the label around it, set heavier. */
+  font-weight: 400;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #c7d0d9;
+  border-radius: 3px;
+  background: var(--surface);
+}
+
+/*
+ * A form's list drawn alike in every browser: left to itself, each draws its
+ * own arrow, some of them against the border. The arrow is ours, with room.
+ */
+form select {
+  appearance: none;
+  padding-right: 2rem;
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%234a5a6a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 0.75rem center;
+  cursor: pointer;
+}
+
+form select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.period {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-items: start;
+}
+
+/* Held open while empty, so choosing an hour does not push the form down. */
+.period small {
+  min-height: 1lh;
+}
+
+.lead,
+.note {
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.refusal {
+  border-left: 3px solid var(--danger);
+  padding-left: 0.75rem;
+  color: var(--danger);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  justify-self: start;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: 3px;
+  background: var(--brand);
+  color: var(--on-dark);
+  cursor: pointer;
+}
+
+button[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+details {
+  margin-top: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+}
+
+summary {
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  font-family: var(--display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #eef2f6;
+}
+
+summary .count {
+  font-family: var(--mono);
+  font-weight: 400;
+  color: var(--ink-2);
+  text-transform: none;
+}
+
+/* A second action beside the main one, which must not look like it. */
+button.quiet {
+  background: none;
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+/* The one button that destroys something, and looks like it. */
+button.danger {
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}

@@ -1,0 +1,291 @@
+/* The panel under the map: its ground, its handle, the sheet a phone pulls, the families it folds. */
+
+.replay-montage {
+  /* The seam between two marks, in the colour of the ground they stand on. */
+  --rail: var(--night);
+  /* What the ruler and its handle stay under. */
+  --transport-h: 46px;
+  /* What a family's title stays under: the ruler's track, and its border. */
+  --ruler-h: 37px;
+
+  grid-column: 1 / -1;
+  box-sizing: border-box;
+  min-height: 0;
+  /* The height the handle sets, folded until it does; never more than half the area. */
+  height: var(--montage-chosen, auto);
+  max-height: calc((100dvh - 48px) / 2);
+  overflow-y: auto;
+  /* Its own stacking, so the hour grid can lie under the lanes and over its ground. */
+  isolation: isolate;
+  padding: 0 0 1.5rem;
+  border-top: 3px solid var(--brand);
+  background: var(--night);
+  color: var(--night-ink);
+  scrollbar-color: var(--night-3) var(--night);
+}
+
+.replay-montage .note {
+  color: var(--night-ink-2);
+}
+
+.replay-montage .refusal {
+  color: #ff8a80;
+}
+
+/*
+ * The handle in the middle of the panel's top edge. Held at the top as the
+ * lanes scroll, and laid over the transport, whose middle is empty.
+ */
+.montage-edge {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: flex;
+  justify-content: center;
+  height: 0;
+}
+
+.montage-handle {
+  display: flex;
+  justify-content: center;
+  width: 64px;
+  height: 14px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.montage-handle::before {
+  content: '';
+  width: 40px;
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: var(--night-ink-2);
+  opacity: 0.6;
+}
+
+.montage-handle:hover::before,
+.montage-handle:focus-visible::before {
+  background: var(--night-ink);
+  opacity: 1;
+}
+
+.montage-handle:focus-visible {
+  outline: 2px solid var(--night-ink);
+  outline-offset: -2px;
+  border-radius: 3px;
+}
+
+/* One band a family, folded by its title. */
+.replay-montage details {
+  margin: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+/*
+ * A family's title stays under the ruler while its lanes scroll past, so the
+ * reader knows whose lanes they are; the next family's title pushes it away.
+ * Under the reading line, which crosses it as it crosses the lanes.
+ */
+.replay-montage summary {
+  position: sticky;
+  top: calc(var(--transport-h) + var(--ruler-h));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 12px;
+  list-style: none;
+  background: var(--night-3);
+  font-size: 15px;
+  color: var(--night-ink);
+  user-select: none;
+}
+
+.replay-montage summary::-webkit-details-marker {
+  display: none;
+}
+
+.replay-montage summary::before {
+  content: '▾';
+  font-size: 12px;
+  color: var(--night-ink-2);
+  transition: transform 0.15s;
+}
+
+.replay-montage details:not([open]) > summary::before {
+  transform: rotate(-90deg);
+}
+
+.replay-montage summary .count {
+  font-size: 11px;
+  color: var(--night-ink-2);
+}
+
+/* A family with nothing to show greys out and does not open; its count still says why. */
+.replay-montage summary[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* A count with more to say on hovering it. */
+.replay-montage summary .count[title] {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.replay-montage details > .note {
+  padding: 0.3rem 12px;
+  font-size: 12px;
+}
+
+/*
+ * The reading bar, laid over the column of lanes rather than inside each one.
+ *
+ * Its offset repeats the lanes' label column instead of sharing their grid:
+ * the ruler sits directly here while the lanes sit inside the `details` that
+ * fold them, so no single column contains both. A lane's shape and this line
+ * change together.
+ */
+.tracks {
+  position: relative;
+}
+
+/* The handle that folds the lanes, and the transport it pulls: only a phone folds them. */
+.player {
+  display: contents;
+}
+
+.grab {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .replay-montage {
+    --label-w: 108px;
+  }
+
+  /* On a phone the bar takes a row of its own, over the buttons. */
+  .replay-montage {
+    --transport-h: 112px;
+  }
+
+  /*
+   * On a phone the lanes are drawn as wide as the period asks and scrolled
+   * across, under the transport: the labels, the families' titles and the ruler
+   * stay where they are while the lanes pass under them.
+   */
+  .replay-montage {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .lanes-scroller {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    container-type: inline-size;
+    padding-bottom: 1.5rem;
+  }
+
+  .replay-montage .tracks {
+    width: calc(var(--label-w) + var(--track-w));
+    min-width: 100%;
+  }
+
+  /* As wide as the screen and held at its left, so the title is always read. */
+  .replay-montage summary,
+  .replay-montage details > .note,
+  .replay-montage .tracks .refusal {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    box-sizing: border-box;
+    width: 100cqi;
+  }
+
+  /* The transport stands outside what scrolls on a phone: the title stays under the ruler alone. */
+  .replay-montage summary {
+    top: var(--ruler-h);
+    z-index: 6;
+  }
+
+  /* The phone pulls its sheet by the transport: the panel's own handle is the desktop's. */
+  .montage-edge {
+    display: none;
+  }
+
+  .replay-montage {
+    position: absolute;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-sizing: content-box;
+    height: calc(var(--player-h) + var(--panel-h));
+    max-height: none;
+    transform: translateY(var(--panel-h));
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .replay-montage[data-open='true'] {
+    transform: none;
+    box-shadow: 0 -10px 30px rgb(0 0 0 / 25%);
+  }
+
+  .replay-montage.dragging {
+    transition: none;
+  }
+
+  .player {
+    display: block;
+    flex: none;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .grab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    background: var(--night);
+    color: var(--night-ink-2);
+    font-size: 11px;
+    line-height: 1;
+    cursor: grab;
+  }
+
+  .grab .grip {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+
+  /*
+   * With the lanes open, their ruler is the one a phone reads and drags: the
+   * transport's own bar would only say it again, and gives the lanes its room.
+   */
+  .replay-montage[data-open='true'] {
+    --transport-h: 74px;
+  }
+}
+
+@media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+  .replay-montage {
+    transition: none;
+  }
+}

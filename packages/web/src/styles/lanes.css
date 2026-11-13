@@ -1,0 +1,486 @@
+/* The lanes: the ruler, each source's lane and its marks, and the line of the instant read. */
+
+.history .card.report {
+  --c: var(--report);
+}
+
+.replay-montage .quiet-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  font-family: var(--body);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--night-ink-2);
+  cursor: pointer;
+}
+
+.replay-montage .quiet-switch input {
+  margin: 0;
+}
+
+/*
+ * The rule between the labels and the lanes is drawn on the lane's ground, at
+ * the column's edge: a border on the label would only be as tall as its text,
+ * and a label made a flex box to stretch it loses its ellipsis.
+ */
+.replay-montage .lane {
+  border-bottom: 1px solid rgb(255 255 255 / 5%);
+  background: linear-gradient(var(--night-3), var(--night-3)) no-repeat calc(var(--label-w) - 1px)
+    0 / 1px 100%;
+}
+
+/* A lane is clicked to read its instant, as the ruler is: a selection would end in a click. */
+.replay-montage .lane-track {
+  cursor: pointer;
+  user-select: none;
+}
+
+.replay-montage .lane-label {
+  font-size: 12.5px;
+  color: var(--night-ink);
+}
+
+/* A faint line on every hour of the ruler, under the lanes. */
+.hour-grid {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 var(--label-w);
+  pointer-events: none;
+}
+
+.hour-grid i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--at) * 100%);
+  width: 1px;
+  background: rgb(255 255 255 / 4%);
+}
+
+/* A lane's name, which opens its detail: a button that reads as the name. */
+.lane-name {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lane-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lane-name:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.lane-label .glyph {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  vertical-align: -1px;
+  background: var(--night-ink-2);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.lane-label .glyph.webcam {
+  width: 12px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.replay-montage .mark.report:hover,
+.replay-montage .mark.report:focus-visible {
+  outline-color: var(--night-ink);
+}
+
+.replay-montage .ruler {
+  position: sticky;
+  top: var(--transport-h);
+  z-index: 3;
+  background: var(--night-2);
+  border-bottom: 1px solid var(--night-3);
+}
+
+.replay-montage .ruler .lane-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--night-ink-2);
+}
+
+.replay-montage .tick {
+  color: var(--night-ink-2);
+  border-left-color: var(--night-3);
+  padding-top: 6px;
+}
+
+.replay-montage .tick.odd {
+  border-left-color: rgb(255 255 255 / 6%);
+}
+
+/*
+ * One tick in two keeps its name where the ruler is too narrow for all of
+ * them, one in four where it is narrower still: measured on the ruler itself,
+ * which is what the names have to share.
+ */
+.ruler .lane-track {
+  container-type: inline-size;
+}
+
+@container (max-width: 1000px) {
+  .tick.odd span {
+    display: none;
+  }
+}
+
+@container (max-width: 500px) {
+  .tick.minor span {
+    display: none;
+  }
+}
+
+/*
+ * An event on the ruler, under the hours. Ringed in the ruler's own ground, so
+ * two that touch stay two. The ruler is what is dragged, not the dot.
+ */
+.replay-montage .ruler .dot,
+.scrub .dot {
+  position: absolute;
+  bottom: 3px;
+  width: 7px;
+  height: 7px;
+  margin-left: -4.5px;
+  border: 1px solid var(--night-2);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.replay-montage .assumed-note {
+  margin: 0.75rem 0 0;
+}
+
+/*
+ * The two families that are not one of the map's three shapes.
+ *
+ * Each drawn where the map draws it: the camera's swatch takes the frame of the
+ * marker itself, and the territory's takes the two washes `map/layers.ts` paints
+ * the perimeters with. A swatch given its own values drifts from what it shows.
+ */
+/*
+ * The frame of the marker, at the size of a swatch and in its proportions, and
+ * flat: the shadow lifts a marker off the map, and a legend has no map to lift
+ * it off.
+ *
+ * Inside the panel, so that it wins over the frame's own rules: the two carry
+ * the same weight, and the marker's is the one written last.
+ */
+.layers .swatch.webcam {
+  width: 16px;
+  height: 11px;
+  box-shadow: none;
+}
+
+/* What an agent wrote, in a narrower window: words and photos, no curve. */
+.callout.report {
+  width: min(380px, calc(100% - 24px));
+}
+
+/*
+ * Sized by the reader's hand: the body takes the room left under the title bar,
+ * and a curve, a chart of rain or a camera's view takes the room left in it.
+ */
+.callout.sized {
+  width: var(--callout-w);
+  height: var(--callout-h);
+  max-height: none;
+}
+
+/* The stripes of a crossing whose threshold type was deduced, on a colour of its own. */
+.assumed-note .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  border-radius: 2px;
+  background: #ffff00 repeating-linear-gradient(45deg, rgb(0 0 0 / 25%) 0 3px, transparent 3px 6px);
+}
+
+.lane {
+  display: grid;
+  grid-template-columns: var(--label-w) 1fr;
+  align-items: center;
+  min-height: 26px;
+}
+
+.lane-label {
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lane-track {
+  position: relative;
+  height: 26px;
+}
+
+.mark,
+.frame {
+  position: absolute;
+  /* The border sits inside the width, or the next frame paints over it. */
+  box-sizing: border-box;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--brand);
+  overflow: hidden;
+}
+
+/*
+ * A rain gauge lane is a bar chart: one bar per measure, standing on the floor.
+ *
+ * Taller than a lane of segments, because a bar says a quantity by its height
+ * and twenty-eight pixels leave nothing to read. The floor of two pixels is what
+ * draws a measure of zero: the gauge looked and nothing had fallen, which no
+ * absent bar would say.
+ */
+.bars .lane-track {
+  height: 2.5rem;
+}
+
+.bars .mark {
+  top: auto;
+  bottom: 0;
+  /* As wide as its step and no wider: bars follow each other edge to edge, and
+     a floor would have each cover the next ones. */
+  min-width: 0;
+  min-height: 2px;
+  border-radius: 0;
+  background: var(--rain);
+}
+
+/* The seam between two steps, in the colour of the lane beneath them, and the
+   rounded top: both would notch a bar a pixel or two wide. */
+.bars .mark.seam {
+  border-right: 1px solid var(--rail);
+  border-radius: 2px 2px 0 0;
+}
+
+/* A webcam lane is a strip: each view holds until the next one is taken. */
+.film .lane-track {
+  height: 3.5rem;
+}
+
+.frame {
+  border-radius: 0;
+  background: var(--film);
+  /* The seam between two views, in the colour of the lane beneath them. */
+  border-right: 1px solid var(--rail);
+}
+
+/*
+ * The image keeps its proportions and overflows rather than stretching: a view
+ * is then cropped by the span it covers, and the lane reads as a strip of film.
+ * The five Ceneau cameras do not all render the same shape — four in 4:3, one
+ * in 16:9 — and none of them has to be distorted.
+ */
+.frame img {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: none;
+}
+
+.empty {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.4rem;
+  font-size: 11px;
+  color: #9fb0bf;
+}
+
+/* Nothing was measured or copied: a gap in the data, fainter than a finding. */
+.empty.gap {
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.ruler .lane-track {
+  height: 36px;
+  /* Dragged rather than selected, by a mouse or a finger alike. */
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-2);
+  border-left: 1px solid #d7dee5;
+  padding-left: 3px;
+  height: 100%;
+}
+
+/*
+ * The lane of what agents reported, spread over as many rows as it takes for
+ * no mark to cover another. Each row is a thin band, so a lane of three is no
+ * taller than a webcam strip.
+ */
+.stacked .lane-track {
+  height: calc(var(--rows) * 0.875rem + 0.5rem);
+}
+
+.mark.report {
+  top: calc(0.25rem + var(--row) * 0.875rem);
+  bottom: auto;
+  height: 0.75rem;
+  /* Wide enough to aim at: an event of no duration is a point in time. */
+  min-width: 6px;
+  padding: 0;
+  background: var(--report);
+}
+
+.mark.report:hover,
+.mark.report:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.assumed-note {
+  border-left: 3px solid #c99a1e;
+  padding-left: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/*
+ * The full image, on hovering a view. The element does not exist before the
+ * hover, so the browser does not go looking for it until then.
+ */
+.preview {
+  position: fixed;
+  z-index: 10;
+  margin: 0;
+  background: var(--film);
+  border-radius: 3px;
+  box-shadow: 0 6px 24px rgb(27 39 51 / 35%);
+  overflow: hidden;
+  /* It covers the views beside it, and would steal their hover without this. */
+  pointer-events: none;
+}
+
+/*
+ * The box holds its shape before the image loads, or the caption jumps the
+ * moment it does. In 4:3, the shape of four cameras of the five: the fifth, in
+ * 16:9, loses two thin bands where the other choice would cost the four wide ones.
+ */
+.preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+
+.preview figcaption {
+  padding: 0.3rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #cfdae4;
+}
+
+.scrub .tick {
+  padding-top: 3px;
+  font-size: 9.5px;
+}
+
+@media (max-width: 700px) {
+  /*
+     * The lanes' labels pass over the reading bar and under the ruler, as the
+     * mockup stacks them. The bar's handle would be lost under the ruler: it is
+     * drawn apart, over it.
+     */
+  /* Bottom to top: the names, a family's title, the ruler, the reading's handle. */
+  .replay-montage .ruler {
+    top: 0;
+    z-index: 7;
+  }
+
+  /* As tall as the lane, so nothing passing under it shows above or below. */
+  .replay-montage .lane-label {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    align-self: stretch;
+    line-height: 26px;
+    background: var(--night);
+    border-right: 1px solid var(--night-3);
+  }
+
+  .replay-montage .ruler .lane-label {
+    background: var(--night-2);
+  }
+
+  /* The switch beside the count leaves the title no room: it takes a line of its own. */
+  .replay-montage summary:has(.quiet-switch) {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 26px;
+    padding-block: 4px;
+    row-gap: 2px;
+  }
+
+  .replay-montage summary .quiet-switch {
+    flex-basis: 100%;
+    margin-left: 20px;
+  }
+
+  /* « Chronologie » fits the phone's narrow label column only with its letters closer. */
+  .replay-montage .ruler .lane-label {
+    letter-spacing: 0.02em;
+  }
+
+  /* Three lines of a phone's width over the first lanes: the stripes go unexplained there. */
+  .replay-montage .assumed-note {
+    display: none;
+  }
+
+  .callout.report,
+  .callout.sized {
+    width: 100%;
+    height: auto;
+  }
+
+  .callout:not(.front),
+  .callout .resize,
+  .callout header .close,
+  .callout .sheet-actions {
+    display: none;
+  }
+
+  .callout header {
+    border-radius: 0;
+    cursor: default;
+  }
+}

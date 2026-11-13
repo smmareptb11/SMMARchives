@@ -1,0 +1,173 @@
+/* What a station's or a rain gauge's window shows: its charts, its pickers, its legends. */
+
+.callout.sized .callout-body > .plot,
+.callout.sized .callout-body > .awaited,
+.callout.sized .callout-body > .view {
+  flex: 1 1 0;
+}
+
+/* The last value measured, which is what the map's colour leaves unsaid. */
+.measured {
+  margin: 0.4rem 0 0;
+  font-family: var(--display);
+  font-size: 19px;
+  color: var(--brand);
+}
+
+.measured small {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* A station's curve, under its value. */
+.plot {
+  margin-top: 0.4rem;
+}
+
+/* Laid out as if it were not there: it only marks where a chart's drawing is to be found. */
+.exported {
+  display: contents;
+}
+
+/* Saving a chart as an image, the Acycliq widget's control. */
+button.export-png {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: center;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 0.72rem;
+}
+
+button.export-png:hover:not([disabled]) {
+  color: var(--ink);
+}
+
+button.export-png svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A station's two pickers, side by side over its value and its curve. */
+.pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.pickers .pills {
+  margin-top: 0;
+}
+
+/* One choice among a few, as a pill of joined buttons: the Acycliq widget's control. */
+.pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-2);
+}
+
+.pills button {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+/* A disabled button takes no pointer, so the hover reaches the pill and its title, which says why. */
+.pills button[disabled] {
+  pointer-events: none;
+}
+
+.pills button:hover {
+  color: var(--ink);
+}
+
+.pills button[aria-pressed='true'] {
+  background: var(--brand);
+  color: var(--on-dark);
+}
+
+.pills button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(0 74 115 / 35%);
+}
+
+/* What a rain gauge's bars and its running total stand for, under them, as the widget's. */
+.rain-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1.5rem;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.rain-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rain-legend .swatch.bars {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--rain);
+}
+
+.rain-legend .swatch.total {
+  width: 25px;
+  height: 2px;
+  background: var(--cumul);
+}
+
+/* A threshold, dashed in its colour as the chart rules it. */
+.threshold-legend .swatch.rung {
+  width: 25px;
+  border-top: 2px dashed var(--rung);
+}
+
+/* The room the curve takes, held while a station's measures are read or when a quantity has none. */
+.awaited {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A measure with no step to its name is an instant wide, and four pixels is
+   what it takes for that instant to read as a bar rather than a hairline. */
+.bars .mark.instant {
+  min-width: 4px;
+}
+
+@media (max-width: 700px) {
+  /*
+   * Too narrow for one line, the rungs wrap: centred line by line, their dashes
+   * would no longer fall under one another. One column instead, centred as a
+   * block under the chart.
+   */
+  .threshold-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    width: fit-content;
+    margin-inline: auto;
+  }
+}

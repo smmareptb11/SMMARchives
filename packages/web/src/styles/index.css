@@ -1,0 +1,12 @@
+/* The interface's styles, one file per area, in the order the cascade relies on. */
+@import './base.css';
+@import './layout.css';
+@import './home.css';
+@import './creation.css';
+@import './build.css';
+@import './map.css';
+@import './detail.css';
+@import './events.css';
+@import './panel.css';
+@import './transport.css';
+@import './lanes.css';

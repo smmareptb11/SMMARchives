@@ -1,0 +1,60 @@
+/* The form that constitutes a replay, its period and its extent. */
+
+/* Nothing chosen yet: the placeholder reads as one, the choices as choices. */
+form select.unset {
+  color: var(--ink-2);
+}
+
+form select.unset option {
+  color: var(--ink);
+}
+
+/* The phenomenon and the severity, side by side where the form is wide enough. */
+.choices {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.note.warning {
+  border-left: 3px solid #b26a00;
+  padding-left: 0.75rem;
+  color: #8a5300;
+}
+
+.extent {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+}
+
+.extent legend {
+  font-weight: 600;
+}
+
+/*
+ * The border sits on the view: the frame is placed inside it, so its
+ * percentages fall on the very pixels the extent is read from.
+ */
+.extent-view {
+  position: relative;
+  justify-self: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+}
+
+.extent-map {
+  height: 20rem;
+}
+
+.extent-frame {
+  position: absolute;
+  border: 2px solid var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+  pointer-events: none;
+}

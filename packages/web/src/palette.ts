@@ -3,7 +3,7 @@ import { SHADES } from './rain.ts'
 /**
  * The colours a canvas has to repeat, because it cannot read the stylesheet.
  *
- * `styles.css` holds the one definition of each; MapLibre paints from an
+ * `styles/base.css` holds the one definition of each; MapLibre paints from an
  * expression and uPlot from a drawing context, and neither reads a custom
  * property. This is the one place that spells the values a second time, so
  * that a change of palette has two files to visit and not four.

@@ -1,0 +1,450 @@
+/* The history beside the map, and the forms an agent reports an event with. */
+
+/* The column of what happened, beside the map. */
+.history {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.history header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.history h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.history .count {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* The events begun by the instant read, oldest first, as the mockup's feed. */
+.history .feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  margin: 0;
+  padding: 12px 16px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.history .feed > .note {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* An event, edged in its threshold's colour or in the brand's. */
+.history .card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--c, var(--brand));
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    opacity 0.4s;
+}
+
+.history .card:hover {
+  box-shadow: 0 3px 10px rgb(0 0 0 / 12%);
+}
+
+/* Over by the instant read, as the mockup fades what has passed. */
+.history .card.over {
+  opacity: 0.78;
+}
+
+/* The event last begun, set apart for a little while. */
+.history .card.latest {
+  box-shadow: 0 0 0 2px var(--c, var(--brand));
+  animation: card-in 0.5s ease-out;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.history .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.history .badge {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.history .badge.time {
+  background: var(--brand);
+  color: var(--on-dark);
+}
+
+.history .badge.kind {
+  background: #dff3e8;
+  color: #14532d;
+}
+
+/* A threshold whose nature was assumed, striped as its lane is. */
+.history .badge.assumed {
+  background-image: repeating-linear-gradient(45deg, rgb(0 0 0 / 25%) 0 3px, transparent 3px 6px);
+}
+
+.history .card .title {
+  font-weight: 500;
+}
+
+.history .card .text {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: pre-line;
+}
+
+.history .card .who {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.history .card .body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+/* A report's photo beside its words, as tall as they are and never shorter than square. */
+.history .card .thumb {
+  flex: none;
+  align-self: stretch;
+  width: 64px;
+  min-height: 64px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--paper-2);
+}
+
+/*
+ * A crossing whose threshold nature was assumed rather than read.
+ *
+ * Dark stripes rather than light ones: a threshold's colour can be a bright
+ * yellow, on which a pale stripe is all but the colour itself.
+ */
+.mark.assumed {
+  background-image: repeating-linear-gradient(45deg, rgb(0 0 0 / 25%) 0 3px, transparent 3px 6px);
+}
+
+/* What the agent typed, paragraphs included. */
+.sheet .description {
+  white-space: pre-line;
+}
+
+/*
+ * In small, in an event's sheet as in the form that reports it: a phone's photo
+ * is thousands of pixels wide.
+ */
+.sheet .photos,
+.photo-picker .photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet .photos button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: var(--film);
+}
+
+.sheet .photos button[aria-pressed='true'] {
+  outline: 3px solid var(--report);
+}
+
+.sheet .photos img,
+.photo-picker .photos img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.sheet .enlarged {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
+}
+
+/*
+ * In the heading of the history, on its right: where reporting starts, and
+ * why it cannot — the reason under the button it explains.
+ */
+.report-entry {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+  margin: 0 0 0 auto;
+}
+
+.report-entry button {
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.report-entry .note {
+  font-size: 12px;
+  text-align: right;
+}
+
+/*
+ * The form in the right-hand column, in place of the history: it scrolls in
+ * the column, under a heading that stays.
+ */
+.report-form {
+  align-content: start;
+  max-width: none;
+  min-height: 0;
+  overflow-y: auto;
+  /* Its end is not the page's: scrolling past it does not carry on with the replay underneath. */
+  overscroll-behavior: contain;
+  padding: 0 16px;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.report-form h2 {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  margin: 0 -16px;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 20px;
+}
+
+.report-form textarea {
+  resize: vertical;
+}
+
+/* What was refused of a field, under it. */
+.refused {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/*
+ * The way out, held at the foot of the column while the form scrolls above it:
+ * saving or giving up never takes scrolling down first.
+ */
+.report-form footer {
+  position: sticky;
+  z-index: 1;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 -16px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* The question before what the agent typed is thrown away, over its answers. */
+.report-form footer p {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Brought into view, it keeps the panel's own margin rather than touching its edge. */
+.report-form footer button {
+  scroll-margin-block: 1rem;
+}
+
+.photo-picker {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+}
+
+.photo-picker legend {
+  font-weight: 600;
+}
+
+.photo-picker .photos {
+  margin: 0;
+}
+
+.photo-picker li {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.photo-picker .photos button.quiet {
+  padding: 0.15rem 0.4rem;
+  font-size: 12px;
+}
+
+/*
+ * The start and the end side by side, each half the row; until an end is asked
+ * for, the way to ask for one stands in its place.
+ *
+ * The fields share their rows with the row — label, field, the instant said
+ * back, a refusal — so the button can stand in the field's own row, centred
+ * on it, whatever height the browser draws a date field at.
+ */
+.hour-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(4, auto);
+  gap: 0 0.5rem;
+  align-items: start;
+}
+
+.hour-row > label {
+  grid-row: 1 / 5;
+  grid-template-rows: subgrid;
+}
+
+.hour-row > button {
+  grid-row: 2;
+  grid-column: 2;
+  align-self: center;
+  justify-self: start;
+}
+
+.hour-row .end {
+  grid-row: 1 / 5;
+  grid-column: 2;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.hour-row button {
+  padding: 0.35rem 0.7rem;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hour-row .end button {
+  justify-self: start;
+  padding: 0.15rem 0.5rem;
+  font-size: 12px;
+}
+
+/* Where the event happened: placed on the replay's map, said here. */
+.place-choice {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+
+.place-choice legend {
+  font-weight: 600;
+}
+
+.place-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.place-actions button {
+  padding: 0.3rem 0.7rem;
+}
+
+/* The way being placed, pressed while the map listens for it. */
+.place-actions button[aria-pressed='true'] {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Amending and removing, at the foot of the sheet, on the right as the mockup's actions. */
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.sheet-actions p {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history .card.latest {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .replay > .history {
+    z-index: 8;
+    border-left: 0;
+  }
+
+  .replay[data-view='map'] > .history {
+    visibility: hidden;
+  }
+
+  /*
+   * Reporting places an event on the map from the column beside it, which a
+   * phone shows in turn rather than side by side: it is left to wider screens.
+   */
+  .history .report-entry {
+    display: none;
+  }
+}

@@ -1,0 +1,139 @@
+/* The screen that follows a build: its stages and its journal. */
+
+/* A fold inside a message, which neither a family's band nor a form's box. */
+.lane-failure details,
+.replay-montage .lane-failure details {
+  margin: 0.2rem 0 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: 12px;
+}
+
+.lane-failure summary,
+.replay-montage .lane-failure summary {
+  position: static;
+  display: inline-flex;
+  height: auto;
+  padding: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.lane-failure code {
+  display: block;
+  margin-top: 0.2rem;
+  opacity: 0.8;
+}
+
+.stages,
+.journal {
+  list-style: none;
+  padding: 0;
+}
+
+/* One card a strand of the build, its state on the right. */
+.stages {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.stage {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-left: 4px solid var(--line);
+  border-radius: 3px;
+}
+
+.stage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.stage-state {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.stage[data-state='running'] {
+  border-left-color: var(--brand);
+}
+
+.stage[data-state='running'] .stage-state {
+  color: var(--brand);
+}
+
+.stage[data-state='done'] {
+  border-left-color: #2e7d32;
+}
+
+.stage[data-state='done'] .stage-state {
+  color: #2e7d32;
+}
+
+.stage[data-state='done'] .stage-state::before {
+  content: '✓ ';
+}
+
+.stage[data-state='failed'] {
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+
+.stage[data-state='failed'] .stage-state {
+  color: var(--danger);
+}
+
+.stage-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  font-size: 14px;
+}
+
+.stage-step .count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.stage-step progress {
+  flex: 1 1 8rem;
+  height: 6px;
+  accent-color: var(--brand);
+}
+
+.journal {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  max-height: 18rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  margin: 0;
+}
+
+.journal li {
+  padding: 0.15rem 0.5rem;
+}
+
+.journal time {
+  color: #97a6b5;
+}

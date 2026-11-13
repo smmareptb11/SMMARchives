@@ -1,0 +1,311 @@
+/* The list of replays, the sign-in, and the page of a replay that cannot be shown. */
+
+/* A replay that cannot be shown: why, and the ways on, in the middle of the screen. */
+.unreadable {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  min-height: calc(100dvh - 48px - 3rem);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.unreadable h1 {
+  margin: 0;
+}
+
+.unreadable p {
+  margin: 0;
+}
+
+.unreadable .actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.unreadable .note {
+  margin-top: 1rem;
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+a.action,
+button.action {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  /* The border inside the size the action had without one. */
+  padding: calc(0.5rem - 1px) calc(1rem - 1px);
+  border: 1px solid var(--brand);
+  border-radius: 3px;
+  background: var(--brand);
+  color: var(--on-dark);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* The way on after the one most likely to help. */
+a.action.secondary,
+button.action.secondary {
+  background: var(--surface);
+  color: var(--brand);
+}
+
+.home-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* A card per replay, the whole of it a way into the replay. */
+.replays {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1rem;
+}
+
+.replays > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem 0.75rem;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--brand);
+  border-radius: 4px;
+  background: var(--surface);
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+.replays > li:hover {
+  border-color: var(--brand);
+  box-shadow: 0 4px 14px rgb(0 74 115 / 0.12);
+}
+
+.replays > li:has(a:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.replays > li[data-state='failed'] {
+  border-top-color: var(--danger);
+}
+
+/* Apart from what everyone sees: only the administrator is shown these. */
+.replays.preparing > li {
+  border-style: dashed;
+  border-top-style: solid;
+  background: var(--paper-2);
+}
+
+.replays p {
+  margin: 0;
+}
+
+.replays .title {
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.replays .title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* The title's link stretched over the card, which keeps one name for it. */
+.replays .title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.replays .title a:focus-visible {
+  outline: none;
+}
+
+.replays .period {
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.replays .scope {
+  color: var(--ink-2);
+}
+
+.replays .figures {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.replays footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  color: var(--ink-2);
+}
+
+/* What the administrator said of the replay: its phenomenon and its severity. */
+.replays .about {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.replays .about span {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+/* The SMMAR's ladder, from its lowest rank to its highest. */
+.replays .about [data-severity='vigilance'] {
+  background: #fdf3c4;
+  color: #6b5200;
+}
+
+.replays .about [data-severity='alert'] {
+  background: #fde2c8;
+  color: #8a3f00;
+}
+
+.replays .about [data-severity='reinforced-alert'] {
+  background: #fbd5d2;
+  color: #b3261e;
+}
+
+.replays .about [data-severity='crisis'] {
+  background: #b3261e;
+  color: var(--on-dark);
+}
+
+.replays .description {
+  display: -webkit-box;
+  margin-top: 0.5rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  white-space: pre-line;
+}
+
+/* The state and the bin, together at the end of the footer's line. */
+.replays footer .ends {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Above the title's stretched link, which would otherwise take its clicks. */
+.replays button.trash {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  padding: 0.3rem;
+  background: none;
+  color: var(--ink-2);
+}
+
+.replays button.trash:hover {
+  color: var(--danger);
+}
+
+.replays button.trash svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.replays .state {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--paper-2);
+  color: var(--brand);
+}
+
+.replays [data-state='partial'] .state {
+  background: #fdf0d5;
+  color: #8a5300;
+}
+
+.replays [data-state='failed'] .state {
+  background: #fbe4e2;
+  color: var(--danger);
+}
+
+/* Asking before a replay is removed, over the dimmed page. */
+.removal-dialog {
+  box-sizing: border-box;
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.25rem 1.5rem;
+  border: 0;
+  border-top: 4px solid var(--danger);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgb(20 32 43 / 30%);
+}
+
+.removal-dialog::backdrop {
+  background: rgb(20 32 43 / 45%);
+}
+
+.removal-dialog h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+}
+
+.removal-dialog p {
+  margin: 0 0 0.75rem;
+}
+
+.removal-dialog .named {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--paper-2);
+  border-radius: 3px;
+}
+
+.removal-dialog .named span {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
+.removal-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
