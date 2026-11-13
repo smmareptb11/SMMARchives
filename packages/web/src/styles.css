@@ -2825,6 +2825,11 @@ button.danger {
     flex-basis: 100%;
     margin-left: 20px;
   }
+
+  /* Three lines of a phone's width over the first lanes: the stripes go unexplained there. */
+  .replay-montage .assumed-note {
+    display: none;
+  }
 }
 
 /* The handle that folds the lanes, and the transport it pulls: only a phone folds them. */
