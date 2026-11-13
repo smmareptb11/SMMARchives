@@ -1,4 +1,4 @@
-import type { RadarRainfallSeries, ReplayIdentity } from '@smmarchives/shared'
+import type { LaneName, RadarRainfallSeries, ReplayIdentity } from '@smmarchives/shared'
 
 import { ReplayBuild, type BuildResult } from './build-state.ts'
 import { collectAquasys, type AquasysSource } from './lanes/aquasys.ts'
@@ -47,6 +47,7 @@ export type BuildOptions = {
    what each lane settled on; a list, not a nesting */
 export async function buildReplay(options: BuildOptions): Promise<BuildResult> {
   const build = new ReplayBuild(options.identity, options.store, options.onProgress)
+  build.plan(plannedLanes(options))
   await build.publish()
 
   // Lanes advance together because they read different places: one host, one
@@ -82,6 +83,18 @@ export async function buildReplay(options: BuildOptions): Promise<BuildResult> {
   }
 
   return build.settle()
+}
+
+/** The lanes a build will run: those whose source it was given, and what derives from them. */
+function plannedLanes(options: BuildOptions): LaneName[] {
+  const lanes: LaneName[] = []
+  if (options.aquasys !== undefined) lanes.push('aquasys', 'events')
+  if (options.lizmap !== undefined) lanes.push('lizmap')
+  if (options.radarRainfall !== undefined) {
+    lanes.push('radar-rainfall')
+    if (options.copyMedia) lanes.push('media')
+  }
+  return lanes
 }
 
 /**

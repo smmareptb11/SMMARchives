@@ -21,7 +21,7 @@ const lanesOf = (states: Partial<Record<keyof Lanes, State>>): Lanes =>
   Object.fromEntries(Object.entries(states).map(([name, state]) => [name, { state }]))
 
 const step = (lanes: Lanes, journal: JournalEntry[], lane: string) =>
-  stagesOf(lanes, journal, true).find((one) => one.lane === lane)
+  stagesOf(lanes, journal).find((one) => one.lane === lane)
 
 describe('where a strand of a build stands', () => {
   const running = lanesOf({ aquasys: 'running', lizmap: 'running', 'radar-rainfall': 'running' })
@@ -92,7 +92,7 @@ describe('where a strand of a build stands', () => {
       lizmap: 'done',
       aquasys: 'done',
     })
-    expect(stagesOf(lanes, [], false).map((one) => one.lane)).toEqual([
+    expect(stagesOf(lanes, []).map((one) => one.lane)).toEqual([
       'aquasys',
       'lizmap',
       'events',
@@ -109,12 +109,12 @@ describe('how many strands are over', () => {
       events: 'running',
       media: 'pending',
     })
-    expect(settled(stagesOf(lanes, [], false))).toEqual({ over: 2, of: 4 })
+    expect(settled(stagesOf(lanes, []))).toEqual({ over: 2, of: 4 })
   })
 
-  it('counts from the start the strands a running build has not begun', () => {
-    const lanes = lanesOf({ aquasys: 'done', lizmap: 'running' })
-    expect(settled(stagesOf(lanes, [], true))).toEqual({ over: 1, of: 5 })
-    expect(stagesOf(lanes, [], true).at(-1)).toMatchObject({ lane: 'media', state: 'pending' })
+  it('counts the strands the build planned, begun or not, and no other', () => {
+    const lanes = lanesOf({ aquasys: 'done', lizmap: 'running', events: 'pending' })
+    expect(settled(stagesOf(lanes, []))).toEqual({ over: 1, of: 3 })
+    expect(stagesOf(lanes, []).map((one) => one.lane)).not.toContain('radar-rainfall')
   })
 })

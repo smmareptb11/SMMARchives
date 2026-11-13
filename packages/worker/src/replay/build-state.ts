@@ -79,6 +79,15 @@ export class ReplayBuild {
   }
 
   /**
+   * Names the lanes this build will run, before any of them begins, so a reader
+   * following it sees those and no other: a lane whose source was not given
+   * never shows as waiting for a turn it will not get.
+   */
+  plan(lanes: readonly LaneName[]): void {
+    for (const lane of lanes) this.#manifest.lanes[lane] = { state: 'pending' }
+  }
+
+  /**
    * Runs one lane, and records that it began, ended, or died trying.
    *
    * The transitions are here rather than left to each lane because a lane that
@@ -224,6 +233,11 @@ export class ReplayBuild {
       this.#echo(`  the journal could not be written: ${this.#manifest.journalError}`)
     }
 
+    // A planned lane that never began had nothing to work on: a lane upstream
+    // failed, and says so. What is left is the lanes that ran, as before a plan.
+    for (const [lane, status] of Object.entries(this.#manifest.lanes)) {
+      if (status.state === 'pending') delete this.#manifest.lanes[lane as LaneName]
+    }
     this.#manifest.state = this.#state()
     await this.publish()
 

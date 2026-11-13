@@ -195,6 +195,36 @@ describe('a replay read while it is being built', () => {
   })
 })
 
+/** The build screen lists the lanes from the manifest: it must not wait on one that never comes. */
+describe('the lanes a build plans', () => {
+  it('are named before the first one begins, and only those whose source was given', async () => {
+    replay = await aStoredReplay(IDENTITY)
+    const real = replay.store
+    const published: string[][] = []
+
+    await build({
+      lizmap: undefined,
+      store: {
+        ...real,
+        putManifest: async (manifest) => {
+          published.push(Object.keys(manifest.lanes).sort())
+          await real.putManifest(manifest)
+        },
+      },
+    })
+
+    expect(published[0]).toEqual(['aquasys', 'events', 'media', 'radar-rainfall'])
+  })
+
+  it('leaves a lane that never began out of the replay, its source upstream having failed', async () => {
+    const { manifest } = await build({ radarRainfall: { root: join(deliveries, 'nowhere') } })
+
+    expect(manifest.lanes['radar-rainfall']).toMatchObject({ state: 'failed' })
+    expect(manifest.lanes.media).toBeUndefined()
+    expect(Object.values(manifest.lanes).map((one) => one.state)).not.toContain('pending')
+  })
+})
+
 describe('the media of a replay', () => {
   it('are copied under it, so the replay survives the deliveries moving', async () => {
     const { manifest } = await build()

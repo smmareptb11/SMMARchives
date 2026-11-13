@@ -55,19 +55,13 @@ const measuresOf = (family: string | undefined) =>
  * line it does not recognise leaves the strand at its state alone, so a change
  * of wording on the worker's side costs the detail, never the screen.
  *
- * While the build runs, the strands not started yet are there too, waiting:
- * a manifest lists a strand once it starts, and a count of what is left that
- * grew as the build went would read as going backwards.
+ * The strands are the ones the manifest lists: a build names those it will run
+ * before the first begins, so the count of what is left never grows, and a
+ * strand whose source is not configured is never shown waiting for its turn.
  */
-export function stagesOf(
-  lanes: Lanes,
-  journal: readonly JournalEntry[],
-  running: boolean,
-): Stage[] {
-  const states = new Map<string, string>(running ? ORDER.map((lane) => [lane, 'pending']) : [])
-  for (const [lane, status] of Object.entries(lanes)) states.set(lane, status.state)
-
-  return [...states]
+export function stagesOf(lanes: Lanes, journal: readonly JournalEntry[]): Stage[] {
+  return Object.entries(lanes)
+    .map(([lane, status]): [string, string] => [lane, status.state])
     .sort(([one], [other]) => rank(one) - rank(other) || one.localeCompare(other))
     .map(([lane, state]) => ({
       lane,

@@ -26,7 +26,7 @@ export type BuildScreenProps = {
 
 /** What a construction is doing, while it does it, in the reader's terms. */
 export function BuildScreen({ manifest, journal }: BuildScreenProps) {
-  const stages = stagesOf(manifest.lanes, journal, manifest.state === 'running')
+  const stages = stagesOf(manifest.lanes, journal)
   const { over, of } = settled(stages)
   const media = manifest.media
 
