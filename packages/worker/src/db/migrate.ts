@@ -6,16 +6,13 @@ import type { Pool, PoolClient } from 'pg'
 import { borrow, giveBack, rolledBack } from './tx.ts'
 
 /**
- * Applies the migrations the database has not seen yet, in name order.
+ * Applies the migrations the database has not seen yet, in name order, each in
+ * its own transaction, so a failure leaves the database on the last one that
+ * worked.
  *
- * Each runs in its own transaction, so a migration that fails leaves the
- * database on the last one that worked rather than half way through this one.
- * PostgreSQL runs DDL transactionally, which is what makes that promise real.
- *
- * Under a lock held for the whole run: two runs started together — two
- * containers coming up — would otherwise both read the same migration as
- * pending and both apply it. The lock is the schema's own, so two schemas of
- * one database migrate side by side.
+ * Under a lock held for the whole run, so two containers coming up together do
+ * not both apply the same migration. The lock is the schema's own, so two
+ * schemas of one database migrate side by side.
  */
 export async function migrate(pool: Pool, directory: string): Promise<string[]> {
   const client = await borrow(pool)
@@ -28,8 +25,7 @@ export async function migrate(pool: Pool, directory: string): Promise<string[]> 
     throw error
   } finally {
     // A run that failed destroys its client rather than unlocking through it:
-    // closing the session releases the lock whatever state the connection is
-    // in, and nothing can raise in place of the error that stopped the run.
+    // closing the session releases the lock, and nothing raises over the error.
     if (!failed) {
       await client.query(`select pg_advisory_unlock(hashtext('migrate ' || current_schema()))`)
     }

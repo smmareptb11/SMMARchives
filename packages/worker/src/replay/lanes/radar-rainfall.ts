@@ -13,12 +13,9 @@ import type { ReplayBuild } from '../build-state.ts'
 export type RadarRainfallSource = RadarRainfallConfig
 
 /**
- * Indexes the delivered radar rainfall over the replay's period.
- *
- * No network: the deliveries are dropped on a volume, which is why this lane is
- * the one a replay can be built from offline. It takes no geographic extent —
- * the images are France-wide mosaics, and no file states their extent, which a
- * crop would have to trust.
+ * Indexes the delivered radar rainfall over the replay's period, from the
+ * volume, without a network. It takes no geographic extent: no file states the
+ * extent of the mosaics.
  */
 export async function collectRadarRainfall(
   build: ReplayBuild,
@@ -52,9 +49,8 @@ export async function collectRadarRainfall(
       z.array(radarRainfallSeriesSchema),
       {
         data: series,
-        // Both belong to the run rather than to any series, and the extent
-        // travels with the data because no file states it: a wrong one shifts
-        // the whole layer invisibly.
+        // The extent travels with the data because no file states it: a wrong
+        // one shifts the whole layer invisibly.
         report: collector.seal({ extent: source.extent, entriesSkipped: skipped }),
       },
       series.length,

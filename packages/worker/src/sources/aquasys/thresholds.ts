@@ -21,12 +21,9 @@ export type FetchThresholdsOptions = {
 }
 
 /**
- * Reads the thresholds of a set of sources and classifies each one.
- *
- * Thresholds carry no date: they are copied into a replay at generation time,
- * because reading today's thresholds to reconstruct a past event produces a
- * false chronology. No value is configurable here — the API's value is taken as
- * it comes.
+ * Reads the thresholds of a set of sources and classifies each one. Thresholds
+ * carry no date, so a replay freezes them at build time: today's thresholds
+ * would give a past event a false chronology.
  */
 export async function fetchThresholds(options: FetchThresholdsOptions): Promise<Threshold[]> {
   const thresholds: Threshold[] = []
@@ -54,10 +51,7 @@ export async function fetchThresholds(options: FetchThresholdsOptions): Promise<
 
 /**
  * Sorts one source's thresholds into the three natures the API mixes.
- *
- * `category` and `isOverrunThreshold` are absent on part of the fleet — station
- * 85 carries a Vigilance / Alerte / Crise ladder without either, where stations
- * 84 and 86 carry both — so classification cannot rest on them alone. What is
+ * `category` and `isOverrunThreshold` are absent on part of the fleet: what is
  * inferred from the label, or from the rest of the group, is reported.
  */
 function classify(
@@ -155,15 +149,10 @@ function natureOf(
 }
 
 /**
- * The data types whose ladder falls as its labels rise in gravity.
- *
- * Only a drought ladder does: a flood is graver the higher the water, a drought
- * the lower. Station 75 carries « Débit de vigilance » at 0.6 down to « Débit de
- * crise » at 0.15 with neither `category` nor `isOverrunThreshold`, where station
- * 85 climbs from « Vigilance » at 2 to « Crise » at 4. Two recognised labels at
- * least, and a strict fall across all of them, or nothing is decided: an order
- * that neither rises nor falls is a ladder this rule cannot read. A ladder any
- * rung of which declares its nature is read as declared, never inferred.
+ * The data types whose ladder falls as its labels rise in gravity, which only a
+ * drought ladder does. Two recognised labels at least and a strict fall across
+ * all of them, or nothing is decided. A ladder any rung of which declares its
+ * nature is read as declared, never inferred.
  */
 function fallingLadders(rows: readonly RawThreshold[]): Set<string> {
   const ladders = new Map<string, Array<{ gravity: number; value: number }>>()

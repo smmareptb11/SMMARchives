@@ -25,15 +25,8 @@ export type CopyLocalMediaOptions = {
 }
 
 /**
- * Copies delivered files into the replay.
- *
- * The freeze is the point: a replay that only pointed at the deliveries
- * directory would empty itself the day the volume is reorganised. Paths are
- * mirrored, so a frame indexed as `20044/pluvio5mn/1593102683.png` is found
- * again under the same path below `prefix`.
- *
- * One failure is recorded and does not stop the others: a missing raster costs
- * one frame, not the replay.
+ * Copies delivered files into the replay, so that it outlives a reorganised
+ * volume. One failure is recorded and costs one frame, not the replay.
  */
 export async function copyLocalMedia(options: CopyLocalMediaOptions): Promise<MediaTally> {
   const tally = emptyTally()
@@ -67,30 +60,14 @@ type FreezeOneOptions = {
   target: string
   read: () => Promise<Uint8Array>
   /**
-   * Whether the medium is an observation, which the tally counts copied or
-   * failed. A reduction counts in the bytes it weighs and nowhere else: one
-   * lost truncates nothing, so one kept must not inflate what the replay holds.
+   * Whether the tally counts it copied. A reduction counts in the bytes alone:
+   * one lost truncates nothing, so one kept must not inflate what the replay holds.
    */
   observation: boolean
-  /**
-   * What a failure costs, which is the only thing the two freezes disagree on.
-   *
-   * An observation that cannot be had truncates the replay and is counted; a
-   * reduction that cannot be had costs the strip its weight and nothing else.
-   */
   onFailure: (error: unknown) => void
 }
 
-/**
- * Freezes one medium, whatever it is read from.
- *
- * The three steps every freeze shares — read, store, count — written once. What
- * differs between a delivered raster and a remote image is where the bytes come
- * from and how the walk is paced, so those stay with their callers.
- *
- * Returns whether the replay now holds it, which is the only thing a caller
- * needs to decide what to record.
- */
+/** Freezes one medium, whatever it is read from, and answers whether the replay now holds it. */
 async function freezeOne(options: FreezeOneOptions): Promise<boolean> {
   try {
     const body = await options.read()
@@ -111,11 +88,8 @@ export type DownloadMediaOptions = {
   prefix: string
   fetch: Fetch
   /**
-   * How many downloads run at once.
-   *
-   * The images sit on another host than the Lizmap whose calls we space, so a
-   * little concurrency is legitimate here — and small, because it is still
-   * somebody else's server.
+   * How many downloads run at once: the images are not on the Lizmap host whose
+   * calls we space, but still on somebody else's server, so keep it small.
    */
   concurrency?: number
 }
@@ -125,28 +99,18 @@ export type DownloadResult = {
   images: FrozenWebcamImage[]
   tally: MediaTally
   /**
-   * Why reductions were not frozen, once per distinct reason.
-   *
-   * Distinct rather than one entry per view: a listing holds hundreds, and a
-   * disk that filled up says the same thing about every one of them. Reported
-   * so a run that lost its reductions to a full volume does not read as Ceneau
-   * having published none.
+   * Why reductions were not frozen, once per distinct reason: a run that lost
+   * them to a full volume must not read as Ceneau having published none.
    */
   thumbnailProblems: string[]
 }
 
 /**
- * Freezes the webcam images into the replay.
+ * Freezes the webcam images into the replay: Ceneau keeps an image for a month.
  *
- * The whole reason the freeze exists on this source: Ceneau keeps an image for
- * a month, so a replay holding only URLs empties itself without warning once
- * that month has passed.
- *
- * The path is derived from the code and the instant, never from the remote file
- * name, which is not stable enough to keep. An image that cannot be
- * fetched costs its own frame and leaves `storedPath` null — the replay says
- * which images it does not hold rather than pointing at a file that is not
- * there.
+ * The path comes from the code and the instant, never from the remote file
+ * name, which is not stable. An image that cannot be fetched leaves
+ * `storedPath` null rather than pointing at a file that is not there.
  */
 export async function downloadMedia(options: DownloadMediaOptions): Promise<DownloadResult> {
   const tally = emptyTally()
@@ -156,9 +120,7 @@ export async function downloadMedia(options: DownloadMediaOptions): Promise<Down
   const images: FrozenWebcamImage[] = []
   const run: Run = { options, http, tally, problems: new Set() }
 
-  // By batches rather than a shared cursor: the order out is then the order in
-  // by construction, which is the order a run with no download produces. At two
-  // at a time over a few hundred images, waiting for a batch costs nothing.
+  // By batches rather than a shared cursor, so the order out is the order in.
   for (let at = 0; at < options.images.length; at += concurrency) {
     const batch = await Promise.all(
       options.images.slice(at, at + concurrency).map(async (image) => {
@@ -204,14 +166,9 @@ async function freeze(image: WebcamImage, run: Run): Promise<FrozenWebcamImage> 
 }
 
 /**
- * Freezes the reduction Ceneau publishes beside the picture, when it does.
- *
- * A lane drawn from the full images fetches some six hundred kilobytes a view
- * to paint eighty pixels of strip; the reduction is four. So it is an economy
- * and never the observation: one that cannot be had leaves the replay whole,
- * counts no failure, and truncates nothing. The reason is kept all the same —
- * the freeze can fail on the volume as well as on Ceneau, and reporting a full
- * disk as a camera publishing nothing would send someone looking at Ceneau.
+ * Freezes the reduction Ceneau publishes beside the picture, when it does. An
+ * economy for the lane, never the observation: one that cannot be had counts no
+ * failure, but its reason is kept, since the volume can fail as well as Ceneau.
  */
 async function freezeThumbnail(image: WebcamImage, run: Run): Promise<string | null> {
   const uri = image.thumbUri
@@ -232,12 +189,9 @@ async function freezeThumbnail(image: WebcamImage, run: Run): Promise<string | n
 }
 
 /**
- * Keeps why reductions were lost, in a few words and a few entries.
- *
- * Capped, because the reasons are not as distinct as they look: a volume that
- * filled up names its own temporary file in every message, so a thousand images
- * would write a thousand strings into a report that is stored with the replay
- * and re-served on every open. Five is enough to tell someone where to look.
+ * Capped, because the reasons are not as distinct as they look: a full volume
+ * names its own temporary file in every message, and the report is stored with
+ * the replay.
  */
 const REASONS_KEPT = 5
 
@@ -246,26 +200,17 @@ function remember(problems: Set<string>, error: unknown): void {
   problems.add(error instanceof Error ? error.message : String(error))
 }
 
-/**
- * Milliseconds, not seconds: two frames of one camera inside the same second
- * would otherwise resolve to one path, and the second would overwrite the
- * first one's file.
- */
+/** Milliseconds, not seconds: two frames of one camera inside one second would share a path. */
 function epochOf(at: Instant): number {
   return toEpochMilliseconds(at)
 }
 
 /**
- * The remote name is not stable enough to keep; only its kind is worth carrying.
- *
- * Ceneau serves JPEG, so an unrecognised extension is stored as one rather than
- * sniffed from the bytes: the path is an address, and nothing reads it back to
- * decide how to decode the file.
+ * The remote file's kind. Ceneau serves JPEG, so an unrecognised extension is
+ * stored as one rather than sniffed: nothing decodes the file by its path.
  */
 function extensionOf(uri: string): string {
-  // Total, because it already has an answer for what it does not recognise, and
-  // every caller reaches it while building a path — where an exception is the
-  // one thing nobody is placed to catch.
+  // Never throws: every caller reaches it while building a path, with nothing to catch.
   const extension = extname(URL.parse(uri)?.pathname ?? '')
     .slice(1)
     .toLowerCase()

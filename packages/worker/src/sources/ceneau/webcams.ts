@@ -10,11 +10,8 @@ import { z } from 'zod'
 import type { LizmapClient } from '../lizmap/client.ts'
 
 /**
- * The only source whose cameras have an exploitable archive.
- *
- * The layer holds 24 cameras over 7 sources; the other 19 are live external
- * feeds — web pages or embedded players — with no image history. Filter on
- * `source`, and on nothing else.
+ * The only source whose cameras have an exploitable archive: the layer's other
+ * cameras are live feeds with no image history. Filter on `source` alone.
  */
 const EXPLOITABLE_SOURCE = 'ceneau'
 
@@ -46,8 +43,8 @@ export async function fetchWebcamPositions(options: FetchWebcamsOptions): Promis
 
   const webcams: Webcam[] = []
   for (const feature of collection.features) {
-    // Filter before validating: the 19 cameras of other sources have no station
-    // code, and reporting them would bury the defects that matter.
+    // Before validating: other sources' cameras have no code, and reporting them
+    // would bury the defects that matter.
     if (feature.properties?.['source'] !== EXPLOITABLE_SOURCE) continue
 
     const properties = propertiesSchema.safeParse(feature.properties)

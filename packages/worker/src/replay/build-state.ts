@@ -29,14 +29,10 @@ function now(): Instant {
 
 /**
  * The state of a build in progress, and the only thing that writes the manifest.
+ * It is published before anything is collected and again at every transition,
+ * so a build interrupted halfway leaves a readable state.
  *
- * The manifest is published before anything is collected and again at every
- * transition, so a build interrupted halfway leaves a readable state instead of
- * a directory nobody can interpret.
- *
- * A lane and a data set are counted separately because they are not the same
- * thing: the Aquasys lane produces four data sets off one referential, each
- * with the report of the collection or the derivation it corresponds to.
+ * Lanes and data sets are counted apart: one lane can store several data sets.
  */
 export class ReplayBuild {
   readonly #manifest: ReplayManifest
@@ -65,14 +61,7 @@ export class ReplayBuild {
     this.#echo = onProgress ?? (() => {})
   }
 
-  /**
-   * Checks the manifest against its own contract before storing it.
-   *
-   * The manifest is the index the API will serve and the administration will
-   * read; a bound declared on it and never run is how a longitude of 1000
-   * reached production once already. It is written a handful of times per
-   * build, so the check costs nothing measurable.
-   */
+  /** Checks the manifest against its contract before storing it: the API serves it as stored. */
   async publish(): Promise<void> {
     this.#manifest.updatedAt = now()
     await this.#store.putManifest(replayManifestSchema.parse(this.#manifest))
@@ -88,18 +77,13 @@ export class ReplayBuild {
   }
 
   /**
-   * Runs one lane, and records that it began, ended, or died trying.
+   * Runs one lane, and records that it began, ended, or died trying, even in
+   * `#begin`: a lane left short of `done` or `failed` reads as a replay that
+   * went fine.
    *
-   * The transitions are here rather than left to each lane because a lane that
-   * reached neither `done` nor `failed` reads as a replay that went fine: it is
-   * not counted as a failure, and a build that never reached {@link settle}
-   * leaves the manifest frozen mid-transition. Both happened. Wrapped, a lane
-   * cannot represent that state — including a lane that dies in `#begin`, whose
-   * first act is a disk write.
-   *
-   * A failure that cannot be written either stays inside: the manifest in
-   * memory already says the lane failed, and {@link settle} writes it whole.
-   * Let out, it would skip that very write and leave the replay `running`.
+   * A failure that cannot be written either stays inside: the manifest in memory
+   * already says the lane failed, and {@link settle} writes it whole. Let out, it
+   * would skip that very write and leave the replay `running`.
    */
   async runLane<T>(lane: LaneName, collect: () => Promise<T>): Promise<T | undefined> {
     try {
@@ -122,10 +106,8 @@ export class ReplayBuild {
   }
 
   /**
-   * A collector for one data set, whose progress reaches the lane's journal.
-   *
-   * No request for one that only gathers failures for {@link noteFailures},
-   * which keeps nothing else of its report.
+   * A collector for one data set, whose progress reaches the lane's journal. No
+   * request for one that only gathers failures for {@link noteFailures}.
    */
   collectorFor(lane: LaneName, request: Record<string, unknown> = {}): ReportCollector {
     return new ReportCollector(request, {
@@ -134,14 +116,9 @@ export class ReplayBuild {
   }
 
   /**
-   * Stores one data set, once it satisfies the contract its collector declares.
-   *
-   * A value its own contract refuses fails the lane rather than reaching
-   * storage: the API and the interface import these schemas, so what is stored
-   * can be served without being checked again.
-   *
-   * The count is given rather than derived: a data set is not always an array —
-   * the referential is one object holding two families.
+   * Stores one data set, once it satisfies its contract: a value the contract
+   * refuses fails the lane, so what is stored is served without a second check.
+   * The count is given because a data set is not always an array.
    */
   async stored<T>(
     dataset: DatasetName,
@@ -171,13 +148,7 @@ export class ReplayBuild {
     await this.publish()
   }
 
-  /**
-   * Adds to what the replay has frozen.
-   *
-   * Accumulated rather than replaced: two lanes freeze media now — the rasters
-   * a delivery holds and the webcam images Ceneau would purge — and the tally
-   * answers one question for the replay, not one per lane.
-   */
+  /** Adds to what the replay has frozen: several lanes freeze media into one tally. */
   async copied(tally: ReplayManifest['media']): Promise<void> {
     const frozen = this.#manifest.media
     this.#manifest.media = {
@@ -219,11 +190,9 @@ export class ReplayBuild {
   }
 
   /**
-   * Seals the build: waits for the journal, settles the state, publishes once.
-   *
-   * A journal that could not be written is recorded rather than raised. Raised,
-   * it would leave a complete replay on disk behind an exit code documented as
-   * "could not start" — the manifest and the command contradicting each other.
+   * Seals the build: waits for the journal, settles the state, publishes once. A
+   * journal that could not be written is recorded rather than raised, which
+   * would give a stored replay the exit code of a build that could not start.
    */
   async settle(): Promise<BuildResult> {
     try {
@@ -234,7 +203,7 @@ export class ReplayBuild {
     }
 
     // A planned lane that never began had nothing to work on: a lane upstream
-    // failed, and says so. What is left is the lanes that ran, as before a plan.
+    // failed, and says so.
     for (const [lane, status] of Object.entries(this.#manifest.lanes)) {
       if (status.state === 'pending') delete this.#manifest.lanes[lane as LaneName]
     }
@@ -249,20 +218,15 @@ export class ReplayBuild {
 
   /**
    * A replay that stored nothing is failed, one that stored everything without a
-   * single failure is complete, anything between is partial — the ladder the
-   * exit code of the build follows.
+   * single failure is complete, anything between is partial.
    */
   #state(): ReplayManifest['state'] {
     const datasets = Object.values(this.#manifest.datasets)
     if (datasets.length === 0) return 'failed'
 
     const failed =
-      // Any lane short of `done`, not only one that reached `failed`. With
-      // `runLane` there should be none, which is what makes this a net rather
-      // than the only thing standing between a dead lane and a `complete`.
+      // Any lane short of `done`, not only one that reached `failed`.
       Object.values(this.#manifest.lanes).some((lane) => lane.state !== 'done') ||
-      // The rule a report states about its own exit code, read from the one
-      // place that states it.
       datasets.some((dataset) => exitCodeFor(dataset.report) !== ExitCode.success) ||
       this.#manifest.media.failed > 0 ||
       this.#manifest.journalError !== undefined

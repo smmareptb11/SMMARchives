@@ -4,20 +4,14 @@ const TIMESTAMPTZ = 1184
 const INT8 = 20
 
 /**
- * An instant comes back as ISO 8601 UTC, never as a `Date`.
- *
- * `pg` parses a `timestamptz` into a `Date` built in the process's own zone, and
- * every instant in this project is normalised onto one clock. A conversion on
- * the way out is exactly the silent desynchronisation that rule exists to
- * prevent — and it would show nowhere, a replay reading plausibly with its whole
- * chronology shifted.
+ * An instant comes back as ISO 8601 UTC, never as a `Date` built in the
+ * process's own zone, which would shift a whole chronology without a sign.
  */
 types.setTypeParser(TIMESTAMPTZ, (value) => new Date(value).toISOString())
 
 /**
- * `count(*)` is a `bigint`, which `pg` hands over as a string so no count above
- * 2^53 is quietly rounded. Ours are counts of measures in one replay; a string
- * where the manifest promises a number would be the real defect here.
+ * `count(*)` is a `bigint`, which `pg` hands over as a string. Ours count rows of
+ * one replay, far below 2^53, and the manifest promises numbers.
  */
 types.setTypeParser(INT8, (value) => Number(value))
 

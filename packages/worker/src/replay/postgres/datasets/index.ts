@@ -19,18 +19,8 @@ import {
 import { readReferential, readWebcams, writeReferential, writeWebcams } from './sources.ts'
 
 /**
- * Where a data set lands, and how it comes back.
- *
- * The name says the shape, so the port keeps one generic write: a lane hands
- * over what it collected and this table knows which rows it becomes. The read
- * is the same mapping the other way.
- */
-/**
- * What a reader may narrow a data set by.
- *
- * Declared per data set rather than shared: a filter a data set knows nothing
- * about is refused rather than ignored, and a client that misspelled one is
- * told instead of being served everything.
+ * What a reader may narrow a data set by. Each data set declares the filters it
+ * answers to, and another one is refused rather than ignored.
  */
 export type DatasetFilter = {
   family?: string | undefined
@@ -49,6 +39,7 @@ export type DatasetMapping = {
   narrows: readonly (keyof DatasetFilter)[]
 }
 
+/** Where each data set lands, and how it comes back: its name says its shape. */
 export const MAPPINGS: Record<DatasetName, DatasetMapping> = {
   stations: { write: writeReferential, read: readReferential, narrows: [] },
   thresholds: { write: writeThresholds, read: readThresholds, narrows: [] },

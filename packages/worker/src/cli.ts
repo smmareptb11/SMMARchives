@@ -16,24 +16,17 @@ import {
 import { isUnion } from '@smmarchives/shared/reference/perimeters.ts'
 
 /**
- * Lets the process outlive whoever read its progress.
- *
- * The API reads a build's stderr only to learn why it could not start, and
- * the build's own trace is its journal, in the database. Once that reader is
- * gone — the API stopped while the build runs — the next line of progress
- * meets a closed pipe, and left unhandled that error kills a build that had
- * nothing wrong with it. Any other failure to write still surfaces.
+ * Lets the process outlive whoever read its progress: once the API that
+ * started a build stops, the next line meets a closed pipe, which must not kill
+ * the build. Its own trace is the journal, in the database.
  */
 function ignoreGoneReader(error: NodeJS.ErrnoException): void {
   if (error.code !== 'EPIPE') throw error
 }
 
 /**
- * Runs a process that stores what it collected instead of returning it.
- *
- * Nothing goes on stdout — the data went to storage — so the exit code carries
- * the whole outcome: the run decides between complete and partial, and only a
- * run that could not start at all exits 1.
+ * Runs a process that stores what it collected instead of returning it, so the
+ * exit code carries the whole outcome: only a run that could not start exits 1.
  */
 export async function runProcess(run: () => Promise<ExitCode>): Promise<void> {
   process.stderr.on('error', ignoreGoneReader)
@@ -92,11 +85,8 @@ export function toTerritory(
 }
 
 /**
- * The identifier of a replay, which also names the directory holding its media.
- *
- * Checked here rather than at the store, because a separator in it would escape
- * that directory. A replay is named by the database, so a flag carrying one
- * names a replay that already exists.
+ * The identifier of an existing replay, which also names the directory holding
+ * its media: a separator in it would escape that directory.
  */
 export function toReplayId(value: string): string {
   const parsed = replayIdSchema.safeParse(value)

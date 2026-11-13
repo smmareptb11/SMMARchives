@@ -32,13 +32,9 @@ export type Density = {
 export type MeasuresResult = {
   measures: Measure[]
   /**
-   * The density actually obtained, so a replay states its own step rather than
-   * presenting a 41-minute series as a 5-minute one. `null` marks a source and
-   * quantity asked for and returning nothing, which `data` cannot express.
-   *
-   * Per quantity and not per source: a station returns its level and its flow
-   * on the same timestamps, and a median over the two interleaved reads as
-   * zero.
+   * The step actually obtained, per quantity: a station's level and flow share
+   * their timestamps, and a median over both reads as zero. `null` marks a
+   * source and quantity asked for that returned nothing.
    */
   density: Density[]
   /** Rows whose date or value was unreadable; kept out rather than guessed. */
@@ -46,18 +42,13 @@ export type MeasuresResult = {
 }
 
 /**
- * Reads the measures of a set of sources over a window.
- *
- * One call per source and per quantity: `stationId` is a single integer and
- * there is no grouped retrieval. Which is why the caller resolves `sourceIds`
- * through the extent first — the filter upstream is what keeps this loop
- * short.
+ * Reads the measures of a set of sources over a window, one call per source and
+ * per quantity: Aquasys has no grouped retrieval.
  */
 /* eslint-disable-next-line max-statements -- one call per source and per quantity, each answer
    feeding three accumulators */
 export async function fetchMeasures(options: FetchMeasuresOptions): Promise<MeasuresResult> {
-  // Resolved once, not per source: an unmappable quantity is one fallback, not
-  // 94 identical ones filling the report.
+  // Once, not per source: an unmappable quantity is one fallback in the report.
   const requested = resolveQuantities(options)
 
   const series: Measure[][] = []
@@ -126,12 +117,9 @@ function resolveQuantities(
 }
 
 /**
- * One measure per instant of a series, the first the source returned.
- *
- * A replay holds one reading per source, quantity and instant, which is what
- * its storage keys on; a second one would be refused there, taking the whole
- * data set with it. The crossings keep the first as well, so the measures they
- * are derived from are the ones a reader is served.
+ * One measure per instant of a series, the first the source returned: storage
+ * keys on the instant and would refuse the whole data set over a second one.
+ * The crossings keep the first as well.
  */
 function firstPerInstant(series: readonly Measure[], collector: ReportCollector): Measure[] {
   const seen = new Set<number>()
@@ -155,13 +143,9 @@ function firstPerInstant(series: readonly Measure[], collector: ReportCollector)
 }
 
 /**
- * Turns positional rows into measures, reading four columns and no more.
- *
- * The response is an array of arrays, not the documented array of objects.
- * Indices 0 to 3 are the only ones identified with certainty; the rest are left
- * unread — index 16 holds an operator login, and the consultation interface is
- * public. Everything needed to tell rows apart is a request parameter, so there
- * is nothing to gain from decoding further.
+ * Turns positional rows into measures. The response is an array of arrays, not
+ * the documented array of objects; only indices 0 to 3 are identified, and the
+ * rest stays unread: index 16 holds an operator login, and the interface is public.
  */
 function decode(
   rows: readonly unknown[][],
@@ -179,9 +163,7 @@ function decode(
     try {
       measures.push({ family, sourceId, quantity, at: fromEpochMilliseconds(epoch), value })
     } catch {
-      // An epoch outside the plausible range is one bad row, not a bad series:
-      // dropping the whole call would lose the 899 good measures around it.
-      // The count surfaces in `rowsDropped`.
+      // One bad row, not a bad series; counted in `rowsDropped`.
     }
   }
 

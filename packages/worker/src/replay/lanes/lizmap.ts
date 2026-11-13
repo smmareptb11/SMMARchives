@@ -38,14 +38,7 @@ export type LizmapLaneOptions = {
 
 const IMAGES = z.array(frozenWebcamImageSchema)
 
-/**
- * Collects the exploitable cameras and their images.
- *
- * One lane for the two because they go through one host and one client.
- *
- * The images are the exception to that host: they sit with their own host, and
- * freezing them is what keeps a replay from emptying itself a month later.
- */
+/** Collects the exploitable cameras and their images, both listed through one Lizmap client. */
 export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
   const { build, source, identity } = options
 
@@ -70,11 +63,8 @@ export async function collectLizmap(options: LizmapLaneOptions): Promise<void> {
 }
 
 /**
- * Lists the images of the retained cameras, freezes them, and stores the index.
- *
- * Stored after the download, never before: the data set has to point at the
- * copies, and an image whose fetch failed must say so rather than name a file
- * that is not there.
+ * Lists the images of the retained cameras, freezes them, and stores the index:
+ * after the download, so that it points at the copies, or at nothing.
  */
 async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam[]): Promise<void> {
   const { build, source, identity } = options
@@ -85,8 +75,6 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
     to: identity.period.to,
     codes,
   })
-  // The codes come from the positions just collected, so the camera layer is
-  // read once for the lane rather than once per data set.
   const { images, beyondRetention } = await fetchWebcamImages({
     client: source.client,
     collector: listing,
@@ -95,8 +83,7 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
     now: options.now,
   })
 
-  // Its own collector: the failures of a download must not be attributed to the
-  // listing, which downloads nothing.
+  // Its own collector, so that a download's failures are not the listing's.
   const media = options.copyMedia ? build.collectorFor('lizmap') : undefined
   const frozen =
     media === undefined
@@ -131,16 +118,9 @@ async function freezeImages(options: LizmapLaneOptions, webcams: readonly Webcam
 }
 
 /**
- * Says how many views a lane will have to draw from the full image.
- *
- * On the listing's collector, because that is the one the `webcam-images`
- * report is sealed from — the download has its own, which only carries what
- * went wrong with a file. One line for the batch rather than one per view: a
- * whole episode lists hundreds of pictures, and a report nobody can read
- * reports nothing.
- *
- * A fallback and not a failure: the replay holds every observation it was asked
- * for, and pays for the missing reductions in weight alone.
+ * Says, on the listing's collector which seals the `webcam-images` report, how
+ * many views fall back on the full image: one line for the batch, and a
+ * fallback rather than a failure, since every observation is held.
  */
 function sayWhichViewsHaveNoReduction(
   collector: ReportCollector,

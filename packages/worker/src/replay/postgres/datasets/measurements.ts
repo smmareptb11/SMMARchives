@@ -71,12 +71,9 @@ export async function readThresholds(db: Queryable, replayId: string): Promise<T
 }
 
 /**
- * What a station or a rain gauge read, and when.
- *
- * Inserted in one statement per batch rather than one per measure: a replay of
- * three days holds around 160 000 of them, and a round trip each would turn
- * seconds into minutes. One reading per source, quantity and instant is the
- * collection's rule to keep: a second one is refused by the primary key.
+ * Measures per statement: a replay holds hundreds of thousands. One reading per
+ * source, quantity and instant is the collection's rule to keep: the primary
+ * key refuses a second one.
  */
 const BATCH = 1_000
 

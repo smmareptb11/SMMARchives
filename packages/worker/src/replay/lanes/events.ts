@@ -12,17 +12,9 @@ export type Derivable = {
 }
 
 /**
- * Derives the facts a replay's own data implies, and stores them.
- *
- * Its own lane, though it reads no source: a derivation that throws must not
- * condemn the collection that fed it. Inside the Aquasys lane, a bug here
- * marked that lane failed after three data sets had already been stored, and
- * their collection had not failed at all.
- *
- * It runs on what the collection returned rather than on what storage holds, so
- * a replay whose Aquasys lane did not run derives nothing — reading 19 MB of
- * measures back to recompute what a run already had in hand would be work for
- * nothing.
+ * Derives the facts a replay's own data implies, and stores them. It runs on
+ * what the collection returned, not on what storage holds, so a replay whose
+ * Aquasys lane did not run derives nothing.
  */
 export async function deriveEvents(build: ReplayBuild, data: Derivable): Promise<void> {
   await build.runLane('events', async () => {

@@ -51,10 +51,8 @@ await runProcess(async () => {
   try {
     return await build(pool, args.id, asked)
   } finally {
-    // Closed whatever happened: an open pool holds the process alive until its
-    // connections time out, and the API — which waits a few seconds to hear
-    // whether this command could start at all — would call a build that died
-    // in two seconds one that is still running.
+    // An open pool holds the process alive, and the API, which waits to hear
+    // whether the build could start, would take a dead build for a running one.
     await pool.end()
   }
 })
@@ -70,9 +68,8 @@ async function build(
     onProgress: progress,
   })
 
-  // Without `--id` the database mints one. With it, the build goes into the
-  // replay the API has just created, which no build has taken yet: a replay is
-  // frozen once built.
+  // With `--id`, the build goes into the replay the API has just created, which
+  // no build may have taken yet: a replay is frozen once built.
   const { id, store } = await openOrCreate(catalog, askedId, asked)
   if (!(await store.claim())) {
     throw new UsageError(`--id ${id} names a replay a build has already started`)
@@ -108,11 +105,9 @@ async function build(
 }
 
 /**
- * Marks the replay failed, as far as the database still answers.
- *
- * Left `running`, a replay nobody builds any more refuses its events and its
- * publication for good. The failure to mark it is said, never raised: the
- * error that stopped the build is the one worth reading.
+ * Marks the replay failed, as far as the database still answers: left `running`,
+ * it refuses its events and its publication for good. A failure here is said,
+ * never raised over the error that stopped the build.
  */
 async function abandon(store: ReplayStore): Promise<void> {
   try {
@@ -154,11 +149,9 @@ async function openOrCreate(
 }
 
 /**
- * The delivered rasters, or nothing when none are configured.
- *
- * The delivery directory exists only once Predict has delivered, and a site
- * waiting for its first delivery still has a replay to build. A root that is
- * set but unreadable is a lane that fails.
+ * The delivered rasters, or nothing when none are configured: a site waiting
+ * for its first delivery still builds replays. A root set but unreadable fails
+ * the lane.
  */
 function radarSource() {
   const config = radarRainfallConfig()

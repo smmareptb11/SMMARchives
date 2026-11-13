@@ -25,12 +25,11 @@ type FamilyRoutes = {
 /**
  * Addresses the Aquasys (Myliaq) API.
  *
- * Two facts shape it. Lists take no parameter and come back whole — `limit`
- * returns a non-deterministic slice with no offset to go with it, and the
- * identifier space is sparse, so nothing is ever enumerated by range. And the
- * measure endpoints need their parameters in the query string *and* in the JSON
- * body: query-only yields an opaque HTTP 500, and a date sent as a string
- * rather than an int64 yields an empty HTTP 400.
+ * Lists are read whole: `limit` returns a non-deterministic slice with no
+ * offset, and identifiers are sparse. The measure endpoints need their
+ * parameters in the query string *and* in the JSON body: query-only yields an
+ * opaque HTTP 500, and a date sent as a string rather than an int64 an empty
+ * HTTP 400.
  */
 export class AquasysClient {
   readonly #http: HttpClient

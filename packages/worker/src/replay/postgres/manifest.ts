@@ -15,13 +15,8 @@ import type { Queryable } from '../../db/tx.ts'
 import { CorruptManifestError } from '../store.ts'
 
 /**
- * The manifest is a view, not a row.
- *
- * Nothing is stored that a query rebuilds: what a data set holds, the fleet and
- * how much of it spoke are counted from the tables that hold them, so a manifest
- * cannot drift from the replay it describes. Only what records what did *not*
- * happen has columns — media failed, the bytes copied — because
- * no count retrieves those.
+ * The manifest is a view, not a row: nothing a query can count is stored, so it
+ * cannot drift from the replay it describes.
  */
 export async function readManifest(db: Queryable, id: string): Promise<ReplayManifest | undefined> {
   const replay = (await db.query<ReplayRow>(REPLAY, [id])).rows[0]
@@ -61,9 +56,7 @@ export async function readManifest(db: Queryable, id: string): Promise<ReplayMan
     ...(replay.journal_error === null ? {} : { journalError: replay.journal_error }),
   }
 
-  // Checked like the file was, and for the same reason: the manifest is the
-  // index every reader opens first, and serving a broken one as if it were
-  // whole is worse than failing.
+  // Every reader opens the manifest first: serving a broken one as whole is worse than failing.
   const checked = replayManifestSchema.safeParse(assembled)
   if (!checked.success) throw new CorruptManifestError(id, { cause: checked.error })
   return checked.data
@@ -172,11 +165,8 @@ const UPSERT_DATASET = `
 // report a publication carries about them.
 
 /**
- * A data set's count is the count of its own rows, told here once.
- *
- * `stations` holds two families because the referential is one object holding
- * both, and `radar-rainfall` counts series rather than frames, because that is
- * what the data set is an array of.
+ * A data set's count is the count of its own rows: `stations` holds both
+ * families of the referential, and `radar-rainfall` counts series, not frames.
  */
 const DATASETS = `
   select d.name, d.report,
@@ -206,10 +196,7 @@ function territoryOf(row: ReplayRow): { territory?: string } {
   return row.territory === null ? {} : { territory: row.territory }
 }
 
-/**
- * What the administrator said of it, each field left out when nothing was
- * said: the contract checks the values, as it does the rest of the row.
- */
+/** What the administrator said of it, each field left out when nothing was said. */
 function aboutOf(row: ReplayRow): Record<string, string> {
   const about: Record<string, string> = {}
   if (row.description !== null) about.description = row.description
@@ -282,22 +269,16 @@ async function readDatasets(
 
 /**
  * The fleet, stored rather than counted, and absent until a lane collected a
- * referential — which is what its own contract says.
- *
- * `withMeasures` is the exception to counting everything countable: the lane
- * counts it per family, and a measure does not carry the family that would let
- * it be recounted. See `measure` in the schema.
+ * referential: a measure does not carry the family `withMeasures` is counted by.
  */
 function fleetOf(row: ReplayRow): ReplayManifest['fleet'] {
   return row.fleet ?? undefined
 }
 
 /**
- * What the replay's own data implied, rebuilt rather than stored.
- *
- * The thresholds set aside and the single-step crossings are build facts no
- * count over the events retrieves — and the derivation already writes them in
- * its own report, which is where they are read back from.
+ * What the replay's own data implied. The thresholds set aside and the
+ * single-step crossings no count retrieves are read back from the derivation's
+ * report.
  */
 const EVENTS_REPORT = z.object({
   singleStep: z.number().int().nonnegative().catch(0),

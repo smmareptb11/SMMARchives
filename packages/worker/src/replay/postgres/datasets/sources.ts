@@ -62,11 +62,7 @@ type SourceRow = {
 
 /**
  * The Aquasys referential: one object holding two families, stored as rows of
- * one table and read back in the shape the contract gives it.
- *
- * Written without being checked: what reaches the port has already passed its
- * contract. Read back through the contract, because storage is the one place a
- * value can arrive from outside the process.
+ * one table, written unchecked and read back through the contract.
  */
 export async function writeReferential(
   db: Queryable,
@@ -156,8 +152,7 @@ export async function writeWebcams(db: Queryable, replayId: string, data: unknow
       family: 'webcam',
       external_id: webcam.code,
       code: webcam.code,
-      // A webcam has no name of its own: what names it is its commune, which
-      // goes where the other family-specific fields go.
+      // A webcam is named by its commune, kept with its other own fields.
       name: null,
       comment: null,
       town_code: null,

@@ -12,11 +12,8 @@ import { z } from 'zod'
 import type { LizmapClient } from '../lizmap/client.ts'
 
 /**
- * How long Ceneau keeps an image.
- *
- * `uri` and `thumb_uri` point at `media.ceneau.test`, not at SMMAR. A
- * replay older than this has no webcam images at all, and the interface must be
- * told so rather than shown an empty layer.
+ * How long Ceneau keeps an image: `uri` and `thumb_uri` point at Ceneau's host,
+ * not at SMMAR. A replay older than this has no webcam image at all.
  */
 const RETENTION_DAYS = 30
 
@@ -85,8 +82,7 @@ function decode(
 
   for (const picture of pictures) {
     try {
-      // The contract's own judgement, before anything is downloaded: let
-      // through, one address that is not one costs the whole data set.
+      // The contract's own judgement: one address that is not a URL would cost the whole data set.
       if (!webcamImageSchema.shape.uri.safeParse(picture.uri).success) {
         throw new Error('its address is not a URL')
       }
@@ -109,16 +105,9 @@ function decode(
 }
 
 /**
- * The reduction's address when it is one, and whether one was published and lost.
- *
- * Two facts, because they are two: a camera that publishes no reduction and one
- * whose address is unusable both leave the image alone, and only the second is
- * worth reporting.
- *
- * The judgement is the contract's own — the listing declares `thumb_uri` a
- * string and nothing more, where a stored image must carry a `z.url()`. Writing
- * a second opinion here is what would let a value pass this door and fail the
- * next one, at the cost of every camera rather than one thumbnail.
+ * The reduction's address when it is one, and whether one was published and
+ * lost: only a published one is worth reporting. Judged by the stored contract
+ * itself, so that no value passes here to fail there.
  */
 function reductionOf(published: string | undefined): { thumbUri: string | null; lost: boolean } {
   if (published === undefined) return { thumbUri: null, lost: false }
@@ -128,18 +117,9 @@ function reductionOf(published: string | undefined): { thumbUri: string | null; 
 }
 
 /**
- * Says that reductions were read as absent, because their address is not one.
- *
- * The listing is checked no further than « it is a string », and the camera
- * layer this source joins already ships values that need cleaning. A reduction
- * is an economy and never the observation, so an address that is not one is
- * read as no reduction: the picture survives, and the full image stands in.
- *
- * Left through, it would reach the stored contract — which asks for a URL — and
- * cost the replay every camera rather than one thumbnail.
- *
- * One line per camera rather than per picture: a camera that publishes a
- * malformed address publishes it all day.
+ * Says that reductions were read as absent, because their address is not a URL:
+ * the picture survives, and the full image stands in. One line per camera,
+ * which publishes a malformed address all day.
  */
 function sayTheReductionsHaveNoAddress(
   options: FetchImagesOptions,

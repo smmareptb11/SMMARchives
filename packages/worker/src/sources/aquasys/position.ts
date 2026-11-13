@@ -13,10 +13,8 @@ export type PositionedRow = {
 
 /**
  * Places a source on the map, reporting rather than guessing when it cannot.
- *
- * The Sandre code travels with the row and decides the transform: 26 is Lambert
- * 93 and is reprojected, 16 is already WGS84. Dispatching on the family instead
- * would drop the 222 rain gauges that are already in degrees into the Atlantic.
+ * The row's own Sandre code decides the transform, never its family: rain
+ * gauges come both in Lambert 93 and in degrees.
  */
 /* eslint-disable-next-line max-params -- five values, none derivable from another, and the last
    decides omit or drop */

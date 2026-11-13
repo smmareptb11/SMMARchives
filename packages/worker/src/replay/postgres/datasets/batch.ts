@@ -4,13 +4,10 @@ import type { Queryable } from '../../../db/tx.ts'
 const BATCH = 1_000
 
 /**
- * Inserts rows a batch at a time, each batch one statement.
- *
- * The statement reads its rows from `$2`, a JSON array, through
- * `jsonb_to_recordset`, and the replay from `$1`. One JSON parameter rather
- * than one array per column: the rows carry geometries, arrays and documents,
- * which parallel arrays of a single type cannot hold. A JSON `null` is read as
- * a SQL `NULL`.
+ * Inserts rows a batch at a time, each batch one statement, which reads the
+ * replay from `$1` and its rows from `$2`, a JSON array, through
+ * `jsonb_to_recordset`: the rows carry geometries, arrays and documents. A JSON
+ * `null` is read as a SQL `NULL`.
  */
 export async function insertRows(
   db: Queryable,

@@ -31,11 +31,8 @@ export type PostgresStoreOptions = {
 }
 
 /**
- * One replay, stored in PostgreSQL, its media on the volume.
- *
- * The write stays generic: a data set's name says its shape, so a lane hands
- * over what it collected and the mapping knows which rows that becomes. Each
- * one lands in a transaction, so a reader never finds half of a data set.
+ * One replay, stored in PostgreSQL, its media on the volume. Each data set lands
+ * in one transaction, so a reader never finds half of one.
  */
 /* eslint-disable-next-line max-lines-per-function -- one object and its methods; the count is the
    port's surface */
@@ -50,8 +47,7 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
     },
 
     async putManifest(manifest: ReplayManifest): Promise<void> {
-      // One transaction: the replay, its lanes and its reports are one
-      // publication, and a reader must never catch half of one.
+      // The replay, its lanes and its reports are one publication.
       await tx(pool, (db) => writeManifest(db, manifest))
     },
 
@@ -97,10 +93,8 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
       await tx(pool, async (db) => {
         await MAPPINGS[name].write(db, replayId, data)
         await db.query('update replay set updated_at = now() where id = $1', [replayId])
-        // Stamped with the rows it describes, so a reader holding an older
-        // copy is told to fetch this one. The report goes in with it: the
-        // manifest is read from these lines, and one without its report is a
-        // manifest its contract refuses.
+        // Stamped with the rows it describes, and with its report: the manifest
+        // is read from these lines, and refused without it.
         await db.query(
           `insert into replay_dataset (replay_id, name, report, updated_at)
            values ($1, $2, $3::jsonb, now())
@@ -152,18 +146,12 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
     /**
      * The data set as bytes, serialised from the rows the filter keeps.
      *
-     * The version is the moment those rows were last written, and the filter is
-     * part of it: two questions over one data set are two answers, and a client
-     * holding one must not be told it already has the other. Encoded, because
-     * it is the client's text and the version goes into a header between
-     * quotes.
+     * The version is the moment those rows were last written, plus the filter,
+     * encoded since it is the client's text and goes into a quoted header.
      *
-     * Read before the rows, never after. Agents write while others read, and a
-     * write landing between the two reads would otherwise send the rows from
-     * before it under the version from after: the reader would be told, at
-     * every revalidation, that the stale copy it holds is current. In this
-     * order the worst a write can do is send newer rows under an older
-     * version, which only costs the reader one more fetch.
+     * Read before the rows, never after: a write landing between the two reads
+     * would otherwise send old rows under the new version, and the reader would
+     * keep a stale copy for good. This way it costs one more fetch at worst.
      */
     async openDataset(
       name: DatasetName,
@@ -195,10 +183,7 @@ export function openPostgresStore(options: PostgresStoreOptions): ReplayStore {
   }
 }
 
-/**
- * Moves the version of the events data set, so a reader holding the list from
- * before an agent's change is told to fetch it again.
- */
+/** Moves the version of the events data set, so a reader holding an older list fetches it again. */
 async function touchEvents(db: Queryable, replayId: string): Promise<void> {
   await db.query('update replay set updated_at = now() where id = $1', [replayId])
   await db.query(

@@ -1,17 +1,12 @@
 import { z } from 'zod'
 
 /**
- * The shapes Aquasys actually returns, as opposed to the ones it documents.
+ * The shapes Aquasys actually returns, as opposed to the ones its OpenAPI
+ * specification documents: positional arrays where it shows objects, and an
+ * example projection code matching no real station.
  *
- * This file exists because the OpenAPI specification is wrong, not as a matter
- * of style. It documents an object response where the API returns positional
- * arrays, and an example projection code matching no real station. The
- * correction has been reported for the editor to fix; until it is, what the
- * API actually returns is the reference, and these schemas encode it.
- *
- * Every schema is loose: the fleet is not homogeneous — `altitude` is on 30 of
- * 94 stations, `watershedHead` on one — and an exact schema would reject valid
- * data. Absent fields are absent, not null, except `ngfCote`.
+ * Every schema is loose: fields vary from one source to the next. Absent fields
+ * are absent, not null, except `ngfCote`.
  */
 
 export const rawStationSchema = z.looseObject({
@@ -60,9 +55,7 @@ const rawPointPrelSchema = z.looseObject({
 
 /**
  * A line of a station's altimetric history, of which only the altitude is read.
- *
- * Optional, so a malformed line costs that line rather than the whole detail,
- * which is also where a station's quantities are read.
+ * Optional, so a malformed line does not cost the detail its quantities.
  */
 const rawAltimetrySchema = z.looseObject({
   altitude: z.number().optional(),
@@ -92,12 +85,7 @@ export const rawThresholdSchema = z.looseObject({
 
 export type RawThreshold = z.infer<typeof rawThresholdSchema>
 
-/**
- * A measure row, positional rather than the documented object.
- *
- * Only indices 0 to 3 are read. Index 16 holds a login — the consultation
- * interface is public, so the row is never kept whole.
- */
+/** A measure row, positional rather than the documented object; see `decode` for what is read. */
 const rawMeasureRowSchema = z.array(z.unknown()).min(4)
 
 export const rawMeasureRowsSchema = z.array(rawMeasureRowSchema)

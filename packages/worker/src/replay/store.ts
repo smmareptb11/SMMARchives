@@ -14,11 +14,8 @@ import type { DatasetFilter } from './postgres/datasets/index.ts'
 export type { DatasetFilter }
 
 /**
- * A medium small enough to hold, or a stream to pipe straight through.
- *
- * A raster weighs about a hundred kilobytes and a webcam image less, but a
- * delivery holds thousands of them: nothing accumulates in memory beyond the
- * one being written.
+ * A medium small enough to hold, or a stream to pipe straight through: a
+ * delivery holds thousands, and none may stay in memory past its own write.
  */
 export type MediaBody = Uint8Array | ReadableStream<Uint8Array>
 
@@ -35,13 +32,10 @@ export type ManualEvent = Pick<
  * Stored bytes, ready to be served without being decoded.
  *
  * **The body is an open resource, and its reader owns it**: read it to the end
- * or destroy it. Neither, and the implementation holds a file handle nobody
- * will ever close.
+ * or destroy it, or a file handle stays open for good.
  *
- * `size` and `version` describe the bytes the body will yield, and no later
- * state of that name — an agent may change the events while they are being
- * served. `version` is the material of an ETag and nothing else: opaque to its
- * reader, which only ever compares it with itself.
+ * `size` and `version` describe the bytes the body yields, not a later state of
+ * that name. `version` is opaque, the material of an ETag.
  */
 export type StoredBlob = {
   body: Readable
@@ -50,40 +44,26 @@ export type StoredBlob = {
 }
 
 /**
- * Where a replay is stored.
+ * Where a replay is stored. Three rules hold for every implementation:
  *
- * The seam by which PostgreSQL and PostGIS will replace the file system without
- * a single collector changing. Three rules keep it a seam:
- *
- * - no absolute path ever crosses it — a medium is addressed relative to its
- *   replay;
+ * - no absolute path crosses it: a medium is addressed relative to its replay;
  * - **what it receives** has already been checked against its contract, so an
  *   implementation stores rather than validates;
- * - **a read that promises a type earns it**, and a read that answers bytes
- *   answers them as they are. Storage is the one place a value can arrive from
- *   outside the process, so a typed reader that trusted it would hand a lie to
- *   everything downstream.
+ * - **a read that promises a type checks it**, and a read that answers bytes
+ *   answers them as they are: storage is where a value arrives from outside the
+ *   process.
  */
 export type ReplayStore = {
   /**
-   * The data set as bytes, narrowed by what the caller asked for.
-   *
-   * Serialised from the rows that hold it, so a reader that only wants one
-   * station over one hour is not handed the 19 MB the whole set weighs. A
-   * filter a data set does not answer to is refused by its caller, never
-   * ignored here.
+   * The data set as bytes, narrowed by the filter. A filter a data set does not
+   * answer to is refused by its caller, never ignored here.
    */
   openDataset(name: DatasetName, filter?: DatasetFilter): Promise<StoredBlob | undefined>
   /** The report is the one a reader finds beside the data, from the moment it is stored. */
   putDataset(name: DatasetName, data: unknown, report: Report): Promise<void>
   /**
-   * The manifest as it is stored, or undefined if nothing stored one.
-   *
-   * A build holds its own in memory and never reads it back; a reader has no
-   * other way to know what a replay holds.
-   *
-   * Throws {@link CorruptManifestError} rather than answering undefined, so a
-   * caller can tell a replay nobody built from one nobody can read.
+   * The manifest as it is stored, or undefined if nothing stored one. Throws
+   * {@link CorruptManifestError} for one nobody can read.
    */
   getManifest(): Promise<ReplayManifest | undefined>
   /** Leaves the publication as it was: a build neither publishes nor withdraws. */
@@ -95,12 +75,7 @@ export type ReplayStore = {
    */
   publish(): Promise<boolean>
   unpublish(): Promise<void>
-  /**
-   * Says a build will not settle the replay it left running: it is failed.
-   *
-   * A replay that settled keeps its state, so a build that stops after its last
-   * publication takes nothing back.
-   */
+  /** Fails a replay its build left running; a replay that settled keeps its state. */
   abandon(): Promise<void>
   /**
    * Takes the replay for the build that asks, and answers false when another
@@ -110,19 +85,13 @@ export type ReplayStore = {
   claim(): Promise<boolean>
   appendJournal(entry: JournalEntry): Promise<void>
   /**
-   * The entries from the given line on, so a reader resumes on an index rather
-   * than replaying what it has already shown.
-   *
-   * A build appends while a reader reads, so the last line may be half
-   * written: it is left out until it is whole, and arrives on the next read.
-   * Answers no entry at all for a build that journalled nothing.
+   * The entries from the given line on. A build appends while a reader reads: a
+   * last line still half written is left out, and arrives on the next read.
    */
   readJournal(from: number): Promise<JournalEntry[]>
   /**
-   * The medium as bytes, or undefined if the replay never froze it.
-   *
-   * Refuses a path that would leave the replay, as every method addressing a
-   * medium does — see {@link relativeMediaPath}.
+   * The medium as bytes, or undefined if the replay never froze it. Refuses a
+   * path that would leave the replay, as every method addressing a medium does.
    */
   openMedia(path: string): Promise<StoredBlob | undefined>
   putMedia(path: string, body: MediaBody): Promise<void>
@@ -132,23 +101,19 @@ export type ReplayStore = {
    */
   removeMedia(path: string): Promise<void>
   /**
-   * Adds an event an agent reported to the `events` data set, and answers it
-   * as a reader will read it.
-   *
-   * The data set's version moves, so a reader holding the list from before is
-   * told to fetch it again.
+   * Adds an event an agent reported to the `events` data set, and answers it as
+   * a reader will read it. The data set's version moves.
    */
   addManualEvent(event: ManualEvent): Promise<ReplayEvent>
   /** Undefined for an identifier nobody holds, and for a crossing, as for the two below. */
   getManualEvent(id: string): Promise<ReplayEvent | undefined>
   /**
-   * Replaces what an agent wrote of an event, photos included, and answers it
-   * as it was and as it now is: the photos it no longer names are the caller's
-   * to remove, once the rows no longer point at them.
+   * Replaces what an agent wrote of an event, photos included, and answers it as
+   * it was and as it now is: the photos it no longer names are the caller's to
+   * remove, once the rows no longer point at them.
    *
-   * Undefined for an identifier nobody holds, and for a crossing: one is
-   * derived from the frozen measures, and corrected by hand it would no longer
-   * say what they said.
+   * Undefined for an identifier nobody holds, and for a crossing, which is
+   * derived from the frozen measures.
    */
   updateManualEvent(id: string, event: ManualEvent): Promise<ManualEventChange | undefined>
   /** Removes it for good, and answers what it was, so that its photos can follow. */
@@ -158,12 +123,9 @@ export type ReplayStore = {
 export type ManualEventChange = { previous: ReplayEvent; current: ReplayEvent }
 
 /**
- * A manifest is there and its own contract refuses it.
- *
- * Its own type because the two readers of a manifest want opposite things: a
- * listing carries on without that replay, while asking for it by name must
- * fail. The message names the replay and nothing else — an API serves it, and
- * the reason belongs in the server's own log.
+ * A manifest is there and its own contract refuses it: a listing carries on
+ * without that replay, a request by name fails. The message names the replay
+ * and nothing else, since an API serves it.
  */
 export class CorruptManifestError extends Error {
   readonly id: string
@@ -176,21 +138,15 @@ export class CorruptManifestError extends Error {
 }
 
 /**
- * Checks a medium's address against the rule that makes the port a seam.
- *
- * Here rather than in the directory implementation, because it is the port's own
- * invariant: an adapter that let an absolute path or a `..` through would write
- * into another replay, and a database adapter has no file system to make the
- * violation obvious. Judged on the shape of the path, so every implementation
- * gets the same answer without resolving anything.
+ * Whether a medium's address stays inside its replay, judged on the shape of the
+ * path alone so that every implementation gets the same answer.
  */
 export function isMediaPath(path: string): boolean {
   return (
     path !== '' &&
     !isAbsolute(path) &&
     !path.split('/').includes('..') &&
-    // No file name holds a null byte, and a reader that passed one on would
-    // have whatever precedes it read as the whole path.
+    // A reader that passed a null byte on would read what precedes it as the path.
     !path.includes('\0')
   )
 }

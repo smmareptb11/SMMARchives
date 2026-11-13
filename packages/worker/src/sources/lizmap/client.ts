@@ -28,11 +28,9 @@ export class LizmapClient {
   }
 
   /**
-   * Reads a layer as GeoJSON, repairing the response before returning it.
-   *
-   * Layer names come from the WMS `GetCapabilities`, never the WFS one, which
-   * declares ten layers and does not list `webcam`, although it answers a
-   * `GetFeature` perfectly.
+   * Reads a layer as GeoJSON, repairing the response before returning it. Layer
+   * names come from the WMS `GetCapabilities`: the WFS one omits `webcam`,
+   * although it answers a `GetFeature` on it.
    */
   async getFeature(layer: string): Promise<FeatureCollection> {
     const url = this.#serviceUrl(layer)
@@ -78,12 +76,8 @@ function parseFeature(layer: string, body: string, url: string): FeatureCollecti
 }
 
 /**
- * Trims every property value.
- *
- * Six values of the `webcam` layer end with a newline, on `url` and `commune`,
- * and the defect is at the source. Repairing it here rather than in each
- * consumer is what keeps the third consumer from re-introducing a join that
- * fails on `"Villegailhenc\n"`.
+ * Trims every property value, here rather than in each consumer: values of the
+ * `webcam` layer end with a newline at the source, on `url` and `commune`.
  */
 function trimStrings(collection: FeatureCollection): FeatureCollection {
   return { ...collection, features: collection.features.map(trimFeature) }

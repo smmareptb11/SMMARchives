@@ -11,11 +11,9 @@ export type StationTyping = {
 }
 
 /**
- * Types the fleet from its network links.
- *
- * A station its networks type both ways is left untyped rather than given
- * either category: a wrong symbol on the map looks plausible, a missing
- * station does not, and the report names it for correction in Aquasys.
+ * Types the fleet from its network links. A station its networks type both ways
+ * is left untyped and reported: a wrong symbol on the map looks plausible, a
+ * missing station does not.
  */
 export function typeStations(links: readonly RawNetworkLink[]): StationTyping {
   const candidates = new Map<number, Set<StationCategory>>()

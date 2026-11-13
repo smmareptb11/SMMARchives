@@ -24,10 +24,8 @@ export type CrossingsResult = {
   /** Thresholds a nature excludes from producing anything, per nature. */
   setAside: Partial<Record<ThresholdNature, number>>
   /**
-   * Crossings that lasted a single measure.
-   *
-   * Counted because `data` cannot show it: a closed one-measure event is
-   * indistinguishable from a two-measure one at an irregular cadence.
+   * Crossings that lasted a single measure, which the events alone cannot show
+   * at an irregular cadence.
    */
   singleStep: number
 }
@@ -35,14 +33,10 @@ export type CrossingsResult = {
 /**
  * Derives the threshold crossings a replay's own data implies.
  *
- * Three rules bind this, and breaking any of them produces a chronology that is
- * false and reads as plausible. Only `alert-level` thresholds produce anything.
- * The instant carried is the observation's, never interpolated. The judgement
- * bears on the value at the instant, never on an accumulation over the episode.
- *
- * Treating the three threshold natures alike would invent a crossing at every
- * historical flood mark, and invert the logic on a drought scale, whose values
- * fall as the situation worsens.
+ * Three rules, each of which, broken, gives a false chronology that reads as
+ * plausible: only `alert-level` thresholds produce anything (a flood mark or a
+ * drought scale would not); the instant is the observation's, never
+ * interpolated; the value at the instant is judged, never an accumulation.
  */
 export function deriveCrossings(options: DeriveCrossingsOptions): CrossingsResult {
   const { alertLevels, setAside } = excludeByNature(options.thresholds, options.collector)
@@ -63,11 +57,8 @@ export function deriveCrossings(options: DeriveCrossingsOptions): CrossingsResul
 }
 
 /**
- * Splits the thresholds an alert level from those a nature excludes.
- *
- * A nature the source stated excludes a threshold on its own authority. A
- * nature guessed from a label suppresses a chronology on a guess, and that is
- * what earns a fallback here.
+ * Splits the alert levels from the thresholds their nature excludes. Only a
+ * nature guessed from a label is reported.
  */
 function excludeByNature(
   thresholds: readonly Threshold[],
@@ -95,12 +86,9 @@ function excludeByNature(
 }
 
 /**
- * Walks one ladder against its station's series.
- *
- * Both ways out without an event are reported rather than silent, and through
- * different channels because they are different facts: a threshold naming a
- * station the replay does not hold is a rule that could not be applied, a
- * station that returned nothing is an absence.
+ * Walks one ladder against its station's series. A station the replay does not
+ * hold is a rule not applied, a station with no measure an absence: each is
+ * reported on its own channel.
  */
 /* eslint-disable-next-line max-statements -- the two ways out without an event, each reported
    rather than silent, then one pass */
@@ -131,9 +119,7 @@ function walkLadder(
   for (const [rank, threshold] of ladder.entries()) {
     const crossings = cross(series, threshold)
 
-    // Once per threshold, and only where the guess had a consequence: one that
-    // crossed nothing changed no chronology, and the classification itself is
-    // already in the thresholds report.
+    // Only where the guess had a consequence: the thresholds report already holds the guess.
     if (threshold.natureIsFallback && crossings.length > 0) {
       options.collector.fellBackTo({
         subject: `station ${threshold.stationId} ${threshold.label}`,
@@ -165,15 +151,9 @@ type Crossing = {
 }
 
 /**
- * Walks one series against one threshold.
- *
- * Reaching the threshold counts as crossing it — `isOverrunThreshold` and
- * hydrological practice both mean reaching, and measures carry three decimals
- * against a threshold's one or two, so exact equality is ordinary.
- *
- * A hole in the series holds an open event open, on the last value known: that
- * is the only choice that invents nothing, since closing it would assert a fall
- * the source never reported.
+ * Walks one series against one threshold. Reaching it counts as crossing it, as
+ * Aquasys's `isOverrunThreshold` means, and equality is ordinary. A hole in the
+ * series holds an open event open: closing it would assert a fall nobody measured.
  */
 function cross(series: readonly Measure[], threshold: Threshold): Crossing[] {
   const crossings: Crossing[] = []
@@ -273,13 +253,9 @@ function bySeries(measures: readonly Measure[]): Map<string, Measure[]> {
 }
 
 /**
- * The thresholds of one station and one quantity, by ascending value.
- *
- * The key carries the quantity because a threshold's `id` is unique within a
- * station *and* a quantity, never within a station — station 84 carries two
- * thresholds numbered 1, one on the level and one on the flow. Keyed on the
- * station alone, the two ladders would merge, be ranked against each other, and
- * each be evaluated against the other's series.
+ * The thresholds of one station and one quantity, by ascending value. Keyed on
+ * the quantity too: a threshold's `id` is unique only within a station *and* a
+ * quantity, and a station can number a level and a flow threshold both 1.
  */
 function ladders(thresholds: readonly Threshold[]): Map<string, Threshold[]> {
   const grouped = new Map<string, Threshold[]>()
@@ -296,25 +272,12 @@ function ladders(thresholds: readonly Threshold[]): Map<string, Threshold[]> {
 /**
  * One station's series for one quantity, by instant, one measure per instant.
  *
- * Sorted and de-duplicated rather than trusted: the state machine reads
- * transitions, so an unordered series invents them, and two measures on one
- * instant would give two crossings the same identifier — the id derives from
- * the start.
- *
- * The de-duplication is insurance, not the fix for an observed defect. Nothing
- * establishes that Aquasys can return two measures on one instant: the
- * measurement points of the stations examined carry *different* `typeId`s, so a
- * request on one `dataType` names one point. What leaves the door ajar is that
- * the endpoint takes `codepoint` and `distinctByCodePoint` parameters we do not
- * send, and that `link_pointPrels` has only been read on a handful of stations.
- * Settling it needs a live call on the whole fleet.
+ * Sorted and de-duplicated rather than trusted: an unordered series invents
+ * transitions, and two measures on one instant would give two crossings one
+ * identifier. Nobody has seen Aquasys send two, but nothing rules it out.
  *
  * Instants are compared as time, never as strings: `instantSchema` accepts both
  * second and millisecond precision, and `'.' < 'Z'` would order them wrong.
- *
- * The join is on the identifier and the quantity, among the hydro fleet's
- * measures alone: the two families number their sources independently, so
- * `sourceId` 4 names a station and a rain gauge.
  */
 function seriesOf(
   options: DeriveCrossingsOptions,

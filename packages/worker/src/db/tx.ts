@@ -1,21 +1,11 @@
 import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg'
 
-/**
- * What a query can be sent to: the pool, or one client inside a transaction.
- *
- * Written as the one signature this project uses, so a function says whether it
- * needs a transaction by asking for a client rather than by convention.
- */
+/** What a query can be sent to: the pool, or one client inside a transaction. */
 export type Queryable = {
   query<R extends QueryResultRow>(text: string, values?: unknown[]): Promise<QueryResult<R>>
 }
 
-/**
- * A unit of work that lands whole or not at all.
- *
- * What a lane needs when it stores a data set: a run that dies halfway through
- * the insert must leave nothing rather than half of it.
- */
+/** A unit of work that lands whole or not at all. */
 export async function tx<T>(pool: Pool, work: (db: Queryable) => Promise<T>): Promise<T> {
   const client = await borrow(pool)
   let broken = false
@@ -33,12 +23,9 @@ export async function tx<T>(pool: Pool, work: (db: Queryable) => Promise<T>): Pr
 }
 
 /**
- * A connection taken from the pool, which losing does not end the process.
- *
- * The pool listens to a connection's errors only while it holds it: lent, a
- * connection the server drops emits an `error` nobody hears, which Node raises
- * as uncaught. The query in flight rejects with that same loss, and that is
- * where it is handled; the listener only keeps it from being raised twice.
+ * A connection taken from the pool, which losing does not end the process: the
+ * pool stops listening to a lent connection's errors, and Node raises one
+ * nobody hears as uncaught. The query in flight rejects with the same loss.
  */
 export async function borrow(pool: Pool): Promise<PoolClient> {
   const client = await pool.connect()
@@ -58,12 +45,8 @@ export function giveBack(client: PoolClient, broken: boolean): void {
 function heardElsewhere(): void {}
 
 /**
- * Rolls back, and answers whether it could.
- *
- * A rollback fails on a connection already lost, and its error would then take
- * the place of the one that made it necessary: the reason the work failed is
- * the one worth reading. A client that could not roll back is destroyed
- * rather than handed back to the pool mid-transaction.
+ * Rolls back, and answers whether it could, rather than letting the rollback's
+ * error hide the one that made it necessary.
  */
 export async function rolledBack(client: PoolClient): Promise<boolean> {
   try {

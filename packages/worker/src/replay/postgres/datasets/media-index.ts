@@ -14,8 +14,8 @@ export async function writeWebcamImages(
   data: unknown,
 ): Promise<void> {
   const images = data as FrozenWebcamImage[]
-  // The last of two images on one camera and one instant stands, as it did
-  // when each was written in turn: one statement may not update a row twice.
+  // The last of two images on one camera and one instant stands: one statement
+  // may not update a row twice.
   const last = new Map(images.map((image) => [`${image.code} ${image.at}`, image]))
   await insertRows(
     db,
@@ -77,10 +77,8 @@ export async function readWebcamImages(
 const BATCH = 1_000
 
 /**
- * The radar index: a series per delivery and product, its frames beneath it.
- *
- * The step is a property of the series and sits on its row; a frame carries the
- * address it came from, never one computed from an instant.
+ * The radar index: a series per delivery and product, its frames beneath it,
+ * each with the address it came from, never one computed from an instant.
  */
 export async function writeRadarSeries(
   db: Queryable,

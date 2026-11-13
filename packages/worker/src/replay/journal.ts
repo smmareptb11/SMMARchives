@@ -11,17 +11,13 @@ export type Journal = {
 }
 
 /**
- * Records what a build does, as it does it.
- *
- * Writes are queued rather than awaited, because progress reaches this from a
- * synchronous sink deep inside the collectors. Queueing on one chain is what
- * keeps the file in the order things happened; a build that ends without
- * settling would leave its last lines unwritten.
+ * Records what a build does, as it does it. Writes are queued on one chain
+ * rather than awaited, since progress arrives from a synchronous sink: a build
+ * that ends without settling leaves its last lines unwritten.
  */
 export function openJournal(store: ReplayStore): Journal {
   let written: Promise<void> = Promise.resolve()
-  // Wrapped rather than held bare: a write rejected with `undefined` is still a
-  // write that failed, and a bare field could not tell it from no failure.
+  // Wrapped: a write rejected with `undefined` still failed.
   let failure: { reason: unknown } | undefined
 
   function record(lane: LaneName, kind: JournalEntry['kind'], message?: string): void {
@@ -29,8 +25,7 @@ export function openJournal(store: ReplayStore): Journal {
     const entry: JournalEntry =
       message === undefined ? { at, lane, kind } : { at, lane, kind, message }
 
-    // One chain, and only the first failure kept: a full disk would otherwise
-    // report itself once per progress line.
+    // Only the first failure kept, or a lost database reports itself once per line.
     written = written
       .then(
         () => store.appendJournal(entry),

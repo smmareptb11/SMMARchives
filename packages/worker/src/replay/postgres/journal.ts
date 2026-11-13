@@ -3,12 +3,9 @@ import { journalEntrySchema, type JournalEntry } from '@smmarchives/shared'
 import type { Queryable } from '../../db/tx.ts'
 
 /**
- * Appends one entry, numbering it after the last of *this* replay.
- *
- * The number is what `?since=` and `Last-Event-ID` resume on, so it has to be
- * dense and per replay rather than a sequence shared by every build. Only one
- * process writes a replay's journal, which is what makes reading the maximum
- * inside the insert enough.
+ * Appends one entry, numbering it after the last of *this* replay: readers
+ * resume on a dense number per replay. Reading the maximum inside the insert is
+ * enough only because one process writes a replay's journal.
  */
 export async function appendJournal(
   db: Queryable,

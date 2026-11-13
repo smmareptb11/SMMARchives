@@ -32,10 +32,8 @@ export type FetchReferentialOptions = {
   client: AquasysClient
   collector: ReportCollector
   /**
-   * Keeps only the sources inside it, before the per-source detail calls.
-   *
-   * Aquasys has no spatial filtering, so the whole list is loaded — that costs
-   * one request — but everything after the filter costs one request per source.
+   * Keeps only the sources inside it, before the per-source detail calls. Aquasys
+   * has no spatial filter, so the whole list is still loaded.
    */
   extent: BoundingBox | undefined
 }
@@ -49,9 +47,9 @@ type Placed<T> = { row: T; position: Position | null }
 /**
  * The hydrological station referential, reprojected, typed and cropped.
  *
- * Referential dates are not exposed: `creationDate` takes negative values and
- * `closeDate` is nearly always absent, so the fleet of a replay is deduced from
- * the measures actually returned, never from metadata.
+ * Its dates are not exposed: `creationDate` takes negative values and
+ * `closeDate` is nearly always absent, so a replay's fleet is deduced from the
+ * measures returned.
  */
 export async function fetchStations(options: FetchReferentialOptions): Promise<Station[]> {
   const rows = await listStations(options.client, options.collector)
@@ -84,11 +82,8 @@ export async function fetchStations(options: FetchReferentialOptions): Promise<S
 }
 
 /**
- * The rain gauge referential.
- *
- * Rain gauges are not typed — the categories only exist for watercourse
- * stations — and their coordinates are heterogeneous: most are already in
- * degrees, a handful in Lambert 93, one has none at all.
+ * The rain gauge referential. Rain gauges have no category, and their
+ * coordinates come in degrees, in Lambert 93, or not at all.
  */
 export async function fetchRainGauges(options: FetchReferentialOptions): Promise<RainGauge[]> {
   const rows = instrumentsOf(await listRainGauges(options.client), options.collector)
@@ -116,11 +111,8 @@ export async function fetchRainGauges(options: FetchReferentialOptions): Promise
 }
 
 /**
- * The rain gauges that measure, without the ones Aquasys simulates.
- *
- * Left out before anything costs a request: two in three of the fleet are
- * reanalysis cells, which cover the map in a grid of triangles and repeat each
- * other's names. Said once in the report, since the codes alone decide it.
+ * The rain gauges that measure, without the reanalysis cells Aquasys lists among
+ * them, left out before any request is spent on them.
  */
 function instrumentsOf(rows: RawRainGauge[], collector: ReportCollector): RawRainGauge[] {
   const instruments = rows.filter((row) => !isSimulatedRainGauge(row.code))
@@ -165,10 +157,7 @@ function commonFields(
 /**
  * Reads `link_pointPrels` on each retained source to learn what it measures,
  * and `link_altimetrySystems` to learn the NGF altitude of its gauge zero.
- *
- * The only reliable way to know what a source measures: `/chronic/stats` takes
- * up to 5.5 s on a single station with a long history. The datum comes from the
- * same call, which is made anyway.
+ * `/chronic/stats` would say what it measures too, but takes seconds a station.
  */
 async function detailsOf(
   options: FetchReferentialOptions,
@@ -202,15 +191,11 @@ async function detailsOf(
 type TypedStation = RawStation & { category: StationCategory }
 
 /**
- * Reads a whole family referential.
+ * Reads the whole station referential: identifiers are sparse, and `limit`
+ * returns a non-deterministic slice.
  *
- * Always the full list: the identifier space is sparse — 94 stations spread
- * over 1 to 160, 229 rain gauges over 4 to 744 — so a range is never
- * enumerated, and `limit` returns a non-deterministic slice.
- *
- * A station no network types is out of scope, and dropped here, before any
- * call is spent on it — and said, once for all of them: a station missing from
- * the map is otherwise indistinguishable from one Aquasys never had.
+ * A station no network types is out of scope, dropped before any call is spent
+ * on it, and reported: otherwise it reads as one Aquasys never had.
  */
 async function listStations(
   client: AquasysClient,

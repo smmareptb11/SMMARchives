@@ -16,19 +16,14 @@ export type { RadarRainfallSource } from './lanes/radar-rainfall.ts'
 export type BuildOptions = {
   identity: ReplayIdentity
   store: ReplayStore
-  /**
-   * The sources to collect from. A lane runs when its source is given, so
-   * selecting a lane without what it needs is unrepresentable — and a replay of
-   * the delivered rasters alone needs no Aquasys access at all.
-   */
+  /** The sources to collect from: a lane runs when its source is given. */
   aquasys?: AquasysSource | undefined
   lizmap?: LizmapSource | undefined
   radarRainfall?: RadarRainfallSource | undefined
   copyMedia: boolean
   /**
-   * The instant the build judges what its sources still hold against: Ceneau
-   * forgets an image after a month. The real time by default; a test of a fixed
-   * period gives its own, or its result changes with the calendar.
+   * The instant the build judges what its sources still hold against, since
+   * Ceneau forgets an image after a month. The real time by default.
    */
   now?: Date | undefined
   /** Where progress goes beside the journal. Silent by default. */
@@ -37,11 +32,8 @@ export type BuildOptions = {
 
 /**
  * Builds a replay: collects, freezes and stores everything its extent and its
- * period cover.
- *
- * A lane that fails never stops the others — an unreachable source costs its own
- * data sets, not the replay — which is why nothing here throws on a collection
- * error and why the manifest, not the return value, carries what went wrong.
+ * period cover. A lane that fails never stops the others, and the manifest, not
+ * an exception, carries what went wrong.
  */
 /* eslint-disable-next-line complexity -- three sources that may be absent, and the tests of
    what each lane settled on; a list, not a nesting */
@@ -50,10 +42,8 @@ export async function buildReplay(options: BuildOptions): Promise<BuildResult> {
   build.plan(plannedLanes(options))
   await build.publish()
 
-  // Lanes advance together because they read different places: one host, one
-  // volume. `allSettled` rather than `all`:
-  // the lanes catch their own failures, and a lane that threw anyway must not
-  // take the other down with it.
+  // Each lane reads its own source, so they advance together. `allSettled`, so
+  // that a lane that threw anyway does not take the others down with it.
   const radar = options.radarRainfall
   const [indexed, collected] = await Promise.allSettled([
     radar === undefined ? undefined : collectRadarRainfall(build, radar, options.identity.period),
@@ -72,8 +62,7 @@ export async function buildReplay(options: BuildOptions): Promise<BuildResult> {
         }),
   ])
 
-  // Both lanes below read no source: they work on what a collection returned,
-  // and they are lanes of their own so that a failure in one stays theirs.
+  // Lanes of their own, though they read no source, so that a failure in one stays theirs.
   const derivable = collected.status === 'fulfilled' ? collected.value : undefined
   if (derivable !== undefined) await deriveEvents(build, derivable)
 
@@ -98,12 +87,8 @@ function plannedLanes(options: BuildOptions): LaneName[] {
 }
 
 /**
- * Copies into the replay the frames the index kept.
- *
- * Only those: a delivery runs to 540 MB uncropped, and a replay covers a few
- * days of it. No geographic cropping: no file states the raster extent, and
- * cropping on a wrong one is destructive, where keeping the whole mosaic only
- * costs disk.
+ * Copies into the replay the frames the index kept, uncropped: no file states
+ * the raster extent, and cropping on a wrong one destroys what it cuts.
  */
 async function freezeRadarFrames(
   build: ReplayBuild,

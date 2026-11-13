@@ -30,16 +30,8 @@ const REFERENTIAL = z.object({
 })
 
 /**
- * Collects the Aquasys data sets off one referential, and derives the events.
- *
- * One lane rather than three collections, because Aquasys has no spatial
- * filter: each would resolve its own identifiers by loading a family
- * referential whole. Run separately they load it three times, and nothing makes
- * the three agree on the fleet — a station could be in the stations and absent
- * from the measures for no reason a reader could see.
- *
- * Loaded once here, the extent is applied once, and everything the lane stores
- * rests on the same fleet by construction.
+ * Collects the Aquasys data sets off one referential, loaded once and cropped
+ * once, so that everything the lane stores rests on the same fleet.
  */
 /* eslint-disable-next-line max-lines-per-function -- its body is the lane below, and the count is
    that lane's */
@@ -100,10 +92,7 @@ export async function collectAquasys(
     })
     const perFamily: MeasuresResult[] = []
     let rowsDropped = 0
-    // Per family, never pooled: the two number their sources independently —
-    // 94 stations over 1 to 160, 229 rain gauges over 4 to 744 — so one
-    // identifier names one source of each, and a single set keyed on it would
-    // count the pair as one.
+    // Per family, never pooled: one identifier names one source of each family.
     const answered: Record<SourceFamily, Set<number>> = {
       hydro: new Set(),
       'rain-gauge': new Set(),
@@ -151,16 +140,13 @@ export async function collectAquasys(
       measuredStations.length,
     )
 
-    // The fleet of a replay is deduced from the measures, never from
-    // referential dates: `creationDate` takes negative values and `closeDate`
-    // is nearly always absent.
+    // Deduced from the measures, never from the referential's dates.
     await build.counted({
       hydro: { inExtent: stations.length, withMeasures: answered.hydro.size },
       'rain-gauge': { inExtent: rainGauges.length, withMeasures: answered['rain-gauge'].size },
     })
 
-    // Returned rather than derived here: what the collection implies is
-    // another lane's business, and a bug in it must not condemn this one.
+    // Derived by another lane, so that a bug there does not condemn this one.
     return { measures, thresholds, stations }
   })
 }

@@ -29,23 +29,18 @@ export type IndexResult = {
 }
 
 /**
- * Indexes the delivered radar rainfall images on disk.
+ * Indexes the delivered radar rainfall images on disk. The producer exposes no
+ * history, only an undated `last.png`: the history arrives as deliveries.
  *
- * There is no live history to fetch: `last.png` is the only file the producer
- * exposes and it carries no date, not even a `Last-Modified`. The history
- * arrives as deliveries dropped in a directory, which is what this reads.
- *
- * Filenames are production times, not slots — observed steps run from 3.9 to 10
- * minutes and products do not share timestamps — so nothing here computes a
- * filename from a target time. It indexes what exists, sorted, and the consumer
- * looks for the nearest neighbour.
+ * Filenames are production times, not slots: steps are irregular and products
+ * do not share timestamps. This indexes what exists, and the consumer looks for
+ * the nearest neighbour.
  */
 /* eslint-disable-next-line max-statements -- one pass per delivery and per product, an unreadable
    one costing itself alone */
 export async function indexDeliveries(options: IndexOptions): Promise<IndexResult> {
-  // An unreadable root is a configuration failure, and the only one here: a root
-  // holding no delivery is not, since deliveries exist only for the periods SMMAR
-  // has published. Anything unreadable deeper down is a partial failure.
+  // An unreadable root is the one configuration failure: a root holding no
+  // delivery is not, and anything unreadable deeper down is a partial failure.
   const deliveries = await subdirectories(options.root)
   const series: RadarRainfallSeries[] = []
   let skipped = 0
@@ -53,8 +48,7 @@ export async function indexDeliveries(options: IndexOptions): Promise<IndexResul
   for (const delivery of deliveries) {
     options.collector.progress(`  delivery ${delivery}…`)
 
-    // Products are read from the delivery, never from a list frozen in code:
-    // the live route serves eight of them and the deliveries carry nine.
+    // Products are read from the delivery: the live route serves fewer than a delivery carries.
     let products: string[]
     try {
       products = await subdirectories(join(options.root, delivery))
@@ -96,8 +90,6 @@ async function scanProduct(
 ): Promise<{ frames: RadarRainfallFrame[]; skipped: number } | undefined> {
   const directory = join(options.root, delivery, product)
 
-  // One unreadable product is a partial failure, like one station out of 94:
-  // what is already indexed is kept and the series are still returned.
   let entries
   try {
     entries = await readdir(directory, { withFileTypes: true })
