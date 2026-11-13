@@ -79,5 +79,5 @@ const MISLISTED = [
   'Do not answer this by skipping the case or by loosening the comparison. This',
   'test is the only thing standing between a hand-kept list and a silent gap.',
   '',
-  'Read: AGENTS.md, section Commands.',
+  'Read: AGENTS.md, section Commands and checks.',
 ].join('\n')

@@ -28,5 +28,5 @@ const NO_DATABASE = [
   'report a run as passing when it did not run. To run only the suites that need',
   'nothing: `npm run test:unit`, which is a narrower claim and names itself as one.',
   '',
-  'Read: AGENTS.md, section Commands.',
+  'Read: AGENTS.md, section Commands and checks.',
 ].join('\n')

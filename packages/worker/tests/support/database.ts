@@ -45,7 +45,7 @@ const OUTSIDE_THE_DATABASE_SUITE = [
   'Do not answer this by skipping the suite. A suite that skips itself makes the',
   'run green without making it true, which is the failure this replaced.',
   '',
-  'Read: AGENTS.md, section Commands.',
+  'Read: AGENTS.md, section Commands and checks.',
 ].join('\n')
 
 /**
