@@ -5,7 +5,7 @@ import { aGauge, aSeries, aStation, held } from './support/content.ts'
 
 const NO_COLOUR = "Les pluviomètres n'ont pas de couleur : ce rejeu ne porte aucune mesure."
 const RADAR_NOT_DRAWN =
-  "Les lames d'eau radar ne sont pas dessinées : leur emprise n'est pas confirmée."
+  "Les lames d'eau radar ne sont pas dessinées : les images ne portent pas leur emprise."
 
 describe('what the map says it is not showing', () => {
   it('says nothing of a replay that holds back nothing', () => {
@@ -32,7 +32,7 @@ describe('what the map says it is not showing', () => {
     expect(silencesOf(measured)).toEqual([])
   })
 
-  /** The extent of a delivery is not confirmed, and a wrong one shifts it all. */
+  /** No file states the extent of a delivery, and a wrong one shifts it all. */
   it('says the radar rainfall a replay holds an image of is not drawn', () => {
     const series = aSeries({ frames: [{ at: '2019-10-22T06:00:00.000Z', path: 'radar/a.tif' }] })
 

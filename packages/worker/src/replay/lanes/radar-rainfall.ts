@@ -17,8 +17,8 @@ export type RadarRainfallSource = RadarRainfallConfig
  *
  * No network: the deliveries are dropped on a volume, which is why this lane is
  * the one a replay can be built from offline. It takes no geographic extent —
- * the images are France-wide mosaics and cropping stays out until their extent
- * is confirmed.
+ * the images are France-wide mosaics, and no file states their extent, which a
+ * crop would have to trust.
  */
 export async function collectRadarRainfall(
   build: ReplayBuild,
@@ -53,7 +53,7 @@ export async function collectRadarRainfall(
       {
         data: series,
         // Both belong to the run rather than to any series, and the extent
-        // travels with the data because it is not confirmed: a wrong one shifts
+        // travels with the data because no file states it: a wrong one shifts
         // the whole layer invisibly.
         report: collector.seal({ extent: source.extent, entriesSkipped: skipped }),
       },

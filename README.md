@@ -23,65 +23,46 @@ maritimes.
 compris, sont copiées dans le rejeu : il reste rejouable à l'identique dans la
 durée, même lorsque les systèmes sources n'exposent plus la période concernée.
 
-### Ce qui fonctionne
-
-- Création d'un rejeu sur une période et une emprise rectangulaire, limitée au
-  territoire du SMMAR : tout le territoire par défaut, ou à partir du territoire
-  d'un syndicat de bassin ; type de phénomène, gravité et description
-  facultatifs, affichés dans la liste des rejeux
-- Suivi de la construction d'un rejeu en direct
-- Collecte automatisée des hauteurs d'eau, débits, cumuls de pluie et seuils
-- Détection automatique des franchissements de seuils
-- Récupération des images de webcams et des lames d'eau radar
-- Rejeu synchronisé carte et frise, piloté par une seule horloge
-- Graphiques par station et par pluviomètre
-- Saisie manuelle d'événements et de témoignages géolocalisés, avec photos, par
-  l'administrateur
-- Export en PNG de la carte et des graphiques, pour les supports de présentation
-- Liste des rejeux constitués, du plus récent au plus ancien
-- Connexion de l'administrateur par un mot de passe unique : seul l'administrateur
-  voit les rejeux non publiés, en constitue et en modifie les événements
-- Publication d'un rejeu complet par l'administrateur, et retrait : l'accueil
-  montre à tous les rejeux publiés, et à l'administrateur, à part, ceux en
-  préparation
-- Suppression d'un rejeu par l'administrateur, depuis l'accueil, avec ses
-  images et ses événements
-
-### Ce qui est prévu et n'est pas écrit
-
-La modification d'un rejeu après sa création : son titre, son type de
-phénomène, sa gravité et sa description.
-
 ## Les sources de données
 
 | Source | Contenu |
 |---|---|
 | **Aquasys** | Hauteurs d'eau, débits, cumuls pluviométriques et seuils des stations du réseau |
 | **Ceneau**, via le Lizmap du SMMAR | Images horodatées des webcams orientées cours d'eau |
-| **Lames d'eau radar** | Cumuls de précipitations en PNG géoréférencés, produits par Predict Services et livrés par lots |
+| **Lames d'eau radar** | Cumuls de précipitations en images PNG, produits par Predict Services et livrés par lots |
 | **Saisie manuelle** | Témoignages, photos et observations de terrain |
 
 Les adresses de ces services ne sont pas versionnées : elles se renseignent par
 variables d'environnement, décrites dans
 [`installation.md`](docs/installation.md#les-variables-denvironnement).
 
-## La pile
+## Stack technique
 
 React, Vite et TypeScript · MapLibre GL JS · Node.js, Express et Zod ·
 PostgreSQL et PostGIS · Docker Compose.
 
 Les échanges utilisent des formats ouverts : REST, JSON, GeoJSON et CSV.
 
-## Démarrer
+## Installer
 
-**Pour simplement utiliser l'application**, sans rien connaître à la
-programmation : [`lancer-avec-docker.md`](docs/lancer-avec-docker.md), pas à
-pas. Sur un serveur Debian sans Docker :
-[`lancer-sans-docker.md`](docs/lancer-sans-docker.md).
+Deux parcours, au choix, qui donnent la même application :
 
-Pour développer : Node.js 24 ou plus récent, et Docker Compose — ou un
-PostgreSQL 14 ou plus récent avec PostGIS déjà installé, à la place du service
-`db`.
+| | Avec Docker | Sans Docker |
+|---|---|---|
+| Pour | Essayer, recetter, ou héberger avec Docker seul | Installer sur un serveur Debian |
+| Base de données | Incluse | La vôtre : PostgreSQL 14 ou plus récent avec PostGIS, déjà en place ou installée pour l'occasion |
+| Procédure | [`lancer-avec-docker.md`](docs/lancer-avec-docker.md) | [`lancer-sans-docker.md`](docs/lancer-sans-docker.md) |
+
+Docker n'est requis que par le premier. Les deux se configurent de la même
+façon, par un fichier `.env` : les adresses des sources, à demander à
+l'exploitant de chaque service, une clé de session et le mot de passe
+administrateur. Chaque procédure dit quand et comment le remplir.
+
+## Développer
+
+Node.js 24 ou plus récent, et Docker Compose pour la base de développement — ou
+un PostgreSQL 14 ou plus récent avec PostGIS déjà installé, à la place du
+service `db`.
 
 ```bash
 npm install
@@ -121,9 +102,10 @@ plus étroite, qui se dit comme telle.
 
 | Document | Quand l'ouvrir |
 |---|---|
-| [`lancer-avec-docker.md`](docs/lancer-avec-docker.md) | Lancer l'application pas à pas, sans connaissances techniques |
-| [`lancer-sans-docker.md`](docs/lancer-sans-docker.md) | Installer l'application sur un serveur Debian, sans Docker |
-| [`installation.md`](docs/installation.md) | Installer, configurer, lancer, déployer |
+| [`lancer-avec-docker.md`](docs/lancer-avec-docker.md) | Installer pas à pas avec Docker, base comprise |
+| [`lancer-sans-docker.md`](docs/lancer-sans-docker.md) | Installer pas à pas sur un serveur Debian, avec votre base PostgreSQL |
+| [`architecture.md`](docs/architecture.md) | Comprendre comment l'application est construite, en deux schémas |
+| [`installation.md`](docs/installation.md) | La référence : prérequis de la base, variables, déploiement, développement |
 | [`utilisation.md`](docs/utilisation.md) | Constituer un rejeu en ligne de commande |
 | [`api.md`](docs/api.md) | Consommer un rejeu par HTTP : routes, filtres, codes, forme des erreurs |
 

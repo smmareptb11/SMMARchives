@@ -101,9 +101,9 @@ function plannedLanes(options: BuildOptions): LaneName[] {
  * Copies into the replay the frames the index kept.
  *
  * Only those: a delivery runs to 540 MB uncropped, and a replay covers a few
- * days of it. Geographic cropping stays out until the raster extent is
- * confirmed — cropping on a wrong extent is destructive, keeping the whole
- * mosaic only costs disk.
+ * days of it. No geographic cropping: no file states the raster extent, and
+ * cropping on a wrong one is destructive, where keeping the whole mosaic only
+ * costs disk.
  */
 async function freezeRadarFrames(
   build: ReplayBuild,

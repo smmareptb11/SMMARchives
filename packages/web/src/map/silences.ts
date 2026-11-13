@@ -19,7 +19,9 @@ export function silencesOf(content: ReplayContent): string[] {
   // On the images and not on the series: a delivery indexed with no frame in
   // the period leaves the replay with nothing to draw, whatever its extent.
   if (content.series.some((one) => one.frames.length > 0)) {
-    said.push("Les lames d'eau radar ne sont pas dessinées : leur emprise n'est pas confirmée.")
+    said.push(
+      "Les lames d'eau radar ne sont pas dessinées : les images ne portent pas leur emprise.",
+    )
   }
 
   return said

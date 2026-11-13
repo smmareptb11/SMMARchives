@@ -183,7 +183,7 @@ describe('the rain gauge referential', () => {
     expect(options.fetch.calls.some((call) => /\/pluviometer\/(5|693)$/.test(call))).toBe(false)
     expect(options.collector.seal().fallbacks).toContainEqual({
       subject: '2 rain gauge(s)',
-      rule: 'simulated, recognised by a SAFRAN_ or X…Y… code pending a stated rule',
+      rule: 'simulated, recognised by a SAFRAN_ or X…Y… code',
       applied: 'rain gauges left out',
     })
   })

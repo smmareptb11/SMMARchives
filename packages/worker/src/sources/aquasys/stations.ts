@@ -120,7 +120,7 @@ export async function fetchRainGauges(options: FetchReferentialOptions): Promise
  *
  * Left out before anything costs a request: two in three of the fleet are
  * reanalysis cells, which cover the map in a grid of triangles and repeat each
- * other's names. Said once in the report, the rule being provisional.
+ * other's names. Said once in the report, since the codes alone decide it.
  */
 function instrumentsOf(rows: RawRainGauge[], collector: ReportCollector): RawRainGauge[] {
   const instruments = rows.filter((row) => !isSimulatedRainGauge(row.code))
@@ -128,7 +128,7 @@ function instrumentsOf(rows: RawRainGauge[], collector: ReportCollector): RawRai
   if (simulated > 0) {
     collector.fellBackTo({
       subject: `${String(simulated)} rain gauge(s)`,
-      rule: 'simulated, recognised by a SAFRAN_ or X…Y… code pending a stated rule',
+      rule: 'simulated, recognised by a SAFRAN_ or X…Y… code',
       applied: 'rain gauges left out',
     })
   }

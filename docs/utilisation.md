@@ -52,9 +52,9 @@ qu'elles ont trié les recopie : un rejeu dit avec quelles règles il a été
 construit.
 
 **Les pluviomètres simulés ne sont pas collectés.** Ce sont des mailles de
-réanalyse, pas des instruments : un code `SAFRAN_…` pour SAFRAN, `X…Y…` pour
-ERA5. La règle est provisoire, en attendant que le SMMAR dise comment les
-reconnaître, et le rapport du référentiel dit combien elle en a écartés.
+réanalyse, pas des instruments, et aucun champ d'Aquasys ne les distingue : ils
+sont reconnus à leur code, `SAFRAN_…` pour SAFRAN, `X…Y…` pour ERA5. Le rapport
+du référentiel dit combien en ont été écartés.
 
 Chaque jeu de données est vérifié contre son contrat avant d'être stocké : une
 valeur que son propre contrat refuse fait échouer la voie, elle n'est jamais

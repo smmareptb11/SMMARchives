@@ -6,16 +6,49 @@
 |---|---|
 | Node.js | **24 ou plus récent** — `fetch`, `parseArgs` et `--env-file` viennent du runtime |
 | npm | Les paquets sont des *workspaces* npm : une seule installation, à la racine |
-| PostgreSQL | **14 ou plus récent**, avec l'extension **PostGIS** |
+| PostgreSQL | **14 ou plus récent**, avec l'extension **PostGIS** : voir [la base de données](#la-base-de-données) |
 | Docker et Docker Compose | Facultatifs : pour la base de développement, et pour le déploiement par conteneurs |
 
 Rien n'est compilé côté serveur : l'API et le worker s'exécutent par `tsx`,
 directement depuis les sources TypeScript. `npm run typecheck` ne produit aucun
 artefact.
 
-Le compte qui applique le schéma doit pouvoir créer une extension : la première
-migration exécute `create extension if not exists postgis`. Le superutilisateur
-du conteneur de développement le permet ; une base gérée peut le refuser.
+## La base de données
+
+L'application se branche sur n'importe quelle base PostgreSQL dont elle reçoit
+l'adresse, dans `DATABASE_URL`, pourvu qu'elle remplisse ces conditions. Le
+parcours Docker fournit la sienne, qui les remplit déjà.
+
+| Exigence | Détail |
+|---|---|
+| Version | PostgreSQL **14 ou plus récent** |
+| PostGIS | Le paquet installé sur le serveur, et l'extension activée dans la base par un superutilisateur : `create extension postgis`. Sans elle, le schéma tente de l'activer lui-même, ce qui demande d'être superutilisateur |
+| Droits du compte | Créer des tables et des index dans le schéma `public`. Depuis PostgreSQL 15, seul le propriétaire de la base le peut par défaut : le plus simple est que le compte de l'application soit propriétaire de sa base |
+| Encodage | UTF-8, l'encodage par défaut |
+
+Ce que l'application y crée, dans le schéma `public`, pour qu'un administrateur
+vérifie qu'aucun nom n'y est déjà pris :
+
+- les tables `replay`, `replay_lane`, `replay_dataset`, `replay_journal`,
+  `source`, `threshold`, `measure`, `measured_station`, `event`,
+  `webcam_image`, `radar_series`, `radar_frame` et `session` ;
+- la table `schema_migration`, registre de ce qui a été appliqué ;
+- la table `spatial_ref_sys`, que PostGIS crée en s'activant ;
+- les index `measure_by_source`, `event_by_start` et `source_position`.
+
+**Une base réservée à l'application est recommandée**, sur un serveur existant
+ou non : ces noms sont génériques, et une base seule se sauvegarde et se
+restaure sans toucher aux autres. Sur un serveur existant, son administrateur la
+crée en trois commandes :
+
+```bash
+sudo -u postgres createuser --pwprompt smmarchives
+sudo -u postgres createdb --owner smmarchives smmarchives
+sudo -u postgres psql -d smmarchives -c 'create extension postgis'
+```
+
+La base se sauvegarde avec le répertoire des médias : voir
+[Sauvegarde](#sauvegarde).
 
 ## La base de développement
 
@@ -119,7 +152,7 @@ Quatre précisions que le tableau ne peut pas porter.
   concernés. Le jeton Aquasys est un secret : ni versionné, ni journalisé, ni
   placé dans une URL, et son renouvellement se fait par configuration.
 
-## Mise en route
+## Mise en route en développement
 
 ```bash
 git clone <dépôt> && cd SMMARchives
@@ -235,8 +268,9 @@ Deux autres propriétés à connaître avant de déployer :
 
 ## Déployer avec Docker
 
-`docker compose up -d --build` lance toute l'application depuis le dépôt. La
-même procédure, détaillée, est dans [`lancer-avec-docker.md`](lancer-avec-docker.md).
+`docker compose up -d` lance toute l'application depuis le dépôt, base comprise.
+La procédure pas à pas est dans [`lancer-avec-docker.md`](lancer-avec-docker.md) ;
+cette section dit ce qu'elle met en place.
 
 | Service | Rôle |
 |---|---|
@@ -248,17 +282,6 @@ même procédure, détaillée, est dans [`lancer-avec-docker.md`](lancer-avec-do
 Les images se construisent sur la machine qui les lance : aucun registre, et
 aucune question d'architecture entre un poste Apple Silicon et un serveur amd64.
 
-```bash
-git clone <dépôt> && cd SMMARchives
-cp .env.sample .env      # sources, identifiants de la base, SESSION_SECRET
-docker compose build
-docker compose run --rm --no-deps api node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-                         # coller la ligne dans SESSION_SECRET
-docker compose run --rm --no-deps api node_modules/.bin/tsx packages/api/src/hash-password.ts
-                         # coller la ligne dans ADMIN_PASSWORD_HASH
-docker compose up -d
-```
-
 Ce que le conteneur de l'API lit de `.env`, et ce qu'il n'en lit pas :
 
 - **Il en lit les sources et l'authentification** : `ACYCLIQ_*`,
@@ -269,8 +292,9 @@ Ce que le conteneur de l'API lit de `.env`, et ce qu'il n'en lit pas :
   composée des trois variables `DB_*` vers le service `db`, `MEDIA_PATH` est le
   volume `media`, `RADAR_RAINFALL_PATH` le répertoire `RADAR_HOST_PATH` monté en
   lecture seule — vide quand `RADAR_HOST_PATH` l'est —, et `TRUST_PROXY` le réseau privé de Docker.
-- **Un mot de passe de base qui contient `@`, `:` ou `/`** casse la chaîne de
-  connexion composée : en choisir un sans ces caractères.
+- **Le mot de passe de la base ne contient que des lettres et des chiffres** :
+  inséré tel quel dans la chaîne de connexion composée, un `@`, un `:`, un `/`,
+  un `#` ou un `?` la casserait.
 
 Le reverse proxy HTTPS de l'hôte vise `127.0.0.1:${HTTP_PORT}` et transmet
 `X-Forwarded-Proto` ; le service `web` le relaie à l'API, qui marque alors le
