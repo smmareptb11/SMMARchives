@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type HTMLAttributes,
+} from 'react'
 
 import type { TimeWindow } from '@smmarchives/shared/clock.ts'
 
@@ -7,6 +14,7 @@ import { Playhead } from './transport/Playhead.tsx'
 import { Transport } from './transport/Transport.tsx'
 import type { Reading } from './transport/useCursor.ts'
 import { useFollowedLine } from './transport/useFollowedLine.ts'
+import { useMontageHeight } from './transport/useMontageHeight.ts'
 import { useSheet, type Sheet } from './transport/useSheet.ts'
 import { trackWidthOf } from './tracks/ruler.ts'
 import { TrackList, type TrackListProps } from './tracks/TrackList.tsx'
@@ -29,13 +37,11 @@ export function Montage({
   /** The window in front, if any. */
   front: string | undefined
 }) {
-  const width = useMemo(
-    () => ({ '--track-w': `${String(trackWidthOf(manifest.period))}px` }) as CSSProperties,
-    [manifest.period],
-  )
+  const width = useTrackWidth(manifest.period)
   const scroller = useRef<HTMLDivElement>(null)
   const section = useRef<HTMLElement>(null)
   const sheet = useSheet(section)
+  const sized = useMontageHeight(section)
   const reveal = useFollowedLine(scroller, sheet.open, manifest.period, reading)
   const onOpenReport = useFoldedByDetails(sheet.close, front, lanes.onOpenReport)
   const onOpenLane = useFoldedByDetails(sheet.close, front, lanes.onOpenLane)
@@ -46,8 +52,9 @@ export function Montage({
       ref={section}
       className={sheet.dragging ? 'replay-montage dragging' : 'replay-montage'}
       data-open={sheet.open}
-      style={sheet.style}
+      style={{ ...sized.style, ...sheet.style }}
     >
+      <EdgeHandle handle={sized.handle} />
       <Player
         {...{ sheet, reading, onJump: reveal, dots: lanes.dots, onSeek: lanes.onSeek }}
         period={manifest.period}
@@ -69,6 +76,24 @@ export function Montage({
         </div>
       </div>
     </section>
+  )
+}
+
+/** How wide the lanes run, which the period decides and the stylesheet reads. */
+function useTrackWidth(period: TimeWindow): CSSProperties {
+  return useMemo(
+    () => ({ '--track-w': `${String(trackWidthOf(period))}px` }) as CSSProperties,
+    [period],
+  )
+}
+
+/** The handle in the middle of the panel's top edge, on a screen wide enough to have one. */
+function EdgeHandle({ handle }: { handle: HTMLAttributes<HTMLElement> | undefined }) {
+  if (handle === undefined) return null
+  return (
+    <div className="montage-edge">
+      <div className="montage-handle" {...handle} />
+    </div>
   )
 }
 

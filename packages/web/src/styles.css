@@ -348,7 +348,9 @@ main:has(> .replay) {
   grid-column: 1 / -1;
   box-sizing: border-box;
   min-height: 0;
-  max-height: var(--montage-h);
+  /* The height the handle sets, folded until it does; never more than half the area. */
+  height: var(--montage-chosen, auto);
+  max-height: calc((100dvh - 48px) / 2);
   overflow-y: auto;
   /* Its own stacking, so the hour grid can lie under the lanes and over its ground. */
   isolation: isolate;
@@ -365,6 +367,50 @@ main:has(> .replay) {
 
 .replay-montage .refusal {
   color: #ff8a80;
+}
+
+/*
+ * The handle in the middle of the panel's top edge. Held at the top as the
+ * lanes scroll, and laid over the transport, whose middle is empty.
+ */
+.montage-edge {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: flex;
+  justify-content: center;
+  height: 0;
+}
+
+.montage-handle {
+  display: flex;
+  justify-content: center;
+  width: 64px;
+  height: 14px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.montage-handle::before {
+  content: '';
+  width: 40px;
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: var(--night-ink-2);
+  opacity: 0.6;
+}
+
+.montage-handle:hover::before,
+.montage-handle:focus-visible::before {
+  background: var(--night-ink);
+  opacity: 1;
+}
+
+.montage-handle:focus-visible {
+  outline: 2px solid var(--night-ink);
+  outline-offset: -2px;
+  border-radius: 3px;
 }
 
 /* One band a family, folded by its title. */
@@ -2830,6 +2876,11 @@ button.danger {
   .replay-montage summary .quiet-switch {
     flex-basis: 100%;
     margin-left: 20px;
+  }
+
+  /* The phone pulls its sheet by the transport: the panel's own handle is the desktop's. */
+  .montage-edge {
+    display: none;
   }
 
   /* « Chronologie » fits the phone's narrow label column only with its letters closer. */

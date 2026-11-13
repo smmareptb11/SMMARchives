@@ -20,6 +20,7 @@ import { drawPointed, usePointed } from './pointing.ts'
 import { reportPaintingAt, samePainting, type ReportPainting } from './reports.ts'
 import { offsetFor, roomFor, type Asked } from './frame.ts'
 import { openingOn, overviewControl } from './overview.ts'
+import { keepBoundsOnResize } from './keepBounds.ts'
 import { useExported } from './exportControl.ts'
 import { addShapes } from './symbols.ts'
 import { EVERYTHING, type Shown } from './families.ts'
@@ -98,6 +99,7 @@ function drawEverything(map: MapLibreMap, held: RefObject<ReplayContent>): void 
   const opening = openingOn(map, content)
   if (opening !== undefined)
     map.fitBounds(opening.bounds, { padding: opening.padding, animate: false })
+  keepBoundsOnResize(map)
   // Above the zoom, which MapLibre stacks under the controls added after it.
   map.addControl(
     overviewControl(() => openingOn(map, held.current)),
