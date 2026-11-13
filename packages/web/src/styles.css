@@ -344,6 +344,8 @@ main:has(> .replay) {
   --rail: var(--night);
   /* What the ruler and its handle stay under. */
   --transport-h: 46px;
+  /* What a family's title stays under: the ruler's track, and its border. */
+  --ruler-h: 37px;
 
   grid-column: 1 / -1;
   box-sizing: border-box;
@@ -421,7 +423,15 @@ main:has(> .replay) {
   border-radius: 0;
 }
 
+/*
+ * A family's title stays under the ruler while its lanes scroll past, so the
+ * reader knows whose lanes they are; the next family's title pushes it away.
+ * Under the reading line, which crosses it as it crosses the lanes.
+ */
 .replay-montage summary {
+  position: sticky;
+  top: calc(var(--transport-h) + var(--ruler-h));
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2829,9 +2839,10 @@ button.danger {
    * mockup stacks them. The bar's handle would be lost under the ruler: it is
    * drawn apart, over it.
    */
+  /* Bottom to top: the names, a family's title, the ruler, the reading's handle. */
   .replay-montage .ruler {
     top: 0;
-    z-index: 6;
+    z-index: 7;
   }
 
   .replay-montage .playhead::before {
@@ -2876,6 +2887,12 @@ button.danger {
   .replay-montage summary .quiet-switch {
     flex-basis: 100%;
     margin-left: 20px;
+  }
+
+  /* The transport stands outside what scrolls on a phone: the title stays under the ruler alone. */
+  .replay-montage summary {
+    top: var(--ruler-h);
+    z-index: 6;
   }
 
   /* The phone pulls its sheet by the transport: the panel's own handle is the desktop's. */
@@ -3071,7 +3088,7 @@ button.danger {
   .replay-montage .playhead-handle {
     display: block;
     position: absolute;
-    z-index: 7;
+    z-index: 8;
     top: 0;
     bottom: 0;
     left: calc(var(--label-w) + (100% - var(--label-w)) * var(--frac));
