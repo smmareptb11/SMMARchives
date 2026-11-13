@@ -3,8 +3,6 @@
 /*
  * A replay holds the window under the band and never scrolls as a page: the
  * map and the history side by side, the montage under them scrolling alone.
- * The montage is as tall as what it shows, up to a cap: its families folded,
- * the rest of the height is the map's.
  */
 main:has(> .replay) {
   max-width: none;
@@ -140,9 +138,8 @@ main:has(> .replay) {
 
 @media (max-width: 700px) {
   /*
-   * A phone is for reading a replay, not for administering one: within a replay
-   * the band keeps its name alone, and drops the tool's name and what only the
-   * administrator uses. Both stay on the screens a replay does not fill.
+   * A phone is for reading a replay, not administering one: within a replay the
+   * band keeps the replay's name alone; the tool's name stays on other screens.
    */
   .topbar {
     gap: 10px;
@@ -233,9 +230,8 @@ main:has(> .replay) {
   }
 
   /*
-   * On a phone the lanes fold under the transport, which stays at the foot of
-   * the screen: pulled up, they and the transport take the lower half of what
-   * the band leaves, and the map the upper half, as the mockup's sheet does.
+   * On a phone the lanes fold under the transport, at the foot of the screen:
+   * pulled up, they and the transport take the lower half under the band.
    */
   .replay {
     /* The handle's 34px and the transport's 112px, as a length the script reads to fold by. */

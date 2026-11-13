@@ -6,12 +6,8 @@ import { familiesOf, NAMES, swatchColourOf, type Family, type Shown } from './fa
 import { isShape, swatchOf } from './symbols.ts'
 
 /**
- * The legend, and the switch that cuts a family off.
- *
- * One panel for both, because they answer the same question from two sides: a
- * reader looking for what a shape means, and a reader with three hundred of
- * them in one valley who wants some gone. What a switch does to the map is
- * `MapView`'s business; this one only says which families there are to cut.
+ * The legend, and the switch that cuts a family off: one panel, since both answer
+ * what a shape is. What a switch does to the map is `MapView`'s business.
  */
 export const LayerPanel = memo(function LayerPanel({
   content,
@@ -51,10 +47,8 @@ export const LayerPanel = memo(function LayerPanel({
 })
 
 /**
- * The switch on the sources the replay holds nothing of.
- *
- * The count is on the switch itself: what it hides leaves the map in silence
- * otherwise, and a reader has no way of knowing there was anything to ask for.
+ * The switch on the sources the replay holds nothing of, with their count: what
+ * it hides would otherwise leave the map in silence.
  */
 function Mutes({
   count,

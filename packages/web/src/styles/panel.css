@@ -144,12 +144,8 @@
 }
 
 /*
- * The reading bar, laid over the column of lanes rather than inside each one.
- *
- * Its offset repeats the lanes' label column instead of sharing their grid:
- * the ruler sits directly here while the lanes sit inside the `details` that
- * fold them, so no single column contains both. A lane's shape and this line
- * change together.
+ * The reading bar is laid over all the lanes, not inside each: the ruler and the
+ * folded lanes share no grid, so its offset repeats the label column's width.
  */
 .tracks {
   position: relative;

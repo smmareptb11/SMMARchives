@@ -2,19 +2,13 @@ import { setWorkerUrl, type StyleSpecification } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 
 /*
- * MapLibre finds its worker beside itself, by a name it builds at run time,
- * which a bundle cannot see: built for production, the style arrives and no
- * tile is ever drawn. Named here, the worker is bundled with what it imports.
- * Every map waits for its ground before it is built, so this comes first.
+ * MapLibre finds its worker by a name it builds at run time, which a bundle
+ * cannot see: in production no tile would ever be drawn. Named here, the worker
+ * is bundled, before any map is built.
  */
 setWorkerUrl(workerUrl)
 
-/**
- * The one thing a replay does not freeze.
- *
- * OpenFreeMap serves this style without a key, so no account, quota or
- * proprietary dependency stands between a reader and the map.
- */
+/** The one thing a replay does not freeze, served by OpenFreeMap without a key or an account. */
 const BASEMAP = 'https://tiles.openfreemap.org/styles/positron'
 
 /** Ground for a map whose basemap never came: no source, so nothing to fetch. */
@@ -24,13 +18,10 @@ export const BLANK: StyleSpecification = { version: 8, sources: {}, layers: [] }
 const GROUND_TIMEOUT = 8_000
 
 /**
- * The basemap, or blank ground when it cannot be had.
- *
- * Fetched before the map is built: the ground is an input, so a reader is told
- * it is missing before anything is drawn.
- *
- * The style names its sprite, its fonts and its tiles by absolute address, so
- * handing MapLibre the object rather than the address changes nothing it reads.
+ * The basemap, or blank ground when it cannot be had, fetched before the map is
+ * built so that a reader is told it is missing first. The style names its
+ * sprite, fonts and tiles by absolute address, so the object reads as its
+ * address would.
  */
 export async function groundOf(): Promise<string | StyleSpecification> {
   try {

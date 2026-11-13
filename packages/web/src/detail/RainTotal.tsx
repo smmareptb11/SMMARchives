@@ -16,12 +16,9 @@ import { ExportPng } from './ExportPng.tsx'
 import { PillPicker } from './PillPicker.tsx'
 
 /**
- * What a rain gauge measured: the total reached, and every measure behind it.
- *
- * What the map cannot give even coloured: a shade says a bracket, never the
- * figure, and never how that figure was gathered. The chart is what says the
- * second part — a total of ninety millimetres taken in one daily reading and
- * one gathered hour by hour are the same shade and not the same episode.
+ * What a rain gauge measured: the total reached, and every measure behind it,
+ * which the map's shade cannot say: ninety millimetres in one daily reading and
+ * ninety gathered hour by hour are one shade and two episodes.
  */
 export function RainTotal({
   gauges,
@@ -38,8 +35,8 @@ export function RainTotal({
   at: Cursor
 }) {
   const gauge = gauges.get(sourceId)
-  // Run out of the running totals once per gauge, where the bubble repaints on
-  // every frame of the reading and the chart is rebuilt whenever they change.
+  // Once per gauge: the bubble repaints on every frame, and the chart is rebuilt
+  // whenever the steps change.
   const steps = useMemo(() => (gauge === undefined ? [] : stepsOf(gauge)), [gauge])
   const [span, setSpan] = useState<Span>(RAIN_SPAN)
   const area = useRef<HTMLDivElement>(null)
@@ -100,11 +97,8 @@ function Legend({ bars }: { bars: string }) {
 }
 
 /**
- * The total the reading has reached.
- *
- * Nothing reached is still said, and the chart under it is drawn all the same:
- * the gauge's measures are ahead of the reading, not absent, and the bars are
- * what show the difference.
+ * The total the reading has reached. Before the first measure, the chart under
+ * it is drawn all the same: its measures are ahead, not absent.
  */
 function Reached({ rain }: { rain: Rain }) {
   if (rain.last === undefined) return <p className="note">Avant la première mesure.</p>

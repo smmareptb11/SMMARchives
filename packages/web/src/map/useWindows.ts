@@ -10,20 +10,12 @@ export type Detail = {
 }
 
 /**
- * The windows open over the map — sources' details and reports' sheets — as
- * many as the reader opened.
+ * The windows open over the map, sources' details and reports' sheets, as many as
+ * the reader opened. Closed from the window itself, never by a click elsewhere:
+ * what the reader set out to compare stays until they put it away.
  *
- * Windows rather than bubbles on the markers: a bubble carrying a curve is
- * taller than the room a source near the edge leaves it, and opened downwards
- * it slid under the montage. The marker says which sources are open instead.
- *
- * Closed one by one from the window itself — its cross, or Escape — and never
- * by a click elsewhere: what the reader set out to compare stays until they put
- * it away.
- *
- * The three are returned apart from what is open, so that a click handler
- * taking them as a dependency is not rebound every time a window opens or
- * closes.
+ * The three actions are returned apart from what is open, so that a handler
+ * depending on them is not rebound each time a window opens or closes.
  */
 export function useWindows(
   replayId: string,

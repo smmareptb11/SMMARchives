@@ -1,6 +1,6 @@
 /* The screen that follows a build: its stages and its journal. */
 
-/* A fold inside a message, which neither a family's band nor a form's box. */
+/* A fold inside a message, which is neither a family's band nor a form's box. */
 .lane-failure details,
 .replay-montage .lane-failure details {
   margin: 0.2rem 0 0;

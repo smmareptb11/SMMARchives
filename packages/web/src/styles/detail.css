@@ -152,17 +152,15 @@ button.export-png svg {
   justify-content: center;
 }
 
-/* A measure with no step to its name is an instant wide, and four pixels is
-   what it takes for that instant to read as a bar rather than a hairline. */
+/* A measure with no step is an instant wide: four pixels make it a bar, not a hairline. */
 .bars .mark.instant {
   min-width: 4px;
 }
 
 @media (max-width: 700px) {
   /*
-   * Too narrow for one line, the rungs wrap: centred line by line, their dashes
-   * would no longer fall under one another. One column instead, centred as a
-   * block under the chart.
+   * Too narrow for one line, the rungs stack in one column centred as a block:
+   * wrapped and centred line by line, their dashes would not fall in line.
    */
   .threshold-legend {
     flex-direction: column;

@@ -159,10 +159,8 @@
 }
 
 /*
- * A crossing whose threshold nature was assumed rather than read.
- *
- * Dark stripes rather than light ones: a threshold's colour can be a bright
- * yellow, on which a pale stripe is all but the colour itself.
+ * A crossing whose threshold nature was assumed rather than read. Dark stripes:
+ * a threshold's colour can be a bright yellow, on which a pale one would vanish.
  */
 .mark.assumed {
   background-image: repeating-linear-gradient(45deg, rgb(0 0 0 / 25%) 0 3px, transparent 3px 6px);
@@ -330,12 +328,9 @@
 }
 
 /*
- * The start and the end side by side, each half the row; until an end is asked
- * for, the way to ask for one stands in its place.
- *
- * The fields share their rows with the row — label, field, the instant said
- * back, a refusal — so the button can stand in the field's own row, centred
- * on it, whatever height the browser draws a date field at.
+ * The start and the end side by side; until an end is asked for, the button
+ * asking for one stands in its place. The fields share the row's four lines, so
+ * the button centres on a field whatever height the browser draws a date at.
  */
 .hour-row {
   display: grid;

@@ -12,20 +12,10 @@ import { keyOf, kindOf, prefixOf, type Kind } from './sources.ts'
 export const NEUTRAL = '#1e6bb8'
 
 /**
- * The colour of every source that is not neutral at this instant.
- *
- * Keyed by the source's own key — `watercourse:4`, not `4` — for the reason
- * `map/sources.ts` gives: an identifier alone does not name a source. A key
- * carries the family, so a colour meant for a station cannot reach the rain
- * gauge that shares its number. The rule is the shape of the map, and not a
- * clause someone has to remember.
- *
- * Rain gauges never appear: Aquasys gives no threshold on rainfall, so nothing
- * produces a crossing on one. Their own colours come from `rainColoursAt`, and
- * `paintedAt` is where the two meet.
- *
- * A source absent is neutral. What changed is small — a handful of entries
- * against three hundred sources — and it is rebuilt on every tick.
+ * The colour of every station that is not neutral at this instant; an absent
+ * one is neutral. Keyed by the source's key — `watercourse:4`, not `4` — so that
+ * a station's colour cannot reach the rain gauge sharing its number. No rain
+ * gauge: Aquasys gives no threshold on rainfall.
  */
 export function coloursAt(
   events: readonly ReplayEvent[],
@@ -43,12 +33,8 @@ export function coloursAt(
 }
 
 /**
- * Everything the map paints at an instant, in the one map of keys it reads.
- *
- * Two languages of colour in a single answer — a threshold's colour on the
- * hydro fleet, a class of rainfall on the gauges — and they cannot reach each
- * other's sources: a key carries its family, and the two families number their
- * own sources independently.
+ * Everything the map paints at an instant, keyed by source: a threshold's colour
+ * on the hydro fleet, a class of rainfall on the gauges.
  */
 export function paintedAt(content: ReplayContent, at: Cursor): Map<string, string> {
   const colours = coloursAt(content.events, content.stations, at)
@@ -63,11 +49,9 @@ export function paintedAt(content: ReplayContent, at: Cursor): Map<string, strin
 }
 
 /**
- * The stations that measured nothing, in the grey of a gauge that measured
- * nothing: left to the neutral, they would wear the blue of a station under
- * every threshold, which says it was measured. None, when the replay does not
- * say which stations measured. Such a station crosses nothing, so this grey
- * never hides a threshold's colour.
+ * The stations that measured nothing, in the gauges' grey: the neutral blue
+ * would say they were measured. None when the replay does not say which
+ * measured. Such a station crosses nothing, so the grey never hides a threshold.
  */
 function unmeasuredColours(
   stations: readonly Station[],
@@ -83,17 +67,10 @@ function unmeasuredColours(
 }
 
 /**
- * What every rain gauge of the parc shows at this instant.
- *
- * Every one of them, where `coloursAt` names only the stations that left the
- * neutral: a gauge left out would fall back on that neutral, which is the blue
- * of a station under every threshold and belongs to the other language.
- *
- * Unless the replay knows no rain at all — then no gauge has a colour, and they
- * keep the neutral. A build whose Aquasys lane failed still serves its stations
- * and its map, and greying the parc would accuse two hundred and twenty-nine
- * gauges of having measured nothing. That is what an absent `rain` says, where
- * a gauge missing from a present one measured nothing.
+ * What every rain gauge of the parc shows at this instant, each one named: left
+ * out, a gauge would wear the stations' neutral blue. None when the replay holds
+ * no rain at all, which says the rain was not read, not that every gauge
+ * measured nothing.
  */
 export function rainColoursAt(
   parc: readonly RainGauge[],
@@ -115,12 +92,8 @@ export function rainColoursAt(
 }
 
 /**
- * What one repaint of a family needs: its branches, and what the rest shows.
- *
- * Here rather than beside the layers, because it decides and does not draw.
- * Grouped by colour because a colour is shared by every source that reaches it,
- * so an episode with three levels in play makes three branches and not
- * ninety-four, and two hundred and twenty-nine rain gauges make at most six.
+ * What one repaint of a family needs: one branch per colour in play, and what
+ * the rest shows.
  */
 export function paintingOf(
   kind: Kind,
@@ -129,10 +102,8 @@ export function paintingOf(
   const keysByColour = new Map<string, string[]>()
   const prefix = prefixOf(kind)
 
-  // Pushed onto the list held rather than spread into a new one: at six colours
-  // over two hundred and twenty-nine gauges, spreading copies some eight
-  // thousand entries per repaint, and a repaint falls on one frame in six at
-  // the fastest speed of the transport.
+  // Pushed rather than spread: repaints follow the transport frame by frame, and
+  // spreading would copy every list at each key.
   for (const [key, colour] of colours) {
     if (!key.startsWith(prefix)) continue
 
@@ -147,13 +118,7 @@ export function paintingOf(
   }
 }
 
-/**
- * What each station is showing at an instant, gathered in one pass.
- *
- * One definition of « the crossing a station is in », for the colour of the
- * whole parc and for the one source a reader clicked: two passes over the same
- * events would be two answers to keep alike.
- */
+/** The crossing each station is in at an instant, gathered in one pass. */
 function crossingsAt(events: readonly ReplayEvent[], at: Cursor): Map<number, ReplayEvent> {
   const byStation = new Map<number, ReplayEvent>()
 
@@ -165,12 +130,9 @@ function crossingsAt(events: readonly ReplayEvent[], at: Cursor): Map<number, Re
 }
 
 /**
- * The higher of two crossings of one station, and the first one when they tie.
- *
- * A rank compared across one station's ladders is meaningful, which is what
- * lets the highest win; a rank compared across stations is not, and nothing
- * here compares two stations. A crossing the source gave no rank sits at the
- * bottom rather than above a Crise.
+ * The higher of two crossings of one station, the first when they tie; one the
+ * source gave no rank sits at the bottom. A rank compares within one station,
+ * never across two.
  */
 function higher(held: ReplayEvent | undefined, one: ReplayEvent): ReplayEvent {
   if (held === undefined) return one
@@ -178,12 +140,8 @@ function higher(held: ReplayEvent | undefined, one: ReplayEvent): ReplayEvent {
 }
 
 /**
- * A crossing with no end is a point in time, and covers that instant alone.
- *
- * Nothing derived produces one today — a crossing the water never came out of
- * closes on the last measurement, and says so through `stillActiveAtEnd`. The
- * case belongs to the manual events to come, and reading it as « until the end
- * of the period » would paint a station red for a fact that lasted a second.
+ * A crossing with no end covers its instant alone: read as lasting to the end of
+ * the period, it would paint a station red for a fact that lasted a second.
  */
 function holds(event: ReplayEvent, at: Cursor): boolean {
   const from = epochOf(event.from)

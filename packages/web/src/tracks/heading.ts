@@ -25,16 +25,12 @@ export function quietLabel(family: string): string {
 }
 
 /**
- * What a family's heading counts, and what the count leaves unsaid.
+ * What a family's heading counts, and what the count leaves unsaid. The lanes
+ * shown out of the lanes held, when a switch holds some back, or a few shown
+ * would read as a replay of a few sources.
  *
- * The lanes shown out of the lanes held, when a switch holds some back: a
- * family showing three lanes out of ninety-four would otherwise read as a
- * replay of three sources. What the count does not say — why lanes are held,
- * how many crossings rest on a guessed threshold — is there for the reader
- * who asks, and out of the way of the one who does not.
- *
- * `quiet` is how many of the lanes held back crossed nothing, and the rest had
- * no data: the two are held by two switches, and each note names its own.
+ * `quiet` is how many of the lanes held back crossed nothing, the rest having no
+ * data: two switches hold them, and each note names its own.
  */
 export function countOf(
   family: Family,
@@ -66,10 +62,8 @@ function shownSaid(family: Family, shown: number, held: number): string {
 }
 
 /**
- * Whether opening the family would show nothing: no lane shown, the count
- * saying « aucune », and no note standing in for the lanes. The ones that
- * crossed nothing are not offered back on a family that shows none: a band of
- * « aucun franchissement » tells nothing its count does not.
+ * Whether opening the family would show nothing: no lane shown, and no count of
+ * events or note standing in for the lanes.
  */
 export function opensOnNothing(family: Family, shown: number): boolean {
   return shown === 0 && family.count === undefined && family.silent === undefined

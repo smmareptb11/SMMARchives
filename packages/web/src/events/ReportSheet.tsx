@@ -43,10 +43,8 @@ export function ReportSheet({ report, replayId, onEdit, onRemoved }: ReportSheet
 }
 
 /**
- * Amending and removing, the second in two steps.
- *
- * Removing is for good, photos included, so the button asks again in the
- * sheet itself rather than in a browser dialog that would stop the whole page.
+ * Amending and removing, the second asked again in the sheet itself rather than
+ * in a browser dialog that would stop the whole page.
  */
 function Actions({
   report,
@@ -154,10 +152,8 @@ function whenOf(report: ReplayEvent): string {
 }
 
 /**
- * The photos, small, and the one asked for at full width.
- *
- * Keyed on the event upstream, so a photo enlarged on one event is not the
- * one shown enlarged when another opens.
+ * The photos, small, and the one asked for at full width. Keyed on the event
+ * upstream, so the enlarged photo never carries over to another event.
  */
 function Photos({ paths, replayId, title }: { paths: string[]; replayId: string; title: string }) {
   const [enlarged, setEnlarged] = useState<string | undefined>(undefined)

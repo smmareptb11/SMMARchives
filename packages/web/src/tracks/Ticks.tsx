@@ -6,11 +6,9 @@ import type { Dot } from '../transport/dots.ts'
 import { ticksOf } from './ruler.ts'
 
 /**
- * The ticks of the period and its events' dots, as the ruler draws them and
- * the transport's bar draws them again.
- *
- * Memoised, as neither moves with the reading: the bar it is drawn in renders
- * on every tick, and only its head has anything new to say.
+ * The ticks of the period and its events' dots, as the ruler draws them and the
+ * transport's bar again. Memoised: that bar renders on every frame, and neither
+ * moves with the reading.
  */
 export const Ticks = memo(function Ticks({
   period,

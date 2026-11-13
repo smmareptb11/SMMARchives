@@ -1,12 +1,9 @@
 import type { Instant, TimeWindow } from '@smmarchives/shared/clock.ts'
 
 /**
- * The interface speaks French time; the API speaks UTC.
- *
- * Every conversion goes through this module, and nowhere else builds a date:
- * `new Date('2019-10-22T06:00')` reads a wall time in the machine's own zone,
- * which is right in Carcassonne, wrong everywhere else, and wrong without
- * saying so.
+ * The interface speaks French time; the API speaks UTC. Every conversion goes
+ * through this module, and nowhere else builds a date: `new Date('2019-10-22T06:00')`
+ * reads a wall time in the machine's own zone, wrong without saying so outside France.
  */
 export const FRENCH_TIME = 'Europe/Paris'
 
@@ -72,20 +69,14 @@ const WALL_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
 const HALF_A_DAY = 12 * 60 * 60 * 1000
 
 /**
- * A wall time in Paris, as `datetime-local` spells it, as the instant it names.
+ * A wall time in Paris, as `datetime-local` spells it, as the instant it names:
+ * the offsets half a day before and after are both tried, and an instant is kept
+ * only if Paris reads it back as the wall time asked for.
  *
- * Both offsets in force around it are tried — the one half a day before and the
- * one half a day after, which is the pair a clock change sits between — and an
- * instant is kept only if Paris reads it back as the wall time asked for.
- *
- * **The last Sunday of October, two instants bear the same name**, and this
- * keeps the one nearest `near` — the instant a field was filled from, which a
- * wall time alone cannot tell apart from the hour before — and, without one,
- * the first: the hour before the change. That Sunday falls in the middle of
- * the season this tool replays, so it is not a case of the calendar's
- * imagination. **The last Sunday of March, one hour never happens**, no
- * instant reads back, and this takes the one that follows it. Neither choice
- * shows on screen, which is why both are written here and in the design.
+ * **The last Sunday of October, two instants bear the same name**: this keeps the
+ * one nearest `near`, the instant a field was filled from, or else the first.
+ * **The last Sunday of March, one hour never happens**: this takes the one that
+ * follows it. Neither choice shows on screen.
  */
 export function toInstant(local: string, near?: Instant): Instant | undefined {
   if (!WALL_TIME.test(local)) return undefined
@@ -118,11 +109,8 @@ export function toLocalInput(instant: Instant): string {
 const MINUTE = 60 * 1000
 
 /**
- * The first whole minute at or after an instant, as `datetime-local` wants it.
- *
- * Where a field may start: written to the minute, an instant of 10:30:45 would
- * read 10:30, a moment before it — and the field would offer an hour that is
- * not allowed.
+ * The first whole minute at or after an instant, as `datetime-local` wants it:
+ * where a field may start, which must offer no minute before the instant.
  */
 export function toLocalInputFrom(instant: Instant): string {
   const epoch = Date.parse(instant)
@@ -133,11 +121,8 @@ export function toLocalInputFrom(instant: Instant): string {
 const EPOCHS = new Map<Instant, number>()
 
 /**
- * An instant as milliseconds since the epoch, read once per instant.
- *
- * What the map and the history ask of every event on every frame: parsed each
- * time, a few thousand crossings cost tens of thousands of parses a second.
- * The instants are a replay's own, so the cache holds no more than it does.
+ * An instant as milliseconds since the epoch, read once per instant: the map and
+ * the history ask it of every event on every frame.
  */
 export function epochOf(instant: Instant): number {
   let epoch = EPOCHS.get(instant)
@@ -209,11 +194,8 @@ export function formatSince(instant: Instant, reading: Instant): string {
 
 /**
  * A period in a sentence, as one says it: `du 21 au 27 janvier 2020`, or
- * `le 7 février 2020 de 12 h à 13 h` for less than a day.
- *
- * Days alone from a day on, an end at midnight being the last of the day
- * before: what runs to midnight on the 13th covers nothing of the 13th. The
- * year is always said, once when both ends share it.
+ * `le 7 février 2020 de 12 h à 13 h` for less than a day. From a day on, an end
+ * at midnight counts as the last of the day before.
  */
 export function formatPeriod(period: TimeWindow): string {
   const from = Date.parse(period.from)
@@ -275,10 +257,8 @@ const DAY_MS = 24 * HOUR_MS
 
 /**
  * How long a period lasts on a Paris clock: `3 jours`, `2 jours 6 h`, `18 h 30`.
- *
- * Measured between wall times rather than instants, so that midnight to
- * midnight three days later reads `3 jours` even across a clock change, which
- * the season this tool replays straddles.
+ * Measured between wall times, so that midnight to midnight three days later
+ * reads `3 jours` even across a clock change.
  */
 export function formatDuration(period: TimeWindow): string {
   const from = Date.parse(period.from)

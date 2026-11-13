@@ -6,12 +6,9 @@ import { takenWhen, viewAt, viewStepsOf, type Views } from '../pictures.ts'
 import type { Cursor } from '../transport/reading.ts'
 
 /**
- * What a camera showed at the instant read, and the way to its other views.
- *
- * The full image when the replay froze it, the reduction otherwise — the one
- * the lane's preview shows. Its box keeps its shape while the image loads, so
- * the steps under it do not jump at each view. A step moves the reading onto
- * the view's own instant, and so the map, the lanes and this panel with it.
+ * What a camera showed at the instant read, the full image when the replay froze
+ * it, and the steps to its other views, which move the whole reading to the
+ * view's instant. Its box keeps its shape while loading, so the steps never jump.
  */
 export function CameraView({
   camera,

@@ -33,12 +33,9 @@ export type TrackListProps = {
 }
 
 /**
- * What a replay brought back, one lane per source.
- *
- * It knows nothing of the cursor, and takes no prop that moves with it: three
- * hundred lanes rebuilt sixty times a second would make the reading stutter,
- * and not one of them changes as the cursor advances. The reading bar is drawn
- * beside it, by something that does move.
+ * What a replay brought back, one lane per source. It takes no prop that moves
+ * with the cursor: every lane rebuilt on every frame would make the reading
+ * stutter, and none of them changes as it advances.
  */
 export const TrackList = memo(function TrackList({
   manifest,
@@ -165,12 +162,9 @@ function FamilyNotes({ family }: { family: Family }) {
 }
 
 /**
- * The mark of a family before each of its lanes, as the mockup draws it.
- *
- * The shape is the map's own, used as a mask so the montage gives it its
- * colour: drawn again in the stylesheet, the two drawings would drift. Drawn
- * once per family, not once per lane. A camera is a frame rather than a shape,
- * and the radar rainfall, which the map does not draw, has none.
+ * The mark of a family before each of its lanes: the map's own shape, used as a
+ * mask so that the two drawings cannot drift. The radar rainfall, which the map
+ * does not draw, has none.
  */
 function useGlyph(family: string): ReactNode {
   return useMemo(() => {
@@ -183,11 +177,8 @@ function useGlyph(family: string): ReactNode {
 }
 
 /**
- * What a family holds when it holds no lane at all.
- *
- * One family can reach this: the rain gauges of a replay that collected no
- * measure. Every other source of this screen gets a lane whether it has
- * anything on it or not, and the switch is what decides whether it is drawn.
+ * What a family holds when it holds no lane at all, which only the rain gauges
+ * of a replay that collected no rain can reach.
  */
 function silenceOf(count: number): string {
   return count === 1
@@ -237,12 +228,7 @@ function Count({ family, shown, quiet }: { family: Family; shown: number; quiet:
   )
 }
 
-/**
- * A faint line on every tick of the ruler, down through every lane.
- *
- * Laid once under the lanes rather than drawn in each: three hundred lanes
- * would repeat the same lines, and they are the ruler's, not the lanes'.
- */
+/** A faint line on every tick of the ruler, laid once under all the lanes rather than in each. */
 function HourGrid({ period }: { period: TimeWindow }) {
   return (
     <div className="hour-grid" aria-hidden="true">
@@ -253,13 +239,7 @@ function HourGrid({ period }: { period: TimeWindow }) {
   )
 }
 
-/**
- * The hours of the period, in French time, and where one seeks.
- *
- * The ruler is what a reader points at to move in time, so it is what listens:
- * a bar thin enough to be a bar is too thin to aim at, and the lanes below say
- * what happened rather than when one is looking.
- */
+/** The hours of the period, in French time, and where one seeks. */
 function Ruler({
   period,
   dots,
@@ -277,11 +257,9 @@ function Ruler({
     <div className="lane ruler">
       <div className="lane-label">Chronologie</div>
       {/*
-        No `slider` role and no tab stop. The role promises a value and keyboard
-        handling this element cannot give: it is memoised away from the cursor
-        on purpose, so it does not know where the reading is. And a tab stop
-        here would silence the arrows, which `Transport` binds on the document
-        and only for what has no focus of its own.
+        No `slider` role: memoised away from the cursor, it cannot give the value
+        the role promises. No tab stop: it would silence the arrows, which
+        `Transport` binds on the document for what has no focus of its own.
       */}
       <div className="lane-track" {...drag}>
         <Ticks period={period} dots={dots} />

@@ -20,13 +20,9 @@ export type PanelControl = {
 }
 
 /**
- * The form open in the right-hand column, and the question before it is thrown
- * away.
- *
- * Nothing replaces a form the agent has typed into without asking: amending
- * another event, or reporting a new one, would otherwise cost them what they
- * were writing. The callbacks read the state through refs, so they keep their
- * identity.
+ * The form open in the right-hand column, which nothing replaces without asking
+ * once the agent has typed into it. The callbacks read the state through refs,
+ * so they keep their identity.
  */
 export function usePanel(): PanelControl {
   const [panel, setPanel] = useState<Panel>(undefined)
@@ -75,11 +71,9 @@ export function usePanel(): PanelControl {
 }
 
 /**
- * Which form a panel holds, as React tells one from another.
- *
- * An event amended is its own form, so what was typed for one never carries
- * over to the next. A new one is the form of the instant it was opened at, so
- * that it starts where the reading stands.
+ * Which form a panel holds, as React tells one from another: an amended event is
+ * its own form, so nothing typed carries over; a new one is its instant's, so it
+ * starts where the reading stands.
  */
 export function formKeyOf(at: Instant, editing: { id: string } | undefined): string {
   return editing === undefined ? `new-${at}` : `edit-${editing.id}`

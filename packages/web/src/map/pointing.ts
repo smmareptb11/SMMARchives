@@ -18,9 +18,8 @@ import { haloImageOf, imageOf, ringImageOf } from './symbols.ts'
 
 /**
  * The source the pointer rests on in the lanes or the history, drawn again over
- * the whole map and larger, in a dark outline: found at a glance in a valley of
- * three hundred, and never mistaken for the outline of an open detail, which is
- * in the source's own colour.
+ * the whole map, larger and in a dark outline: never mistaken for an open
+ * detail's outline, which is in the source's own colour.
  */
 const layersOf = (kind: Kind) => ({
   halo: `${shapeLayerOf(kind)}-pointed-halo`,
@@ -92,13 +91,10 @@ function addLit(
 }
 
 /**
- * Lights up what the pointer rests on: a source, or what an agent reported. A
- * camera is a marker, and `WebcamMarkers` lights it up from the same pointer.
- *
- * A source only while it is drawn, as an outline is: lit where its family is
- * cut off or the switch holds it back, it would be a blot where nothing is. A
- * report even before the reading reaches it, since that is when a reader asks
- * where it will be.
+ * Lights up what the pointer rests on: a source only while it is drawn, or it
+ * would be a blot where nothing is; a report even before the reading reaches it,
+ * when a reader asks where it will be. A camera is a marker, which
+ * `WebcamMarkers` lights up.
  */
 export function pointAt(
   map: MapLibreMap,

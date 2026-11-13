@@ -7,29 +7,21 @@ import {
 
 /*
  * The model of a reading: where it is, how fast it moves, and where it can jump.
- *
- * Not an hour of the day — `@smmarchives/shared/clock.ts` owns instants, the
- * time window and what a plausible date is, and this file rests on it. Naming
- * this one `clock.ts` too made every import a question about which of the two.
+ * Instants and the time window belong to `@smmarchives/shared/clock.ts`.
  */
 
 /**
- * How many minutes of the replay one second of real time covers.
- *
- * A replay of 24 hours at one minute per second lasts 24 minutes, and at sixty
- * it lasts 24 seconds: the range has to span the reading of an episode and the
- * skimming of a quiet week.
+ * How many minutes of the replay one second of real time covers: enough range to
+ * read an episode and to skim a quiet week.
  */
 export const SPEEDS = [1, 5, 15, 60] as const
 
 export type Speed = (typeof SPEEDS)[number]
 
 /**
- * Where the reading is, in milliseconds since the epoch.
- *
- * A number and not an `Instant`: it is compared and added to on every frame,
- * and parsing a string sixty times a second to add a minute to it is work for
- * nothing. It becomes an instant again at the edge, where something shows it.
+ * Where the reading is, in milliseconds since the epoch: a number rather than an
+ * `Instant`, since it is added to on every frame. It becomes an instant again
+ * where something shows it.
  */
 export type Cursor = number
 
@@ -60,11 +52,8 @@ export function advanced(
 }
 
 /**
- * The longest a frame may count for.
- *
- * A browser stops drawing a tab nobody looks at, and the first frame back
- * counts the whole absence: ten minutes away at sixty minutes a second would
- * move the reading by ten hours, to the end of most replays.
+ * The longest a frame may count for: a browser stops drawing a tab nobody looks
+ * at, and the first frame back would count the whole absence.
  */
 export const LONGEST_FRAME_MS = 250
 
@@ -91,12 +80,9 @@ export type Shortcut = 'toggle' | 'next' | 'previous' | 'forward' | 'back'
 export type KeyFocus = 'typing' | 'pressable' | 'map' | 'none'
 
 /**
- * What a key does to the reading, wherever the focus stands — or nothing, where
- * the key already means something.
- *
- * A field keeps every key. A button or a checkbox keeps space, which presses
- * it, and leaves the arrows to the reading: a click on « Événement suivant »
- * must not end the shortcuts. The map keeps the arrows, which pan it.
+ * What a key does to the reading, or nothing where the focus already gives it a
+ * meaning: a field keeps every key; a button or a checkbox keeps space and leaves
+ * the arrows to the reading; the map keeps the arrows, which pan it.
  */
 export function shortcutFor(key: string, shift: boolean, focus: KeyFocus): Shortcut | undefined {
   if (focus === 'typing') return undefined
@@ -137,15 +123,9 @@ function spanOf(period: TimeWindow): number {
 }
 
 /**
- * The last of a list, ordered oldest first, that is not after the cursor.
- *
- * The rule two screens read the same way: a webcam's view and a station's
- * measure both hold until the next one, so what is shown at an instant is the
- * last thing known before it. Written once, or the two would drift on the
- * instant that falls exactly on an entry.
- *
- * Halving rather than walking back from the end: an open bubble asks this on
- * every frame of the reading, over a list that can hold a thousand entries.
+ * The last of a list, ordered oldest first, that is not after the cursor: the one
+ * rule by which a webcam's view and a station's measure hold until the next.
+ * Halving, since an open bubble asks this on every frame.
  */
 export function lastBefore<T extends { at: Cursor }>(
   ordered: readonly T[],

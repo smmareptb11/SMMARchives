@@ -8,11 +8,8 @@ export const ASSUMED_NATURE =
 
 /**
  * What a crossing says of itself where its station is already named: the
- * threshold, when the measure reached it and when it fell back under, then
- * what is uncertain of it.
- *
- * The end is the first measure back under the threshold, or the last measure
- * of all when none came back: then the crossing is said to hold still.
+ * threshold, when the measure reached it and when it fell back under, or that it
+ * held to the last measure, then what is uncertain of it.
  */
 export function crossingCaption(event: ReplayEvent): string {
   const reached = `Seuil « ${event.crossing?.label ?? event.title} » atteint le ${formatInstant(event.from)}`

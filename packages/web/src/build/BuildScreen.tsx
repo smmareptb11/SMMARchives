@@ -118,12 +118,9 @@ function Journal({ journal }: { journal: readonly JournalEntry[] }) {
 }
 
 /**
- * The journal kept on its last line as lines arrive, for as long as the reader
- * is there: on the bottom when the screen opens, and again whenever they scroll
- * back down to it. Scrolled up, they are left where they are reading.
- *
- * On the list itself and not on its length: past the lines the screen keeps,
- * a new line pushes the first one out and the length no longer moves.
+ * The journal kept on its last line as lines arrive, while the reader is there;
+ * scrolled up, they are left where they are reading. Watching the list and not
+ * its length: past the lines kept, a new line no longer moves the length.
  */
 function useFollowedTail(journal: readonly JournalEntry[]) {
   const box = useRef<HTMLOListElement>(null)

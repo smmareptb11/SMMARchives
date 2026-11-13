@@ -84,10 +84,8 @@ export function draftOf(event: ReplayEvent): Draft {
 }
 
 /**
- * The report a draft amounts to, or what is wrong with it, field by field.
- *
- * The API's own rules, said before sending so that the agent reads them in
- * French and beside the field; the API judges again, and has the last word.
+ * The report a draft amounts to, or what is wrong with it, field by field: the
+ * API's own rules, said in French beside the field; the API has the last word.
  */
 export function judged(
   draft: Draft,
@@ -204,10 +202,8 @@ function refusedPhotos(photos: readonly PhotoFile[], kept: number): string | und
 }
 
 /**
- * Where a refusal of the API lands in the form.
- *
- * Its field when the API named one the form shows, and the foot of the form
- * otherwise: a refusal nobody can place still has to be read.
+ * Where a refusal of the API lands in the form: its field when the form shows
+ * the one named, the foot of the form otherwise.
  */
 export function placed(refusals: readonly { path: string; message: string }[]): {
   fields: Refusals
@@ -237,13 +233,10 @@ const FIELDS: readonly Field[] = [
 export const PROPOSED_SPAN_MS = 15 * 60_000
 
 /**
- * The end as the agent clicks into it: a quarter of an hour after the start,
- * when there is none yet.
- *
- * An event mostly ends the same day, so the agent adjusts an hour rather than
- * picking a date again from an empty field. When the agent asks for an end,
- * and not before: most events last no time at all. Counted on the instant, so
- * a quarter of an hour across the change of clock stays one.
+ * The end as the agent clicks into it: when there is none, a quarter of an hour
+ * after the start, so the agent adjusts an hour rather than picks a date. Only
+ * then, since most events last no time; counted on the instant, so it stays a
+ * quarter of an hour across the change of clock.
  */
 export function endOnEntry(draft: Draft): string {
   if (draft.to !== '') return draft.to
@@ -265,11 +258,9 @@ const LABELS: Record<Field, string> = {
 }
 
 /**
- * What is left to correct, said beside the button that sends.
- *
- * A refusal sits under its field, which on a small screen is out of sight of
- * the button the agent just pressed: without this, the press seems to do
- * nothing. In the form's own order, so the list reads top to bottom.
+ * What is left to correct, in the form's order, said beside the button that
+ * sends: on a small screen the refusals under their fields are out of sight, and
+ * the press would seem to do nothing.
  */
 export function toCorrect(refusals: Refusals): string | undefined {
   const fields = (Object.keys(LABELS) as Field[]).filter((one) => refusals[one] !== undefined)

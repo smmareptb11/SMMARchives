@@ -32,11 +32,8 @@ export type ReplayEntry = {
 }
 
 /**
- * One line of the list, read from the manifest alone.
- *
- * No data set is opened: the list is the index of what was frozen, and a
- * screen that fetched every replay's content to name it would cost a build's
- * worth of reads per visit.
+ * One line of the list, read from the manifest alone: opening every replay's
+ * data sets to name it would cost a build's worth of reads per visit.
  */
 export function entryOf(manifest: ReplayManifest): ReplayEntry {
   return {
@@ -76,11 +73,8 @@ function counted(count: number, one: string, many: string): string {
 }
 
 /**
- * The few counts a card shows, as the manifest states them.
- *
- * Only what the replay holds some of: a count the manifest does not hold, or
- * one of nothing, is left out, a card being read for what there is to replay.
- * A replay still being built shows none: its counts are still moving.
+ * The few counts a card shows, as the manifest states them: only what the replay
+ * holds some of, and none while it is still being built.
  */
 function figuresOf(manifest: ReplayManifest): string[] {
   if (manifest.state === 'running') return []
@@ -104,9 +98,8 @@ function pushCount(figures: string[], count: number | undefined, one: string, ma
 }
 
 /**
- * How much of one family measured, each family on its own: told « 263 stations »,
- * a reader counts rain gauges as stations and never finds them on the screen. A
- * family none of which measured is left out.
+ * How much of one family measured, each family on its own: counted together, rain
+ * gauges would be read as stations.
  */
 function pushFleet(
   figures: string[],
@@ -119,10 +112,8 @@ function pushFleet(
 }
 
 /**
- * The lines of the list, in the order the API gave them.
- *
- * Not sorted again: the API already orders on `createdAt`, and a second rule
- * here could only drift from the first.
+ * The lines of the list, in the order the API gave them: it already orders on
+ * `createdAt`, and a second rule here could only drift from the first.
  */
 export function entriesOf(manifests: readonly ReplayManifest[]): ReplayEntry[] {
   return manifests.map(entryOf)

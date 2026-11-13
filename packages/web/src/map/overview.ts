@@ -35,12 +35,9 @@ function legendOver(container: HTMLElement): Rect | undefined {
 }
 
 /**
- * The way back to the view the map opened on, beside the zoom: there only once
- * the view no longer holds every source it opened on, whether the reader moved
- * it or a card, a lane or a report took it somewhere.
- *
- * The opening is asked again on each use, rather than kept: the map's size, and
- * so the room left around the sources, is the one it has now.
+ * The way back to the view the map opened on, beside the zoom, shown once the
+ * view no longer holds every source it opened on. The opening is asked again on
+ * each use, for the map's size of the moment.
  */
 export function overviewControl(opening: () => Opening): IControl {
   const container = document.createElement('div')

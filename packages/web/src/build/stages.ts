@@ -49,15 +49,9 @@ const measuresOf = (family: string | undefined) =>
   family === 'rain-gauge' ? 'Mesures des pluviomètres' : 'Mesures des stations'
 
 /**
- * Where each strand of a build stands, read from its journal.
- *
- * Read from the text the worker writes, which is all the journal carries: a
- * line it does not recognise leaves the strand at its state alone, so a change
- * of wording on the worker's side costs the detail, never the screen.
- *
- * The strands are the ones the manifest lists: a build names those it will run
- * before the first begins, so the count of what is left never grows, and a
- * strand whose source is not configured is never shown waiting for its turn.
+ * Where each strand of a build stands, read from the text its journal carries:
+ * a line not recognised leaves the strand at its state alone, so that a change of
+ * wording on the worker's side costs the detail, never the screen.
  */
 export function stagesOf(lanes: Lanes, journal: readonly JournalEntry[]): Stage[] {
   return Object.entries(lanes)

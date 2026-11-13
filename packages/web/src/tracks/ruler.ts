@@ -26,16 +26,10 @@ export type Tick = {
 }
 
 /**
- * The ticks of the ruler, on the full hours of French time.
- *
- * Every hour over a day, as the mockup draws it, and the finest step that
- * keeps a longer period to as many ticks. From a day up, the ticks stand on
- * Paris's midnights and name the day; below, a midnight names its day rather
- * than `00:00`, or a period of a few days repeats the same hours without
- * saying which day they belong to. Read off the instants themselves rather
- * than counted from the start: the day the clocks change holds 23 or 25 hours,
- * and a ruler that counted would name the wrong ones. Paris is offset from UTC
- * by whole hours, so its full hours are UTC's.
+ * The ticks of the ruler, on the full hours of French time: every hour over a
+ * day, and the finest step that keeps a longer period to as many. A midnight
+ * names its day. Read off the instants rather than counted from the start, since
+ * the day the clocks change holds 23 or 25 hours; Paris's full hours are UTC's.
  */
 export function ticksOf(period: TimeWindow): Tick[] {
   const from = Date.parse(period.from)
@@ -64,10 +58,7 @@ export function ticksOf(period: TimeWindow): Tick[] {
 
 /**
  * How wide the lanes are drawn where they scroll across the period, as a phone
- * draws them: the room the mockup gives an hour, given to each tick instead.
- * The ruler holds at most `AT_MOST` ticks whatever the period lasts, so a day
- * and a fortnight scroll across as many screens, and two ticks always stand as
- * far apart.
+ * draws them: a fixed room per tick, so that two ticks always stand as far apart.
  */
 export function trackWidthOf(period: TimeWindow): number {
   return ticksOf(period).length * TICK_WIDTH

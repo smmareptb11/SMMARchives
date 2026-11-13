@@ -11,10 +11,8 @@ export type Point = { x: number; y: number }
 export type Size = { width: number; height: number }
 
 /**
- * Where the rectangle sits in the view, each side a fraction of it.
- *
- * Held on the screen, so that zooming or moving the map is how the extent is
- * set: it is whatever the rectangle frames.
+ * Where the rectangle sits in the view, each side a fraction of it: held on the
+ * screen, so that zooming or moving the map is how the extent is set.
  */
 export type Frame = { left: number; top: number; right: number; bottom: number }
 
@@ -29,10 +27,8 @@ export function cornersOf(frame: Frame, size: Size): { southWest: Point; northEa
 }
 
 /**
- * The pixels between each side of the view and the frame.
- *
- * What the map leaves around a rectangle it fits, so the rectangle lands in
- * the frame rather than across the whole view.
+ * The pixels between each side of the view and the frame, which the map leaves
+ * around bounds it fits so that they land in the frame.
  */
 export function paddingOf(
   frame: Frame,
@@ -47,10 +43,8 @@ export function paddingOf(
 }
 
 /**
- * The pixels the map may show past its view, so the frame can land on its edge.
- *
- * The frame sits a margin inside each edge of the view. The map runs past the
- * view by that margin, so the frame can land on any ground the view opens on.
+ * The pixels the map may show past its view: the frame's own margin, so that the
+ * frame can land on any ground the view opens on.
  */
 export function reachOf(frame: Frame, size: Size): { southWest: Point; northEast: Point } {
   return {
@@ -64,10 +58,8 @@ const TILE = 512
 
 /**
  * Where a pixel of a view lands, the view being centred on `center` at `zoom`.
- *
- * Web Mercator, worked out rather than asked of the map: the map answers for
- * the view it stands on now, and the bounds it is held within are those of the
- * view it opened on, whatever it was moved to since.
+ * Web Mercator, worked out rather than asked of the map, which answers only for
+ * the view it stands on now.
  */
 export function lonLatAt(
   center: [number, number],
@@ -88,10 +80,8 @@ export function lonLatAt(
 }
 
 /**
- * The extent between the two corners a frame lands on, cut to the territory.
- *
- * A frame reaching past the territory sends what it frames of it, which is
- * what the API accepts: nothing is ever replayed outside it.
+ * The extent between the two corners a frame lands on, cut to the territory,
+ * which is what the API accepts.
  */
 export function extentBetween(southWest: Position, northEast: Position): BoundingBox | undefined {
   const framed = {

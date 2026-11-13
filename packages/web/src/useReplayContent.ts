@@ -49,9 +49,8 @@ export async function contentOf(manifest: ReplayManifest, ask: Ask): Promise<Rep
     ...fleet,
     events,
     thresholds,
-    // Where the flattening is undone, being where it was done: `askFor` answers
-    // an empty list for a data set the build never produced, and every reader
-    // downstream would otherwise have to ask the manifest the same question.
+    // `askFor` answers an empty list for a data set never produced: told apart
+    // here, so that no reader downstream asks the manifest again.
     rain: datasets.measures === undefined ? undefined : gaugesOf(rainfall),
     measuredStations: datasets['measured-stations'] === undefined ? undefined : new Set(measured),
     webcams,
@@ -61,15 +60,9 @@ export async function contentOf(manifest: ReplayManifest, ask: Ask): Promise<Rep
 }
 
 /**
- * Loads what the screen rests on, and nothing else.
- *
- * A station's measures are not among it: a replay of 24 hours holds 19 Mb of
- * them, and what the map and the lanes draw are the crossings the build
- * derived and the media it froze. They are read when a station's bubble
- * opens, one station and one quantity at a time.
- *
- * The rain of the whole parc is among it, being a fortieth of that on the same
- * replay — so are the ladders that say which quantity a station is read on.
+ * Loads what the screen rests on, and nothing else. A station's measures, by far
+ * the heaviest, are not among it: they are read when its bubble opens, one
+ * quantity at a time. The parc's rain, much lighter, is.
  */
 export function useContent(manifest: ReplayManifest): Loaded & { changes: ContentChanges } {
   const [loaded, setLoaded] = useState<Loaded>({ content: undefined, failure: undefined })
@@ -102,9 +95,8 @@ export function useContent(manifest: ReplayManifest): Loaded & { changes: Conten
         setLoaded({ content, failure: undefined })
       },
       (error: unknown) => {
-        // A replay left for another drops its requests rather than its answers:
-        // one of them is a megabyte, on a connection the reader has walked away
-        // from. What comes back after that is the abort, and it says nothing.
+        // A replay left for another drops its requests rather than its answers;
+        // the abort that comes back says nothing.
         if (!leaving.signal.aborted) setLoaded({ content: undefined, failure: describe(error) })
       },
     )

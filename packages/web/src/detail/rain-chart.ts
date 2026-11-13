@@ -3,11 +3,9 @@ import { lastBefore, type Cursor } from '../transport/reading.ts'
 import { SECOND } from './chart.ts'
 
 /**
- * What a bar of the bubble is at the instant being read.
- *
- * Three states and not two: what the reading is standing on has to be told from
- * what it has already passed, or a reader looking for the figure beside the
- * chart cannot find which bar it came from.
+ * What a bar of the bubble is at the instant being read: the one the reading
+ * stands on is told from those passed, so the figure beside the chart can be
+ * traced to its bar.
  */
 export type BarState = 'past' | 'read' | 'ahead'
 
@@ -17,16 +15,13 @@ export type BarState = 'past' | 'read' | 'ahead'
  */
 export const AHEAD = 0.25
 
-/**
- * Which bar the reading is standing on, as a rank, or `NONE` before the first.
- *
- * Through `lastBefore`, which is where « the last thing known before an instant »
- * is written — the same answer `rainAt` counts the running total up to, so the
- * figure in the header and the bar picked out below it can never be two
- * different measures, on the instant that falls exactly on one.
- */
 export const NONE = -1
 
+/**
+ * Which bar the reading is standing on, as a rank, or `NONE` before the first.
+ * Through `lastBefore`, as `rainAt` counts the header's total, so the figure and
+ * the bar picked out are one measure even on the instant that falls on it.
+ */
 export function readAt(steps: readonly Step[], at: Cursor): number {
   const reached = lastBefore(steps, at)
 
@@ -57,17 +52,10 @@ export type Framed = {
 }
 
 /**
- * The running total over a window, and the tops of both scales, as the Acycliq
- * widget works them out.
- *
- * From the first measure inside the window, and not from the start of the
- * period: what the curve says is how much fell over what the reader is looking
- * at, so a window of six hours starts from nothing. Every scale falls back on
- * one millimetre when the window holds no rain, so none collapses on zero.
- *
- * The bars are counted wherever they cross the window, and not only where they
- * end in it: a daily measure covers the whole of a window of six hours, and
- * left out of its scale it would fill the frame against a top of one.
+ * The running total over a window, from its first measure, and the tops of both
+ * scales, as the Acycliq widget works them out; one millimetre when the window
+ * holds no rain. A bar counts towards its scale wherever it crosses the window:
+ * a daily measure covers a whole window of six hours.
  */
 export function framedIn(steps: readonly Step[], window: { min: number; max: number }): Framed {
   const totals: (number | null)[] = []
@@ -96,13 +84,9 @@ export function framedIn(steps: readonly Step[], window: { min: number; max: num
 }
 
 /**
- * How wide a bar is painted, in device pixels, from the span it covers.
- *
- * Its own span, one device pixel at the least: bars follow each other edge to
- * edge, and a floor wider than a five-minute step would have each cover the
- * next few — over bars painted faint, the overlaps add up into patches darker
- * than any bar. Only a measure with no span, a lone one, falls back on `least`,
- * or it would not be painted at all.
+ * How wide a bar is painted, in device pixels: its own span, one pixel at the
+ * least, since a wider floor would overlap faint bars into darker patches. Only
+ * a lone measure, which has no span, falls back on `least`.
  */
 export function barWidthOf(span: number, least: number): number {
   return span > 0 ? Math.max(span, 1) : least

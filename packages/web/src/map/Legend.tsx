@@ -7,12 +7,9 @@ import { LayerPanel } from './LayerPanel.tsx'
 import { silencesOf } from './silences.ts'
 
 /**
- * The panel over the map, folded down to its title on the reader's word alone
- * — and on a phone from the start, where unfolded it would hide a third of the
- * map. Read once, as the replay opens: turning the phone folds nothing.
- *
- * Folded, it hides nothing of what it switches: the families stay as they were
- * set, and only the room the panel takes on the map is given back.
+ * The panel over the map, folded down to its title on the reader's word, and on a
+ * phone from the start: read once, so turning the phone folds nothing. Folded, it
+ * gives its room back and leaves the families as they were set.
  */
 export function Legend({ children }: { children: React.ReactNode }) {
   const [folded, setFolded] = useState(() => matchMedia(PHONE).matches)
@@ -46,8 +43,7 @@ export function MapLegend(props: ComponentProps<typeof LayerPanel>) {
 
 /** What the map holds back, as `map/silences.ts` decides to put it, under the legend. */
 const Silences = memo(function Silences({ content }: { content: ReplayContent }) {
-  // Memoised because the map beside it re-renders on every tick, and one of
-  // these sentences counts a collection of three hundred features.
+  // The map beside it re-renders on every tick, and one sentence counts a whole collection.
   const said = useMemo(() => silencesOf(content), [content])
 
   return (

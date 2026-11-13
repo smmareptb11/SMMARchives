@@ -19,9 +19,8 @@ export function HomeScreen() {
   const [asked, setAsked] = useState<ReplayEntry | undefined>(undefined)
   const { signedIn } = useAdmin()
 
-  // Read again on a sign-out, which lands here and takes away what only the
-  // administrator was listed. An answer to the session before is let go: it
-  // could arrive last, and list a stranger what only the administrator sees.
+  // Read again on a sign-out. An answer to the session before is let go: arriving
+  // last, it would list a stranger what only the administrator sees.
   useEffect(() => {
     if (signedIn === undefined) return
     let current = true

@@ -43,11 +43,8 @@ export type SourceDetailProps = {
 }
 
 /**
- * What a click on a source opens — its window — and the outline on the map
- * that says which source it is, for every source open at once.
- *
- * The cameras are here too, being markers that answer a click of their own,
- * where every other source answers through the map's.
+ * What a click on a source opens, its window, and the outline on the map of
+ * every source open. The cameras too, being markers with a click of their own.
  */
 export function SourceDetail({
   map,
@@ -86,11 +83,8 @@ export function SourceDetail({
 
 /**
  * The sources and the cameras the open windows are about, the same until one
- * opens or closes.
- *
- * Not on every new list of windows: a window brought forward is one, and each
- * would set a filter on every layer of the map and touch every camera's frame
- * for the same outlines. Adjusted while rendering, as `usePlacing` is.
+ * opens or closes: a window brought forward would otherwise refilter every layer
+ * and every camera's frame for the same outlines.
  */
 function useSelected(windows: readonly Window[]) {
   const keys = windows.map((one) => one.key).join(' ')

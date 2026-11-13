@@ -22,10 +22,9 @@ export type Drag = {
 /**
  * Where the panel was moved, from where it started, and the hold that moves it.
  *
- * Pointer events with a capture, as the ruler's, so a finger moves it too and a
- * pointer leaving the heading mid-move does not drop it. A press on the way out
- * is not a move. Held within the screen while moved, and after: a camera's view
- * is taller than a curve.
+ * Pointer events with a capture, so a finger moves it too and a pointer leaving
+ * the heading mid-move does not drop it. A press on a button is not a move. Kept
+ * within the screen while moved, and whenever its size changes after.
  */
 export function useFloating(
   panel: RefObject<HTMLElement | null>,

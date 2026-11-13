@@ -1,14 +1,9 @@
 import type { ReplayContent } from '../tracks/lanes.ts'
 
 /**
- * What the map holds back, in the reader's own words.
- *
- * An absence tells a reader nothing: a triangle that never changes colour while
- * a flood rises reads as a rain gauge at rest. Each sentence names an absence
- * the map cannot show, so that none of them is read as a fact.
- *
- * Only the ones bearing on this replay: a sentence about a family it does not
- * hold is one more line between the reader and the ones that matter.
+ * What the map holds back, in the reader's own words, so that no absence is read
+ * as a fact: a triangle that never changes colour reads as a gauge at rest. Only
+ * the ones bearing on this replay.
  */
 export function silencesOf(content: ReplayContent): string[] {
   const said: string[] = []

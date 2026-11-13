@@ -19,12 +19,9 @@ import { formatDate, formatHour } from '../time.ts'
 import type { Reading } from './useCursor.ts'
 
 /**
- * Playing, pausing, and jumping from one event to the next — a crossing or a report.
- *
- * The instant is the one thing on this bar a reader has to read, so it is the
- * one thing written large — in French time, like every instant the interface
- * shows. The buttons are icons, each named by its title for the hover and
- * the screen reader alike.
+ * Playing, pausing, and jumping from one event to the next — a crossing or a
+ * report. The instant is the one thing on this bar a reader has to read, so the
+ * one thing written large.
  */
 export function Transport({
   reading,
@@ -151,12 +148,9 @@ function IconButton({
 }
 
 /**
- * Space plays, the arrows jump from one crossing to the next, and with Shift
- * they move the reading by an hour.
- *
- * Bound on the document rather than on the bar, so a reader looking at the map
- * does not have to find a button first. What a key does where the focus stands
- * is `shortcutFor`'s to say.
+ * Space plays, the arrows jump from one event to the next, and with Shift they
+ * move the reading by an hour. Bound on the document rather than on the bar, so
+ * that a reader looking at the map does not have to find a button first.
  */
 function useKeyboard(reading: Reading): void {
   useEffect(() => {

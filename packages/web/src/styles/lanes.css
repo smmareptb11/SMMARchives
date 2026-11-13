@@ -23,9 +23,8 @@
 }
 
 /*
- * The rule between the labels and the lanes is drawn on the lane's ground, at
- * the column's edge: a border on the label would only be as tall as its text,
- * and a label made a flex box to stretch it loses its ellipsis.
+ * The rule beside the labels is drawn on the lane's ground: a border on the
+ * label would be only as tall as its text, and a stretched label loses its ellipsis.
  */
 .replay-montage .lane {
   border-bottom: 1px solid rgb(255 255 255 / 5%);
@@ -134,11 +133,7 @@
   border-left-color: rgb(255 255 255 / 6%);
 }
 
-/*
- * One tick in two keeps its name where the ruler is too narrow for all of
- * them, one in four where it is narrower still: measured on the ruler itself,
- * which is what the names have to share.
- */
+/* Tick names thin out to one in two, then one in four, as the ruler itself narrows. */
 .ruler .lane-track {
   container-type: inline-size;
 }
@@ -156,8 +151,8 @@
 }
 
 /*
- * An event on the ruler, under the hours. Ringed in the ruler's own ground, so
- * two that touch stay two. The ruler is what is dragged, not the dot.
+ * An event on the ruler, ringed in its ground so two that touch stay two. The
+ * ruler is dragged, not the dot.
  */
 .replay-montage .ruler .dot,
 .scrub .dot {
@@ -176,19 +171,9 @@
 }
 
 /*
- * The two families that are not one of the map's three shapes.
- *
- * Each drawn where the map draws it: the camera's swatch takes the frame of the
- * marker itself, and the territory's takes the two washes `map/layers.ts` paints
- * the perimeters with. A swatch given its own values drifts from what it shows.
- */
-/*
- * The frame of the marker, at the size of a swatch and in its proportions, and
- * flat: the shadow lifts a marker off the map, and a legend has no map to lift
- * it off.
- *
- * Inside the panel, so that it wins over the frame's own rules: the two carry
- * the same weight, and the marker's is the one written last.
+ * The camera's swatch is the marker's own frame, so it cannot drift from it, made
+ * flat and swatch-sized. Scoped to the panel to win over the marker's rules,
+ * which weigh the same and come later.
  */
 .layers .swatch.webcam {
   width: 16px;
@@ -257,12 +242,9 @@
 }
 
 /*
- * A rain gauge lane is a bar chart: one bar per measure, standing on the floor.
- *
- * Taller than a lane of segments, because a bar says a quantity by its height
- * and twenty-eight pixels leave nothing to read. The floor of two pixels is what
- * draws a measure of zero: the gauge looked and nothing had fallen, which no
- * absent bar would say.
+ * A rain gauge lane is a bar chart, taller than a lane of segments so a height
+ * can be read. The two-pixel floor draws a measure of zero, which no absent bar
+ * would say.
  */
 .bars .lane-track {
   height: 2.5rem;
@@ -271,8 +253,7 @@
 .bars .mark {
   top: auto;
   bottom: 0;
-  /* As wide as its step and no wider: bars follow each other edge to edge, and
-     a floor would have each cover the next ones. */
+  /* No minimum width: bars meet edge to edge, and one would cover the next. */
   min-width: 0;
   min-height: 2px;
   border-radius: 0;
@@ -299,10 +280,8 @@
 }
 
 /*
- * The image keeps its proportions and overflows rather than stretching: a view
- * is then cropped by the span it covers, and the lane reads as a strip of film.
- * The five Ceneau cameras do not all render the same shape — four in 4:3, one
- * in 16:9 — and none of them has to be distorted.
+ * The image keeps its proportions and is cropped by the span it covers, like a
+ * strip of film: the cameras do not share one shape, and none is distorted.
  */
 .frame img {
   display: block;
@@ -344,11 +323,7 @@
   height: 100%;
 }
 
-/*
- * The lane of what agents reported, spread over as many rows as it takes for
- * no mark to cover another. Each row is a thin band, so a lane of three is no
- * taller than a webcam strip.
- */
+/* What agents reported, over as many thin rows as it takes for no mark to cover another. */
 .stacked .lane-track {
   height: calc(var(--rows) * 0.875rem + 0.5rem);
 }
@@ -375,10 +350,7 @@
   margin-bottom: 0.75rem;
 }
 
-/*
- * The full image, on hovering a view. The element does not exist before the
- * hover, so the browser does not go looking for it until then.
- */
+/* The full image, on hovering a view: created then, so it is not fetched before. */
 .preview {
   position: fixed;
   z-index: 10;
@@ -392,9 +364,8 @@
 }
 
 /*
- * The box holds its shape before the image loads, or the caption jumps the
- * moment it does. In 4:3, the shape of four cameras of the five: the fifth, in
- * 16:9, loses two thin bands where the other choice would cost the four wide ones.
+ * The box holds its shape before the image loads, or the caption jumps. In 4:3,
+ * the shape of most cameras: a wide one loses two thin bands.
  */
 .preview img {
   display: block;
@@ -417,11 +388,9 @@
 
 @media (max-width: 700px) {
   /*
-     * The lanes' labels pass over the reading bar and under the ruler, as the
-     * mockup stacks them. The bar's handle would be lost under the ruler: it is
-     * drawn apart, over it.
-     */
-  /* Bottom to top: the names, a family's title, the ruler, the reading's handle. */
+   * Bottom to top: the reading bar, the names, a family's title, the ruler, and
+   * the bar's handle, drawn apart so the ruler does not hide it.
+   */
   .replay-montage .ruler {
     top: 0;
     z-index: 7;

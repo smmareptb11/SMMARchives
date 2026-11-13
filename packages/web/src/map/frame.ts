@@ -34,14 +34,11 @@ export type Named = { source: Kind; id: number } | { camera: string }
 
 /**
  * What the history or the lanes ask of the map: where to go, and the source
- * whose detail to open there — or none, for a report, which closes the detail
- * left open as a click on a report on the map does. A new object on every ask,
- * so asking again for the same card or the same lane goes there again.
+ * whose detail to open there, or none for a report, which closes the detail
+ * left open. A new object on every ask, so asking again goes there again.
  *
- * The source is the one the click named, resolved then and carried whole: the
- * map opens it on a new ask and on nothing else. Resolved again from the
- * replay, it would open again each time the replay changed — an event saved,
- * amended or removed reopening whatever station was asked last.
+ * The source is resolved at the click and carried whole: resolved from the
+ * replay, it would reopen at every event saved, amended or removed.
  */
 export type Asked = { opens: Measured | undefined; frame: Frame | undefined }
 
@@ -103,16 +100,11 @@ function areaOf(ring: readonly [number, number][]): Frame | undefined {
 }
 
 /**
- * The room left around what the map goes to: the legend's, as the replay
- * opens, and the window that opens with it in the map's top-left corner — a
- * station's detail, or a report's sheet. Otherwise what the map went to lands
- * under it.
- *
- * Beside the window while a quarter of the map's width stays between it and
- * the legend, else below it while a band of 80 px stays under it: a
- * band cut into the window would centre what the map goes to under it. On a
- * map with room for neither, only the legend's is left, as room the map does
- * not have makes MapLibre give up.
+ * The room left around what the map goes to, so that it lands clear of the
+ * legend and of the window opening in the map's top-left corner. Beside the
+ * window while a quarter of the map's width stays free, else below it while a
+ * band stays free; else the legend's alone, as room the map does not have
+ * makes MapLibre give up.
  */
 export function roomFor(width: number, height: number, opened: Opened) {
   const room = framedIn(width, height)
@@ -131,12 +123,8 @@ export function roomFor(width: number, height: number, opened: Opened) {
 
 /**
  * How far from the map's centre a spot lands to stand in the middle of the room
- * left around it, as MapLibre's `offset` takes it.
- *
- * An offset rather than a `padding`: MapLibre keeps the padding a flight was
- * given as the map's own, and adds it to the room of every framing after it —
- * the overview, framed inside a window that is no longer there, would open
- * zoomed far out and off to one side.
+ * left around it, as MapLibre's `offset` takes it. Not a `padding`: MapLibre
+ * keeps a flight's padding as the map's own and adds it to every later framing.
  */
 export function offsetFor(room: {
   top: number

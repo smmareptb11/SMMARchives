@@ -25,13 +25,9 @@ export type ContentChanges = {
 
 /**
  * The right-hand column: the form that reports or amends an event while one is
- * open, the history otherwise.
- *
- * The form has the column to itself and hides nothing, so a click elsewhere
- * leaves it open: the agent can look a station up, open an event's window, or
- * move the reading, while typing. It closes on its own buttons, or when another
- * event is to be amended or reported — and asks first if the agent typed
- * anything.
+ * open, the history otherwise. The form hides nothing, so a click elsewhere
+ * leaves it open; it closes on its own buttons, or when another event is to be
+ * reported or amended, asking first if the agent typed anything.
  */
 export function ReportColumn({
   manifest,
@@ -123,11 +119,9 @@ function FormPanel({
 }
 
 /**
- * Where reporting starts, in the heading of the column the form opens in.
- *
- * Shown to the administrator on every replay, and turned off with its reason
- * where the API would still refuse: a button that does nothing tells less than
- * one that says why.
+ * Where reporting starts, in the heading of the column the form opens in: shown
+ * to the administrator on every replay, and turned off with its reason where
+ * the API would refuse.
  */
 function ReportButton({
   manifest,

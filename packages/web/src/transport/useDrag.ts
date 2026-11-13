@@ -3,15 +3,10 @@ import { useRef, type PointerEvent } from 'react'
 import { fractionAt } from '../tracks/pointer.ts'
 
 /**
- * Dragging the reading along a ruler, as the mockup lets one: the lanes' own,
- * or the bar over a phone's transport.
- *
- * The pointer is captured on press, so the drag goes on wherever it wanders —
- * down over the lanes, or out of the montage — until it is let go: a ruler
- * twenty-six pixels high is lost by the slightest slip otherwise. The reading
- * holds still meanwhile, and resumes on release if it was playing, rather than
- * pulling the cursor away from the hand that moves it. Pointer events rather
- * than mouse ones, so a finger drags it too.
+ * Dragging the reading along a ruler: the lanes' own, or the bar over a phone's
+ * transport. The pointer is captured on press, so that a slip off a thin ruler
+ * does not end the drag; the reading holds still meanwhile, and resumes on
+ * release if it was playing.
  */
 export function useDrag(onSeek: (fraction: number) => void, onHold: () => () => void) {
   const resume = useRef<(() => void) | undefined>(undefined)

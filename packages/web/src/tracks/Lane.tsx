@@ -16,11 +16,8 @@ import { drawnMarks, emptyOf, type Lane as LaneModel, type Mark } from './lanes.
 import { fractionAt } from './pointer.ts'
 
 /**
- * How far apart two marks must sit to both be drawn, in percent of the lane.
- *
- * About sixty pixels on a lane a thousand wide: enough for a thumbnail to be
- * a thumbnail. A replay of 24 hours holds 1 537 webcam images, and drawing
- * them all would fetch 1 537 files to render a smear.
+ * How far apart two marks must sit to both be drawn, in percent of the lane: room
+ * for a thumbnail.
  */
 const MIN_GAP = 6
 
@@ -29,11 +26,8 @@ const PREVIEW_WIDTH = 480
 const PREVIEW_MARGIN = 8
 
 /**
- * How long the pointer rests on a view before its full image is fetched.
- *
- * Sweeping across a lane crosses every frame on the way, and opening each one
- * would fetch seventeen images of six hundred kilobytes for a gesture nobody
- * meant as a request. Short enough to feel immediate on the frame one stops at.
+ * How long the pointer rests on a view before its full image is fetched: a sweep
+ * across the lane must not fetch every frame it crosses.
  */
 const RESTING_MS = 150
 
@@ -107,10 +101,8 @@ export function Lane({ lane, glyph, replayId, onOpenReport, onSeek, onOpenLane }
 }
 
 /**
- * The full image a frame opens, once the pointer has rested on it.
- *
- * One timer for the lane, since one preview is open at a time: entering a
- * frame cancels whatever the frame before it had started.
+ * The full image a frame opens, once the pointer has rested on it. One timer for
+ * the lane: entering a frame cancels what the frame before it had started.
  */
 function usePreview(): {
   preview: Preview | undefined
@@ -155,9 +147,8 @@ function LaneMark({ mark, caption, replayId, onPreview }: LaneMarkProps) {
         // the hatching the stylesheet puts on an assumed crossing.
         ...(mark.color === undefined ? {} : { backgroundColor: mark.color }),
       }}
-      // A frame says what it is through the image it opens; a second, native
-      // tooltip over that image would only fight with it. Where the image is
-      // pinned is read here and not on the timer, because React clears
+      // A frame says what it is through the image it opens, which a native
+      // tooltip would fight. Pinned here and not on the timer: React clears
       // `currentTarget` the moment the handler returns.
       {...(full === undefined
         ? { title: caption }
@@ -224,10 +215,8 @@ function LaneName({
 }
 
 /**
- * What an agent reported, as a mark one clicks to read it.
- *
- * A button, so the keyboard reaches it as the pointer does. On the row
- * `lanes.ts` gave it, which is what keeps two reports of one instant apart.
+ * What an agent reported, as a mark one clicks to read it: a button, so that the
+ * keyboard reaches it as the pointer does.
  */
 function ReportMark({
   mark,
@@ -266,11 +255,7 @@ function ReportMark({
   )
 }
 
-/**
- * Mounted on hover and not before, which is the whole of the lazy load: a full
- * image weighs some six hundred kilobytes against four for the reduction the
- * lane draws, and a lane holds up to seventeen of them.
- */
+/** Mounted on hover and not before, which is the whole of the lazy load. */
 function FullImage({ preview }: { preview: Preview }) {
   return (
     <figure className="preview" style={preview.style}>
@@ -308,13 +293,9 @@ function captionOf(label: string, mark: Mark): string {
 }
 
 /**
- * Places the full image beside the frame it belongs to, inside the window.
- *
- * Under the frame when the frame sits in the upper half of the window, over it
- * otherwise, and always pinned by the edge nearest the frame — so the image
- * arriving grows the box away from what one is pointing at rather than under
- * it. The stylesheet holds the box's shape before the image loads, or the
- * caption would jump the moment it does.
+ * Places the full image beside the frame it belongs to, inside the window, pinned
+ * by the edge nearest the frame: the image arriving grows the box away from what
+ * one is pointing at rather than under it.
  */
 function pinnedTo(frame: HTMLElement, of: { src: string; caption: string }): Preview {
   const rect = frame.getBoundingClientRect()

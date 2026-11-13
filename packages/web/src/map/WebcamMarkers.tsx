@@ -15,11 +15,8 @@ import type { Spot } from '../events/placing.ts'
 type Framed = { camera: Webcam; element: HTMLElement; image: HTMLImageElement; marker: Marker }
 
 /**
- * The cameras, as HTML markers where the rest of the map is a layer.
- *
- * Five of them, and each carries an image no symbol layer can draw. The three
- * hundred measuring sources take the other road for the opposite reason: they
- * are three hundred, and a layer draws them in one call.
+ * The cameras, as HTML markers where the rest of the map is a layer: each
+ * carries an image no symbol layer can draw.
  */
 export function WebcamMarkers({
   map,
@@ -51,9 +48,8 @@ export function WebcamMarkers({
 }) {
   const [framed, setFramed] = useState<Framed[]>([])
 
-  // A marker per camera whatever the reader asked, and the asking decides which
-  // are put on the map: a camera cut off keeps its frame, so a toggle costs a
-  // marker moved rather than five torn down and their pictures fetched again.
+  // A marker per camera whatever the reader asked, which only decides which are
+  // on the map: a toggle then never tears a marker down nor refetches its picture.
   const held = useMemo(
     () => (mutesShown ? new Set<string>() : webcamsWithoutPicture(content.webcams, views)),
     [mutesShown, content.webcams, views],
@@ -80,15 +76,9 @@ export function WebcamMarkers({
 }
 
 /**
- * The cameras the reader has not cut off, on the map, and no others.
- *
- * Put on the map here and nowhere else, which is also what cuts a family off:
- * a marker's frame carries a `display`, which beats the browser's own rule for
- * the `hidden` attribute and would leave a cut family drawn.
- *
- * `held` are the cameras the replay froze no picture of, which are off the map
- * until the reader asks for them — the same answer the measuring sources get
- * through the filter on their layers.
+ * The cameras the reader has not cut off, on the map, and no others; `held` are
+ * those the replay froze no picture of. Off the map rather than `hidden`: the
+ * frame's own `display` beats the browser's rule for that attribute.
  */
 function useDrawn(
   map: MapLibreMap | undefined,
@@ -106,10 +96,8 @@ function useDrawn(
 }
 
 /**
- * What a camera answers to a click: its detail.
- *
- * Set here rather than when the marker is built, so that a detail replaced
- * between two replays does not cost five markers torn down and drawn again.
+ * What a camera answers to a click: its detail. Set apart from the marker, so a
+ * new detail does not tear the markers down.
  */
 function useClicks(
   framed: Framed[],
@@ -119,18 +107,15 @@ function useClicks(
   useEffect(() => {
     for (const { camera, element } of framed) {
       const activate = (event: Event) => {
-        // Never let up to the map: a marker sits inside the map's own
-        // container, and the map's click handler would look for a measuring
-        // source under it — a report's area, there, would open its sheet too.
+        // Never let up to the map, whose click handler would open a report's
+        // area under the marker too.
         event.stopPropagation()
-        // Placing, the camera's spot is the spot clicked: where a camera
-        // stands is a likely place for what it watched.
+        // Placing, the camera's own spot is the spot clicked.
         if (onSpot !== undefined) onSpot([camera.position.lon, camera.position.lat])
         else if (!placing) detail.open({ kind: 'camera', camera })
       }
       element.onclick = activate
-      // A button's keys, for a marker that is one: the map reaches its
-      // stations through the lanes, and its cameras through these alone.
+      // A button's keys: the keyboard reaches the cameras through these alone.
       element.onkeydown = (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return
         event.preventDefault()
@@ -168,12 +153,9 @@ function useSelected(framed: Framed[], selected: ReadonlySet<string>): void {
 }
 
 /**
- * The view each camera was showing at the instant being read.
- *
- * Only where the picture actually changed: the reading advances sixty times a
- * second, and reassigning the same address makes the browser drop the picture
- * and fetch it again. And nothing at all for a family the reader cut off, which
- * would otherwise go on fetching pictures nobody is shown.
+ * The view each camera was showing at the instant being read, and nothing for
+ * a family cut off. Only where the picture changed: the same address assigned
+ * again makes the browser drop the picture and fetch it anew.
  */
 function usePictures({
   framed,
@@ -205,17 +187,14 @@ function usePictures({
 }
 
 /**
- * A camera's marker, empty until the cursor says what it was showing.
- *
- * The frame is the marker and the picture is inside it, so hiding the picture
- * leaves the camera's place on the map. Built off the map, and put on it by
- * whoever knows whether the reader wants it drawn.
+ * A camera's marker, built off the map and empty until the cursor says what it
+ * was showing. The picture sits inside the frame, so hiding it leaves the
+ * camera's place on the map.
  */
 function framedOn(camera: Webcam): Framed {
   const element = document.createElement('div')
   element.className = 'camera'
-  // On the frame, which is what the keyboard reaches and what a press opens;
-  // the picture inside it, which comes and goes, names nothing of its own.
+  // On the frame: the picture inside it comes and goes.
   element.tabIndex = 0
   element.setAttribute('role', 'button')
   element.setAttribute('aria-label', `Webcam de ${camera.commune}`)
@@ -224,8 +203,7 @@ function framedOn(camera: Webcam): Framed {
   const image = document.createElement('img')
   image.alt = ''
   image.hidden = true
-  // Off the main thread: the picture changes while the reading runs, and the
-  // map is repainting its three hundred sources on the same frames.
+  // Off the main thread: the picture changes on the frames the map repaints.
   image.decoding = 'async'
   element.append(image)
 

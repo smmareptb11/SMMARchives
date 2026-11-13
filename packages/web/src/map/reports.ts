@@ -9,11 +9,8 @@ import { epochOf } from '../time.ts'
 import type { Cursor } from '../transport/reading.ts'
 
 /**
- * How long a report with no end stays green.
- *
- * Green for its instant alone, it would be green on no frame of a reading at
- * speed: the map steps over it. Fifteen minutes is a few frames at the fastest
- * speed, and short enough not to be read as a duration.
+ * How long a report with no end stays green: long enough to land on a frame of a
+ * reading at speed, short enough not to read as a duration.
  */
 export const POINT_HELD_MS = 15 * 60_000
 
@@ -64,10 +61,8 @@ export function reportPaintingAt(
 }
 
 /**
- * Whether two paintings draw the same thing.
- *
- * The reports come in one order on every frame, so their lists compare as
- * they are.
+ * Whether two paintings draw the same thing, compared in order: the reports come
+ * in one order on every frame.
  */
 export function samePainting(one: ReportPainting, other: ReportPainting): boolean {
   const same = (a: string[], b: string[]) =>
@@ -95,12 +90,7 @@ export function reportColourOf(painting: ReportPainting): string | ExpressionSpe
 
 type DrawnFeature = { properties: Record<string, unknown> | null }
 
-/**
- * The report under a pointer, if any.
- *
- * Read here because it is written here: the property is the one
- * `reportsOnTheMap` put on the feature.
- */
+/** The report under a pointer, if any, read from the property `reportsOnTheMap` writes. */
 export function reportUnder(features: readonly DrawnFeature[]): string | undefined {
   for (const feature of features) {
     const report = feature.properties?.report
@@ -113,11 +103,9 @@ export function reportUnder(features: readonly DrawnFeature[]): string | undefin
 export type Clicked<Source> = { report: string } | { source: Source } | undefined
 
 /**
- * Which of what lies under a click the reader meant.
- *
- * A diamond before a source, wherever the two stand on the same spot: what an
- * agent placed on a station is what they came to say about it. An area after
- * them, or a flooded plain would leave every station inside it unclickable.
+ * Which of what lies under a click the reader meant: a diamond before a source,
+ * since what an agent placed on a station is what they came to say about it; an
+ * area after both, or a flooded plain would leave every station in it unclickable.
  */
 export function clickedOf<Source>(under: {
   spot: string | undefined

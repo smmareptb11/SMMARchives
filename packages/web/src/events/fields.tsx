@@ -47,12 +47,9 @@ export function Fields({
 }
 
 /**
- * The start, and the end beside it, asked for rather than offered:
- * most events an agent reports last no time at all, and an empty field under
- * the start reads as one left to fill.
- *
- * The end is shown from the start for an event that already has one. Taken
- * away, it is emptied with it, so an end the agent removed is never sent.
+ * The start, and the end beside it, asked for rather than offered: most events
+ * last no time, and an empty end would read as one left to fill. Taken away,
+ * the end is emptied, so it is never sent.
  */
 function Hours({
   draft,

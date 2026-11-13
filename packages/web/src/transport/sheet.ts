@@ -2,11 +2,9 @@
 export const DRAG_START = 6
 
 /**
- * Whether the lanes are open once the transport is let go.
- *
- * `travel` is how far it was dragged, downwards positive, and `height` how far
- * the lanes fold. Closing asks for a quarter of the way, opening a fifth, as
- * the mockup settles it: a short pull either way leaves the lanes as they were.
+ * Whether the lanes are open once the transport is let go: `travel` is how far
+ * it was dragged, downwards positive, and `height` how far the lanes fold. A
+ * short pull either way leaves them as they were.
  */
 export function settled(open: boolean, travel: number, height: number): boolean {
   return open ? travel < height / 4 : travel < -height / 5

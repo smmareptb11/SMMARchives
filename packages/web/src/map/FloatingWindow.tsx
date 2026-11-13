@@ -6,11 +6,9 @@ import { useFloating, type Drag } from './useFloating.ts'
 import { cascadeOf, type Window } from './windows.ts'
 
 /**
- * A window over the map: a title bar it is moved by, a cross that closes it,
- * and what it is about under them.
- *
- * Moved anywhere on the screen by its bar, resized by its bottom-right corner,
- * and brought in front of the others by any press on it.
+ * A window over the map: a title bar it is moved by, a cross that closes it, what
+ * it is about under them, and a corner it is resized by. Any press on it brings
+ * it in front.
  */
 export function FloatingWindow({
   window: { key, subject, rank, step },

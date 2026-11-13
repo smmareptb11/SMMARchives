@@ -13,14 +13,8 @@ import { haloImageOf, imageOf, ringImageOf, shadowImageOf } from './symbols.ts'
 
 /**
  * The shape of a family, the white ring behind it, and the shadow under both.
- *
- * The ring is a layer rather than the icon's halo. A halo grows into the
- * distance an SDF encodes around its edge, and the shapes are drawn as plain
- * masks, which encode none: `icon-halo-width` has nothing to bite into. The
- * same shape grown all round and drawn in white underneath gives the outline the
- * crisis tool puts around every symbol, and it is what keeps two markers
- * apart when three hundred of them crowd one valley. The shadow lifts each one
- * off the ground, as the mockup's do.
+ * The ring is a layer of its own because the shapes are plain masks, not SDFs:
+ * `icon-halo-width` has no distance to grow into.
  */
 export const shapeLayerOf = (kind: Kind): string => `sources-${kind}`
 const ringLayerOf = (kind: Kind): string => `${shapeLayerOf(kind)}-ring`
@@ -36,10 +30,8 @@ const selectedLayerOf = (kind: Kind): string => `${shapeLayerOf(kind)}-selected`
 export const pointedShapeOf = (kind: Kind): string => `${shapeLayerOf(kind)}-pointed`
 
 /**
- * The families from the one drawn underneath to the one on top: a rain gauge's
- * triangle is wider than a station's circle, and the rain gauges outnumber the
- * stations three to one, so drawn over them they hide the stations a replay
- * is about.
+ * The families from the one drawn underneath to the one on top: the rain
+ * gauges, wider and more numerous, would hide the stations drawn over them.
  */
 export const DRAWN: readonly Kind[] = ['rain-gauge', 'structure', 'watercourse']
 
@@ -57,15 +49,12 @@ export const TERRITORY_LAYER = 'syndicats'
 const lineLayerOf = (layer: string): string => `${layer}-line`
 
 /**
- * The perimeters of the seven basin unions, which are the replay's ground.
- *
- * Light on purpose: they say where the territory ends, and anything more
- * insistent would compete with the sources drawn over them.
+ * The perimeters of the basin unions, light so as not to compete with the
+ * sources drawn over them.
  */
 export function drawTerritory(map: MapLibreMap): void {
-  // The shared contract keeps a feature's geometry opaque: a collector only
-  // checks and walks it, and typing it whole would make every source declare a
-  // geometry it never reads. The frozen outlines are GeoJSON in WGS84.
+  // The shared contract keeps a feature's geometry opaque; the frozen outlines
+  // are GeoJSON in WGS84.
   map.addSource('territory', { type: 'geojson', data: UNION_OUTLINES as FeatureCollection })
   map.addLayer({
     id: TERRITORY_LAYER,
@@ -82,22 +71,16 @@ export function drawTerritory(map: MapLibreMap): void {
 }
 
 /**
- * The parc, as one source and two layers per shape.
- *
- * Layers per family rather than one filtered layer, because cutting a family
- * off is then a visibility property instead of a filter rebuilt from what the
- * other families are doing.
- *
- * Overlap is allowed: two hundred and twenty-nine rain gauges over a territory
- * this size do collide, and letting MapLibre drop the ones that collide would
- * hide sources without saying so.
+ * The parc, as one source and layers per family, so that cutting a family off
+ * is a visibility rather than a filter rebuilt from the other families. Overlap
+ * is allowed: MapLibre would otherwise drop colliding sources without saying so.
  */
 export function drawSources(map: MapLibreMap, content: ReplayContent): void {
   map.addSource('sources', { type: 'geojson', data: sourcesOf(content).geojson })
 
-  // Every shadow first, every ring next, every shape last, and not one family
-  // after the other: a shadow or a ring is wider than the shape it backs, and
-  // drawn over a neighbour of another family it would rub it out.
+  // Each kind of layer across every family before the next, not family by
+  // family: a shadow or a ring is wider than its shape and would rub out a
+  // neighbour of another family.
   for (const kind of DRAWN) {
     addFamily(map, { kind, id: shadowLayerOf(kind), image: shadowImageOf(kind) })
   }
@@ -132,8 +115,8 @@ function addFamily(map: MapLibreMap, { kind, id, image, colour, filter }: Drawn)
     id,
     type: 'symbol',
     source: 'sources',
-    // Hidden from the first frame: `showMutes` reposes this the moment the map
-    // is ready, and starting shown would flash two hundred grey triangles.
+    // Mutes hidden from the first frame: `showMutes` sets this once the map is
+    // ready, and starting shown would flash them.
     filter: filter ?? filterOf(kind, false),
     layout: {
       'icon-image': image,
@@ -145,12 +128,9 @@ function addFamily(map: MapLibreMap, { kind, id, image, colour, filter }: Drawn)
 }
 
 /**
- * Outlines the sources whose details are open.
- *
- * Only while the source itself is drawn: an outline around a family cut off,
- * or around a source the switch holds back, would be a blot where
- * nothing is. A station and a rain gauge can share an identifier, so the
- * family is part of what names it.
+ * Outlines the sources whose details are open, only while the source itself is
+ * drawn. A station and a rain gauge can share an identifier, so the family is
+ * part of what names one.
  */
 export function selectSource(
   map: MapLibreMap,
@@ -172,13 +152,8 @@ export function selectSource(
 }
 
 /**
- * Which sources of a family a layer draws.
- *
- * A filter and not a visibility, where cutting a family off is a visibility:
- * what the reader asks here is that some of a family's sources be left out, and
- * the family beside them goes on being drawn. Read off a property the parc
- * already carries — `map/sources.ts` puts it there — so a toggle costs one
- * filter per layer rather than three hundred features rewritten.
+ * Which sources of a family a layer draws: all of them, or only those that
+ * spoke, read off the `mute` property `map/sources.ts` sets.
  */
 export function filterOf(kind: Kind, mutesShown: boolean): ExpressionSpecification {
   const family: ExpressionSpecification = ['==', ['get', 'kind'], kind]
@@ -201,12 +176,8 @@ export const REPORT_AREAS = [REPORT_AREA]
 const NOTHING_YET: ReportPainting = { during: [], after: [] }
 
 /**
- * What agents reported, over the sources: a diamond on a spot, an area
- * otherwise.
- *
- * Above the parc, because a report placed on a station is what the agent came
- * to say about it, and the station is still there once the report is cut off.
- * The area is light, so the ground and the sources under it stay legible.
+ * What agents reported, above the sources: a diamond on a spot, a light area
+ * otherwise. A report placed on a station is what the agent came to say about it.
  */
 export function drawReports(map: MapLibreMap, content: ReplayContent): void {
   map.addSource('reports', { type: 'geojson', data: reportsOnTheMap(content.events) })
@@ -252,8 +223,7 @@ export function redrawReports(map: MapLibreMap, content: ReplayContent): void {
 
 /**
  * Shows what has been reported by the instant read, in the colour of whether
- * it is still under way. A filter and a paint property: the reports themselves
- * do not change, only which of them the cursor has reached.
+ * it is still under way.
  */
 export function paintReports(map: MapLibreMap, painting: ReportPainting): void {
   const colour = reportColourOf(painting)
@@ -277,14 +247,8 @@ export function paintReports(map: MapLibreMap, painting: ReportPainting): void {
 }
 
 /**
- * Draws the families the reader kept, and stops drawing the others.
- *
- * A visibility property rather than a filter: what the reader asked is that a
- * family not be drawn, and rebuilding a filter from what the other families are
- * doing would make each family's answer depend on the others.
- *
- * Every family the map draws itself answers here. The cameras are markers and
- * not layers, so `WebcamMarkers` answers for them — from the same state.
+ * Draws the families the reader kept, and stops drawing the others. The cameras
+ * are markers, not layers: `WebcamMarkers` answers for them, from the same state.
  */
 export function showFamilies(map: MapLibreMap, shown: Shown): void {
   for (const kind of KINDS) {
@@ -296,13 +260,7 @@ export function showFamilies(map: MapLibreMap, shown: Shown): void {
   show(map, [REPORT_AREA, REPORT_OUTLINE, REPORT_SHADOW, REPORT_RING, REPORT_POINT], shown.report)
 }
 
-/**
- * Draws the sources the replay holds nothing of, or stops drawing them.
- *
- * Apart from `showFamilies` because the two answer different questions and a
- * reader sets them apart: a family is cut off whole, where this one thins every
- * family down to the sources that spoke.
- */
+/** Draws the sources the replay holds nothing of, in every family, or stops drawing them. */
 export function showMutes(map: MapLibreMap, mutesShown: boolean): void {
   for (const kind of KINDS) {
     for (const layer of layersOf(kind)) {
@@ -320,12 +278,9 @@ function show(map: MapLibreMap, layers: string[], shown: boolean): void {
 }
 
 /**
- * Repaints the whole parc at a tick: one expression per family, for its shapes
- * and for the outline of the one selected.
- *
- * One paint property rather than a rewrite of three hundred features: what the
- * cursor changes is not the data but what it is painted with. What to paint
- * with is `map/state.ts`'s business; this turns it into an expression.
+ * Repaints the whole parc at a tick: one expression per family, for its shapes,
+ * the one pointed at and the outline of the one selected. The cursor changes
+ * what the sources are painted with, never the data.
  */
 export function paintSources(map: Painted, colours: Map<string, string>): void {
   for (const kind of KINDS) {
@@ -348,11 +303,9 @@ type Painted = {
 }
 
 /**
- * A painting as MapLibre reads it.
- *
- * The first branch is written out rather than spread: `match` refuses a call
- * with no branch — a parc with nothing in alert is the ordinary case, not an
- * edge one — and a spread cannot promise a compiler that it holds a pair.
+ * A painting as MapLibre reads it. The first branch is written out: `match`
+ * refuses a call with no branch, which is the ordinary parc with nothing in
+ * alert, and a spread cannot promise the compiler a pair.
  */
 function expressionFor(painting: ReturnType<typeof paintingOf>): string | ExpressionSpecification {
   const [first, ...others] = painting.branches

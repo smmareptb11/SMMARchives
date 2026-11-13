@@ -39,11 +39,9 @@ export type Reading = {
 }
 
 /**
- * The reading of a replay, and what moves it.
- *
- * The loop advances by the time actually elapsed and never by a fixed step: a
- * frame the browser skipped must not slow the replay down, or the same episode
- * tells a different story on a busy machine than on an idle one.
+ * The reading of a replay, and what moves it. The loop advances by the time
+ * actually elapsed, never by a fixed step: a frame the browser skipped must not
+ * slow the replay down.
  */
 export function useCursor(period: TimeWindow, marks: readonly Cursor[]): Reading {
   const [at, setAt] = useState(() => startOf(period))
@@ -79,8 +77,7 @@ export function useCursor(period: TimeWindow, marks: readonly Cursor[]): Reading
 
   // Stable, every one of them: a keyboard listener bound to the document and a
   // memoised list of lanes both take these as dependencies, and a new function
-  // on every tick would rebind the one and rebuild the other sixty times a
-  // second.
+  // on every frame would rebind the one and rebuild the other.
   const play = useCallback(() => {
     // Playing from the end would advance nothing and leave the button pressed.
     setPlaying(!atTheEnd(period, held.current))
@@ -127,10 +124,8 @@ function useJumps(
 }
 
 /**
- * The reading held still for a drag, and let go again after it.
- *
- * Whether it was playing is read when the drag begins, which is not a render,
- * hence the ref; whether it goes on is `resumes`'s to say.
+ * The reading held still for a drag, and let go again after it. Whether it was
+ * playing is read when the drag begins, which is not a render, hence the ref.
  */
 function useHold(
   period: TimeWindow,

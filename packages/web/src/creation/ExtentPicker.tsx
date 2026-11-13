@@ -23,14 +23,9 @@ export type ExtentPickerProps = {
 }
 
 /**
- * A viewfinder over the map: what the rectangle frames is the extent.
- *
- * The rectangle holds still in the middle of the view, so zooming or moving the
- * map is how the extent is set. Drawn by the page over the map, it stays still
- * while the ground moves under it.
- *
- * A basin union is where the rectangle starts from, not what it is: the list
- * keeps the union picked when the map is then moved by hand.
+ * A viewfinder over the map: what the rectangle frames is the extent. A basin
+ * union is where the rectangle starts from, not what it is: the list keeps the
+ * union picked when the map is then moved by hand.
  */
 export function ExtentPicker({ onChange, onMoving }: ExtentPickerProps) {
   const [whole, setWhole] = useState(true)
@@ -148,10 +143,8 @@ function UnionSelect({ unions, value, disabled, onChange }: UnionSelectProps) {
 }
 
 /**
- * The seven basin unions, by the name a list shows.
- *
- * Loaded apart: their outlines weigh more than the rest of the form, and the
- * map's chunk already carries them.
+ * The basin unions, by the name a list shows, loaded apart: their outlines weigh
+ * more than the rest of the form, and the map's chunk already carries them.
  */
 function useUnions(): readonly Perimeter[] {
   const [unions, setUnions] = useState<readonly Perimeter[]>([])

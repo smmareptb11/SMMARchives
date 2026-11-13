@@ -17,13 +17,9 @@ const OWN_GESTURES = '.scrub, button:not(.grab), select, label'
 export type Sheet = ReturnType<typeof useSheet>
 
 /**
- * The lanes folded under a phone's transport, and the finger that pulls them.
- *
- * A press of the first finger, or of a button, becomes a drag once it has
- * moved a few pixels, and only then takes the pointer: a tap on the handle
- * stays a click, which toggles the lanes as a key does. While dragged, the
- * lanes follow the finger; let go, they settle open or closed. Nothing here
- * runs wider than a phone, where the lanes do not fold.
+ * The lanes folded under a phone's transport, and the finger that pulls them. A
+ * press becomes a drag, and takes the pointer, only once it has moved a few
+ * pixels: a tap on the handle stays a click, which toggles the lanes.
  */
 export function useSheet(sheet: RefObject<HTMLElement | null>) {
   const [open, setOpen] = useState(false)

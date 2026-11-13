@@ -182,10 +182,8 @@ type HourFieldProps = {
 }
 
 /**
- * The end proposed as it is opened, and taken back if it is left as proposed.
- *
- * Proposed so the picker opens on the start rather than on today; taken back
- * so a field the agent only opened is not one they filled.
+ * The end proposed as it is opened, so that the picker opens on the start, and
+ * taken back if left as proposed: a field only opened is not one filled.
  */
 function useProposedEnd(from: string, to: string, setTo: (value: string) => void) {
   const proposed = useRef<string | undefined>(undefined)

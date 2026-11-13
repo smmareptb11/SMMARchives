@@ -8,11 +8,8 @@ export type Shape = Kind | 'report'
 const SHAPES: readonly Shape[] = [...KINDS, 'report']
 
 /**
- * The shapes of the mockup, in the sizes it drew them at.
- *
- * A rain gauge is wider than it is tall because a triangle reads as a triangle
- * only when its base is wide enough to be seen. A diamond is a square on its
- * point, so it is drawn wider than the square to look as large.
+ * The shapes of the mockup, in its sizes: a triangle wider than tall, so its
+ * base reads; a diamond wider than the square, to look as large.
  */
 const SIZE: Record<Shape, [number, number]> = {
   watercourse: [15, 15],
@@ -22,10 +19,8 @@ const SIZE: Record<Shape, [number, number]> = {
 }
 
 /**
- * How thick the white ring is, in pixels of the drawn shape.
- *
- * A width and not a scale: scaled, a ring would be thicker around a diamond
- * than around the square of a structure, for no reason a reader could name.
+ * How thick the white ring is, in pixels: a width rather than a scale, which
+ * would make it thicker around a diamond than around a square.
  */
 export const RING = 2.5
 
@@ -60,21 +55,10 @@ export function isShape(one: unknown): one is Shape {
 }
 
 /**
- * Draws the three shapes once into the map's own sprite.
- *
- * Registered as signed distance fields, which is what lets a single paint
- * property tint the whole parc at a tick: a plain icon cannot be recoloured,
- * and recolouring is what the cursor is for. A plain mask encodes no distance
- * around its edge, so the white ring cannot be the icon's halo — `map/layers.ts`
- * draws it as a layer underneath, from an image of its own, as it does the
- * outline of a selected source.
- *
- * Their shadows are plain images beside them: a shadow is black whatever the
- * cursor reads, so it needs no recolouring, and a plain image is what can carry
- * a blur.
- *
- * Drawn at twice the size and declared as such, so they stay clean on a dense
- * screen.
+ * Draws the shapes once into the map's own sprite, as signed distance fields,
+ * the only icons a paint property can recolour at each tick. Their shadows are
+ * plain images, black whatever the cursor reads, since only those carry a blur.
+ * Drawn at twice the size, for dense screens.
  */
 export function addShapes(map: MapLibreMap): void {
   for (const shape of SHAPES) {
@@ -88,10 +72,8 @@ export function addShapes(map: MapLibreMap): void {
 
 /**
  * The shape grown by `reach` pixels on every side, centred where the shape is.
- *
- * Its outline stroked rather than the shape scaled up: scaled about its middle,
- * a triangle grows twice as much under its base as along its sides, where a
- * stroke is as thick all round. Mitred, so a corner stays a corner.
+ * Stroked rather than scaled, which would grow a triangle twice as much under
+ * its base as along its sides; mitred, so a corner stays a corner.
  */
 function around(shape: Shape, reach: number): ImageData {
   const [width, height] = SIZE[shape]
@@ -104,10 +86,8 @@ function around(shape: Shape, reach: number): ImageData {
 }
 
 /**
- * The shadow of a shape on its ring.
- *
- * The shape is drawn off the canvas and its shadow thrown back onto it: a
- * shadow cast by a shape drawn in place would come with the shape on top.
+ * The shadow of a shape on its ring, cast by a shape drawn off the canvas: one
+ * drawn in place would come with the shape on top.
  */
 function shadow(shape: Shape): ImageData {
   const [width, height] = SIZE[shape]
@@ -145,11 +125,8 @@ function mask(shape: Shape): ImageData {
 }
 
 /**
- * The same shape, as an image a legend can show beside a family's name.
- *
- * Drawn here rather than spelled out again in the stylesheet: a legend showing
- * a circle where the map draws a square says something false about the map, and
- * two drawings of one shape drift.
+ * The same shape, as an image a legend can show beside a family's name: drawn
+ * here, never again in a stylesheet, so the legend cannot drift from the map.
  */
 export function swatchOf(shape: Shape, colour: string): string {
   return shapeOf(shape, colour).canvas.toDataURL()

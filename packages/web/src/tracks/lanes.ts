@@ -24,25 +24,15 @@ export type ReplayContent = {
   /** The ladders the build froze, which say what a station is watched on. */
   thresholds: Threshold[]
   /**
-   * The parc's rain, gauge by gauge, or nothing when the replay holds none.
-   *
-   * Run up once here rather than at each reader: the map asks what two hundred
-   * and twenty-nine gauges had measured on every frame, and an open bubble asks
-   * the same of one of them on those same frames.
-   *
-   * Nothing, and never an empty map. A data set nobody collected and one
-   * collected empty hold the same nothing, and only the manifest tells them
-   * apart — as the API's own route does before refusing. A gauge with no entry
-   * measured nothing; no rain at all means nothing is known of it, and the
-   * screen must not say the first where it means the second.
+   * The parc's rain, gauge by gauge, run up once for every reader. Nothing, never
+   * an empty map, when the replay holds none: a gauge with no entry is one that
+   * measured nothing, where no rain at all means nothing is known.
    */
   rain: Gauges | undefined
   /**
-   * The stations holding at least one measure over the period: their measures
-   * are not loaded, and a lane with no crossing on it says nothing of them.
-   *
-   * Nothing, and never an empty set, when the replay does not hold the list —
-   * for the reason `rain` gives: no station is known to have measured nothing.
+   * The stations holding at least one measure over the period, whose measures
+   * are not loaded. Nothing, never an empty set, when the replay does not hold
+   * the list, for the reason `rain` gives.
    */
   measuredStations: ReadonlySet<number> | undefined
   webcams: Webcam[]
@@ -61,12 +51,8 @@ export type Mark = Place & {
   /** All a mark says of itself, its lane's name and its instant included: a crossing's. */
   caption?: string | undefined
   /**
-   * The nature of the threshold behind it was assumed, not read.
-   *
-   * A ladder carrying neither `category` nor `isOverrunThreshold` has its
-   * nature guessed from the label; a drought ladder read as an alert one fires
-   * on an ordinary flow. The replay records the guess, and the screen shows it,
-   * or a guess reads as a fact.
+   * The nature of the threshold behind it was guessed from its label, not read:
+   * shown, or a guess reads as a fact.
    */
   assumed?: boolean | undefined
   color?: string | undefined
@@ -92,10 +78,7 @@ export type Lane = {
   marks: Mark[]
   /** Its marks tile: each holds until the next, and the lane reads as a strip. */
   filmstrip?: boolean
-  /**
-   * Its marks sample a record that runs on — a picture every few minutes — so
-   * a few of them stand for the rest, and they are spaced out. A strip is one.
-   */
+  /** Its marks sample a record that runs on, a few standing for the rest. A strip is one. */
   sampled?: boolean
   /** Its marks are bars standing on the floor of the lane, each one a measure. */
   bars?: boolean
@@ -123,22 +106,12 @@ export type Family = {
   count?: number
 }
 
-/**
- * A dot on the ruler is not a duration, and a lane of them is unreadable.
- *
- * Everything is placed in percent of the period: a lane knows dates, never
- * pixels, so it stays right whatever width it is drawn at.
- */
+/** The least width of a mark, in percent of the period: a lane of dots is unreadable. */
 const A_POINT_IN_TIME = 0.4
 
 /**
- * Where something sits, from an instant to an instant.
- *
- * Both ends are named, and neither is guessed. A crossing with no end is a
- * point in time and ends where it began — the contract says so, and the map
- * reads it the same way; a picture with no successor runs to the end of the
- * period, and its caller passes that end. The lane and the map so read one
- * event the same way.
+ * Where something sits, from an instant to an instant. Neither end is guessed:
+ * the caller passes both, so that the lane and the map read one event alike.
  */
 export function placeOf(period: TimeWindow, from: Instant, to: Instant): Place {
   return placedIn(boundsOf(period), Date.parse(from), Date.parse(to))
@@ -154,13 +127,7 @@ export function boundsOf(period: TimeWindow): Bounds {
   return { start, ends, span: ends - start }
 }
 
-/**
- * The same, from two instants already read as numbers.
- *
- * A gauge at a five-minute step puts two hundred and eighty-nine bars on one
- * lane, and a whole parc sixty thousand: written back out as dates for this to
- * parse them again, they cost seventy times what the arithmetic does.
- */
+/** The same, from instants already read as numbers: a parc's bars are too many for dates. */
 export function placedIn(bounds: Bounds, from: Cursor, to: Cursor): Place {
   const place = spanIn(bounds, from, to)
 
@@ -178,23 +145,13 @@ function spanIn(bounds: Bounds, from: Cursor, to: Cursor): Place {
   }
 }
 
-/**
- * How wide a bar has to be for the seam between it and the next to leave it
- * any colour, in percent of the period: ten pixels or so on a lane of the usual
- * width. A seam on a bar of two pixels is half the bar.
- */
+/** How wide a bar has to be, in percent of the period, for a seam not to eat it. */
 const SEAM_LEAST = 1
 
 /**
- * Where a bar of rain sits: over its own span, however narrow.
- *
- * Bars follow each other edge to edge, each beginning where the measure before
- * it was taken, so none covers another as long as each keeps its width. Widened
- * to a point in time, the bars of a gauge at a five-minute step would each
- * cover the next few, and the lane would draw rain that was never measured
- * there. Only a bar left with no width is widened, by the lane: a lone measure,
- * which has no span, or one taken on the period's first instant, whose span
- * lies wholly before it.
+ * Where a bar of rain sits: over its own span, however narrow. Widened to a
+ * point in time, close bars would cover one another and draw rain nobody
+ * measured; only a bar with no width at all is left for the lane to widen.
  */
 export function barPlaceIn(bounds: Bounds, step: { from: Cursor; at: Cursor }): Mark {
   const place = spanIn(bounds, step.from, step.at)
@@ -208,12 +165,8 @@ export function barPlaceIn(bounds: Bounds, step: { from: Cursor; at: Cursor }): 
 }
 
 /**
- * The marks a lane can show without turning into a smear.
- *
- * A replay of 24 hours holds 1 537 webcam images. Drawn whole on a lane a
- * thousand pixels wide, each would be a pixel, and the browser would fetch
- * 1 537 files to render one. The first and the last are always kept, so a lane
- * still says when it begins and when it ends.
+ * The marks a lane can show without turning into a smear. The first and the last
+ * are always kept, so that the lane still says when it begins and ends.
  */
 export function spacedOut<T extends { left: number }>(marks: T[], minGap: number): T[] {
   const kept: T[] = []
@@ -224,13 +177,7 @@ export function spacedOut<T extends { left: number }>(marks: T[], minGap: number
   return withTheLastOne(kept, marks.at(-1), minGap)
 }
 
-/**
- * A lane says when it ends, whatever the spacing.
- *
- * The final mark is kept even when the gap left it out — and it takes the
- * place of the one before it when they would touch: two marks against each
- * other say less than one at the end.
- */
+/** The last mark, kept whatever the spacing, in place of the one before it if they would touch. */
 function withTheLastOne<T extends { left: number }>(
   kept: T[],
   last: T | undefined,
@@ -243,13 +190,9 @@ function withTheLastOne<T extends { left: number }>(
 }
 
 /**
- * The marks a lane draws: every one of them, unless they are samples.
- *
- * A crossing, a measure or what an agent wrote is a fact, and dropping one
- * hides it — a crisis that began twenty minutes after another would vanish
- * under the alert it rose from. Samples are spaced out instead, because they
- * are many and stand for one another: a replay of 24 hours holds 1 537 webcam
- * images, and each frame drawn costs a file.
+ * The marks a lane draws: every one of them, unless they are samples. A crossing,
+ * a measure or a report is a fact, and dropping one hides it; samples stand for
+ * one another, and each frame drawn costs a file.
  *
  * The marks keep the order they were given: `barsOf` lays bars widest first.
  */
@@ -259,13 +202,8 @@ export function drawnMarks(lane: Lane, minGap: number): Mark[] {
 }
 
 /**
- * The frames of a filmstrip, spaced out and tiled again.
- *
- * Each frame was given the span up to the picture that followed it; spacing
- * then drops some of those pictures, and every survivor ends where a frame
- * nobody draws was to begin. Stretched to the next one kept, the frames tile
- * edge to edge and the lane reads as a strip rather than a row of slivers. The
- * last one keeps its span, which already runs to the end of the period.
+ * The frames of a filmstrip, spaced out, each stretched to the next one kept: a
+ * frame's span ends where the next picture began, which spacing may have dropped.
  */
 export function tiled(marks: Mark[], minGap: number): Mark[] {
   const kept = spacedOut(marks, minGap)
@@ -282,15 +220,9 @@ const STATION_FAMILIES = [
 ] as const
 
 /**
- * What a replay holds, as families of lanes.
- *
- * Every source keeps its lane, whatever the reader asked. An empty lane means
- * the replay has nothing to draw of that source over the period — for a station,
- * no threshold crossed, which is why its lane also says whether it measured.
- *
- * What the reader asked is applied above, by `speaking`: the parc is then built
- * once per replay instead of once per click on a checkbox, which on a gauge at a
- * five-minute step is sixty thousand bars rebuilt to filter a list.
+ * What a replay holds, as families of lanes. Every source keeps its lane, empty
+ * or not: what the reader asked is applied above, by `speaking`, so that the parc
+ * is built once per replay rather than once per click on a checkbox.
  */
 export function lanesOf(content: ReplayContent): Family[] {
   const families: Family[] = []
@@ -317,8 +249,7 @@ export function lanesOf(content: ReplayContent): Family[] {
   const gauges = rainLanes(content)
   push(families, familyOf('rain-gauge', 'Pluviomètres', gauges, content.rainGauges.length))
 
-  // A replay older than Ceneau's month of retention holds its cameras and not
-  // one picture. Left out, the screen would read as a replay with no webcam.
+  // Past Ceneau's retention, a replay holds its cameras and not one picture.
   push(families, familyOf('webcam', 'Webcams', webcamLanes(content), content.webcams.length))
 
   push(families, familyOf('radar', "Lames d'eau", radarLanes(content), 0))
@@ -328,12 +259,9 @@ export function lanesOf(content: ReplayContent): Family[] {
 }
 
 /**
- * The lanes of a family that have something to show, which is what is drawn: a
- * mark, or a source that measured.
- *
- * The family itself stays whatever is left of it: a reader who cut nothing off
- * and found no « Stations cours d'eau » at all would read the replay as holding
- * none. What is missing is counted beside its heading instead.
+ * The lanes of a family that have something to show: a mark, or a source that
+ * measured. The family itself stays, what is missing counted beside its heading:
+ * gone, it would read as a replay holding none.
  */
 export function speaking(family: Family): Lane[] {
   return family.lanes.filter((one) => one.marks.length > 0 || one.measured === true)
@@ -341,20 +269,15 @@ export function speaking(family: Family): Lane[] {
 
 /**
  * A lane whose source measured and crossed nothing over the period, which the
- * reader may fold away family by family: a valley of « aucun franchissement »
- * buries the few stations that did cross.
+ * reader may fold away, or a valley of them buries the few stations that crossed.
  */
 export function isQuiet(lane: Lane): boolean {
   return lane.measured === true && lane.marks.length === 0
 }
 
 /**
- * What an empty lane says, and whether that is a finding or a gap.
- *
- * A station that measured and crossed nothing is a finding: the water stayed
- * under its thresholds. A source that measured nothing, or a camera nothing was
- * copied of, is a gap in the data, and reads apart from it: told the same
- * words, a reader takes a station that was silent for one that stayed calm.
+ * What an empty lane says, and whether that is a gap in the data rather than a
+ * finding: told the same words, a silent station reads as one that stayed calm.
  */
 export function emptyOf(lane: Lane): { said: string; gap: boolean } | undefined {
   if (lane.marks.length > 0) return undefined
@@ -371,15 +294,9 @@ export function heldIn(families: readonly Family[]): number {
 }
 
 /**
- * A family, unless the replay holds nothing of it at all.
- *
- * One with sources and no lane is kept and counted: an absence tells a reader
- * nothing, where a count tells them what is there and has nothing to show.
- *
- * Judged on the lanes and never on their marks. A family whose lanes are all
- * empty is the switch's business — collapsed here it would be held back with no
- * count on the switch, so the switch would vanish and nothing could bring two
- * hundred and fourteen gauges back.
+ * A family, unless the replay holds nothing of it: one with sources and no lane
+ * is kept and counted. Judged on the lanes, never on their marks: a family of
+ * empty lanes collapsed here would take with it the switch that brings them back.
  */
 function familyOf(id: string, label: string, lanes: Lane[], sources: number): Family | undefined {
   if (lanes.length > 0) return { id, label, lanes }
@@ -402,12 +319,7 @@ function crossingsOf(content: ReplayContent, sourceId: number): Mark[] {
     }))
 }
 
-/**
- * What agents reported, on a lane of its own.
- *
- * Nothing when they reported nothing: a family of one empty lane would say the
- * replay holds a kind of source it does not.
- */
+/** What agents reported, on a lane of its own, and no family when they reported nothing. */
 function reportFamily(content: ReplayContent): Family | undefined {
   const reports = reportsOf(content.events)
   if (reports.length === 0) return undefined
@@ -436,10 +348,8 @@ function reportFamily(content: ReplayContent): Family | undefined {
 function webcamLanes(content: ReplayContent): Lane[] {
   const views = viewsOf(content.images)
 
-  // Every camera the replay watched, and not only those it came back with a
-  // picture of: a lane with no frame says the camera was there and nothing was
-  // copied, which its absence would not say. Whether it is drawn is the
-  // switch's business, and `lanesOf` answers that for every family at once.
+  // Every camera the replay watched, pictures or not: a lane with no frame says
+  // nothing was copied, which an absent lane would not.
   const codes = [...new Set([...content.webcams.map((one) => one.code), ...views.keys()])]
 
   return codes.map((code) => ({
@@ -453,12 +363,8 @@ function webcamLanes(content: ReplayContent): Lane[] {
 }
 
 /**
- * The frames of a strip: each view up to the one that follows it.
- *
- * The last runs to the end of the period, because what a camera showed at an
- * instant is what it showed until it looked again. Ceneau shoots twice a day at
- * rest and every quarter of an hour once the water rises, so the strip thickens
- * exactly where the episode is.
+ * The frames of a strip: each view up to the one that follows it, the last to
+ * the end of the period. A camera shows what it showed until it looks again.
  */
 function framesOf(period: TimeWindow, views: readonly View[]): Mark[] {
   return views.map((view, index) => {
@@ -475,12 +381,8 @@ function framesOf(period: TimeWindow, views: readonly View[]): Mark[] {
 }
 
 /**
- * The parc's rain, one lane of bars per gauge.
- *
- * Nothing at all when the replay carries no rain: a lane per gauge with not one
- * bar on it would accuse two hundred and twenty-nine gauges of having measured
- * nothing, where nothing is known of any of them. The family's own count says
- * it instead.
+ * The parc's rain, one lane of bars per gauge, and none when the replay carries
+ * no rain: empty lanes would say each gauge measured nothing.
  */
 function rainLanes(content: ReplayContent): Lane[] {
   const rain = content.rain
@@ -500,17 +402,9 @@ function rainLanes(content: ReplayContent): Lane[] {
 }
 
 /**
- * One bar per measure, over the span it was gathered on.
- *
- * A measure of zero keeps its bar: the gauge looked and nothing had fallen,
- * and that is not the absence a missing bar would draw.
- *
- * Widest first, because the bars overlap: a daily gauge's step covers the whole
- * period, and the measure taken on the period's first instant covers hours
- * before it and is a sliver at the very left. Left in their own order, that
- * sliver is buried under the wide one, and a bar nobody can see is exactly what
- * an absence looks like. An order, not a drawing — so it is settled once here
- * rather than at every render of the lane.
+ * One bar per measure, zero included, over the span it was gathered on. Widest
+ * first, because bars can overlap: a narrow one drawn under a wide one would read
+ * as an absence.
  */
 function barsOf(bounds: Bounds, steps: readonly Step[], scale: number): Mark[] {
   return steps
@@ -519,9 +413,8 @@ function barsOf(bounds: Bounds, steps: readonly Step[], scale: number): Mark[] {
       // Its own span and not the gauge's step: after a gap in the measures, a
       // bar covers the whole gap.
       label: barSaid(step.millimetres, spanSaid((step.at - step.from) / 60_000)),
-      // Never under nothing: a negative increment is a bad reading, and there is
-      // no height below the floor of a lane to draw it at. The figure the tooltip
-      // carries stays the one the gauge gave.
+      // A negative increment is a bad reading, drawn on the floor; the label keeps
+      // the figure the gauge gave.
       height: (Math.max(step.millimetres, 0) / scale) * 100,
     }))
     .sort((one, other) => other.width - one.width)

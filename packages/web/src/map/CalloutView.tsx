@@ -88,9 +88,8 @@ function SourceMeasures({
   )
 
   if (subject.kind === 'rain-gauge') {
-    // The replay knowing no rain at all is not this gauge having measured none,
-    // and accusing each of two hundred and twenty-nine gauges in turn would be
-    // a lie. `ReplayContent` is where the two were told apart, once.
+    // A replay that knows no rain at all is not a gauge that measured none:
+    // `ReplayContent` tells the two apart.
     if (content.rain === undefined) return <p className="note">Ce rejeu ne porte aucune mesure.</p>
 
     return (

@@ -9,14 +9,8 @@ import { seriesOf } from './series.ts'
 
 /**
  * What a station measured over the period, read when its window opens and
- * whenever the quantity shown changes.
- *
- * Station by station, and on the replay's period alone: three kilobytes, where
- * the whole parc is nineteen megabytes. That the API narrows on the source and
- * the quantity is what makes this affordable at all.
- *
- * Neither a series nor a failure while it is being read, so the window can say
- * so rather than show a value it does not have yet.
+ * whenever the quantity shown changes: station by station, the whole parc being
+ * far too heavy. Neither a series nor a failure while it is being read.
  */
 export function useMeasures(replayId: string, sourceId: number, quantity: Quantity): Measured {
   const [held, setHeld] = useState<Held | undefined>(undefined)
@@ -25,8 +19,7 @@ export function useMeasures(replayId: string, sourceId: number, quantity: Quanti
     const leaving = new AbortController()
 
     void read(replayId, sourceId, quantity, leaving.signal).then((next) => {
-      // A window closed, or switched, while its measures were coming drops the
-      // request, and what comes back says nothing to anyone still reading.
+      // A window closed or switched meanwhile has dropped the request.
       if (!leaving.signal.aborted) setHeld({ ...next, replayId, sourceId, quantity })
     })
 

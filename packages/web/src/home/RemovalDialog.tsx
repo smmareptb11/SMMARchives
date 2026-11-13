@@ -6,11 +6,9 @@ import { goTo, signInPath } from '../routing.ts'
 import type { ReplayEntry } from './entries.ts'
 
 /**
- * Asking before a replay is removed, in a modal of the browser's own: it
- * dims the page, keeps the keyboard inside, closes on Escape and hands the
- * focus back to the button that opened it.
- *
- * « Annuler » comes first, so the focus the modal opens on keeps nothing.
+ * Asking before a replay is removed, in a modal of the browser's own, which
+ * handles the keyboard and the focus. « Annuler » comes first, so that the focus
+ * the modal opens on removes nothing.
  */
 export function RemovalDialog({
   entry,

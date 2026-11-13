@@ -16,8 +16,6 @@ import { heightAfterKey, rangeOf, within, type HeightRange } from './montageHeig
  * The height of the lanes' panel on a wide screen, and the handle on its top
  * edge that sets it: it opens folded, and is raised up to half the area under
  * the band. Unfolding a family does not raise it: its lanes scroll inside.
- *
- * Nothing here runs on a phone, where the lanes are a sheet a finger pulls.
  */
 export function useMontageHeight(section: RefObject<HTMLElement | null>) {
   const [height, setHeight] = useState<number | undefined>(undefined)

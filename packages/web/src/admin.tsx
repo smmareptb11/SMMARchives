@@ -26,10 +26,9 @@ const AdminContext = createContext<Admin>({
 })
 
 /**
- * Whether this browser holds the administrator's session, asked once.
- *
- * Only what the interface shows rests on it: the API refuses a stranger's
- * change whatever this says.
+ * Whether this browser holds the administrator's session, asked once. Only what
+ * the interface shows rests on it: the API refuses a stranger's change whatever
+ * this says.
  */
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Pick<Admin, 'signedIn' | 'expired'>>({

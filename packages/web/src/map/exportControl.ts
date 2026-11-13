@@ -12,10 +12,8 @@ const BASEMAP_SOURCE = 'openmaptiles'
 
 /**
  * Saves the map as a PNG, as the Acycliq widget saves a chart: what the map
- * draws, and not what is laid over it — the legend, the windows, the cameras'
- * thumbnails.
- *
- * The name is asked on each use: the instant read moves between two clicks.
+ * draws, not the legend, windows or thumbnails laid over it. The name is asked on
+ * each use, since the instant read moves between two clicks.
  */
 export function exportControl(name: () => string): IControl {
   const container = document.createElement('div')
@@ -59,9 +57,7 @@ function save(map: MapLibreMap, filename: string): void {
 
 /**
  * The way to save the map as an image, beside the zoom, once there is a map.
- *
- * Named on the click and not when it is hung: the instant read moves on every
- * tick, and the control would otherwise be rebuilt sixty times a second.
+ * Named on the click, or the control would be rebuilt on every tick.
  */
 export function useExported(map: MapLibreMap | undefined, label: string | null, at: Cursor): void {
   const naming = useRef(() => mapExportName(label, at))

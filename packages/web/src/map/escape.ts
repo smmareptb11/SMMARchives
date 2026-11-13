@@ -44,12 +44,9 @@ export function isTyping(target: KeyTarget | null): boolean {
 }
 
 /**
- * Whether Escape closes the window in front, wherever the focus is.
- *
- * Wherever: a window opened from the history or from a lane takes no focus,
- * which stays on what was clicked, and Escape has to close it all the same.
- * Except while typing in a field, while a composition is under way — Escape
- * then belongs to the keyboard — and when something already handled the key.
+ * Whether Escape closes the window in front, wherever the focus is, since a
+ * window opened from the history or a lane takes none. Not while typing, nor
+ * during a composition, nor once something else handled the key.
  */
 export function escapeCloses(press: EscapePress, target: KeyTarget | null): boolean {
   if (press.key !== 'Escape' || press.isComposing || press.defaultPrevented) return false

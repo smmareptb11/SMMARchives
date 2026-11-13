@@ -31,14 +31,9 @@ const RUNG = 1
 /**
  * The curve of one station, around the instant being read.
  *
- * Drawn by uPlot in an element this component owns, outside React: a canvas
- * thrown away and rebuilt on every tick of the reading would draw nothing but
- * itself.
- *
- * Over a span, the window is centred on the cursor, so the curve slides under
- * a bar that stays where it is, and the eye reads the same place for the whole
- * episode. Over the whole period the curve holds still and the bar walks it.
- * What a tick changes is therefore the window of time, never the drawing.
+ * Drawn by uPlot outside React, in an element this component owns: a tick moves
+ * the window of time and never rebuilds the drawing. Over a span the curve
+ * slides under a bar that stays put; over the whole period the bar walks it.
  */
 export function StationChart({
   series,
@@ -60,11 +55,9 @@ export function StationChart({
   const reading = useRef<Cursor>(at)
   reading.current = at
 
-  // Built on the window of the instant the series arrives on, so that the first
-  // frame it is painted on is already the right one. The window and `ladder` are
-  // read here and never watched: the effect below is what follows the reading
-  // and the span, and another station is another chart, which the key on this
-  // component makes so.
+  // Built on the window of the instant the series arrives on, so its first frame
+  // is already right. The window is followed by the effect below; another
+  // ladder is another chart, through this component's key.
   useLayoutEffect(() => {
     if (holder.current === null) return
     const chart = plot(holder.current, series, ladder, {
@@ -78,9 +71,6 @@ export function StationChart({
       unfollow()
       chart.destroy()
     }
-    // Two omissions, two reasons. The window is followed by the effect below, which is what the
-    // comment above says. `ladder` is a fresh array on every render, and another ladder is another
-    // chart: the key it is rendered with sees to that.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- window followed below, `ladder` keyed above
   }, [series])
 
@@ -110,30 +100,25 @@ function plot(
       width: holder.clientWidth,
       height: CURVE_HEIGHT,
       legend: { show: false },
-      // Nothing to hover in a bubble: the value beside the curve is the one
-      // being read, and the reading gives it without a pointer.
+      // Nothing to hover: the reading gives the value beside the curve.
       cursor: { show: false },
       scales: {
         // The window belongs to the reading, so uPlot must not fit the data.
         x: { time: true, auto: false, ...window },
         y: { range: (_, low, high) => uPlot.rangeNum(...boundsWith(ladder, low, high), 0.1, true) },
       },
-      // Or uPlot rules the hours on the machine's own midnights, and a replay
-      // of the Aude read from Tehran would be graduated on its half-hours.
+      // Or uPlot graduates the hours in the machine's own time zone.
       tzDate: (seconds) => uPlot.tzDate(new Date(seconds * SECOND), FRENCH_TIME),
-      // Only what the topmost figure of the value axis needs; uPlot otherwise
-      // keeps half the height of an axis label free above the curve, which a
-      // bubble cannot spare. The sides are left to it, where the last hour of
-      // the axis would be cut off.
+      // Above, only what the topmost figure needs, where uPlot keeps half an axis
+      // label; the sides are left to it, or the last hour is cut off.
       padding: [6, null, 0, null],
       series: [
         {},
         {
           stroke: BRAND,
           width: 2,
-          // A line through one point draws nothing at all, and a window holding
-          // a single measure is what a station with a degraded step gives: the
-          // mark is then the only thing that says the curve is there.
+          // A line through one point draws nothing, and a station with a
+          // degraded step can hold a single measure in a window.
           points: { show: (_, __, first, last) => last - first < 1 },
         },
       ],
@@ -165,21 +150,16 @@ function plot(
 }
 
 /**
- * The rungs of the ladder, ruled across the whole frame.
- *
- * Across the whole of it, and not only where the station measured: a rung is
- * the mark the curve is read against, and one stopping where the measures stop
- * would be a second curve. That is what a flat series would have been — which
- * is why the ladder is drawn here instead, and why `boundsWith` is what tells
- * the scale of values about it.
+ * The rungs of the ladder, ruled across the whole frame rather than plotted: a
+ * rung stopping where the measures stop would read as a second curve.
+ * `boundsWith` is what tells the scale of values about them.
  */
 function rule(chart: uPlot, ladder: readonly Rung[]): void {
   const { ctx } = chart
   const { left, width } = chart.bbox
 
   ctx.save()
-  // In canvas pixels, which a dense screen counts twice: the dash and the
-  // thickness are written in the CSS pixels the rest of the interface is.
+  // In canvas pixels, which a dense screen counts twice per CSS pixel.
   ctx.lineWidth = RUNG * uPlot.pxRatio
   ctx.setLineDash(DASH.map((one) => one * uPlot.pxRatio))
 

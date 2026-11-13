@@ -15,9 +15,7 @@ export type PhotoPickerProps = {
 
 /**
  * The photos chosen, seen before they are sent, each of which can be taken out.
- *
- * Chosen files add up rather than replace one another: a second pick in the
- * gallery of a phone is a second photo, not a change of mind about the first.
+ * A second pick adds to the first rather than replacing it, as in a phone's gallery.
  */
 export function PhotoPicker({
   photos,
@@ -95,10 +93,8 @@ function Thumbnails({
 }
 
 /**
- * An address the browser serves each file from, for as long as it is shown.
- *
- * Revoked when the list changes or the form goes: each one holds the whole file
- * in memory, and a phone's photo weighs megabytes.
+ * An address the browser serves each file from, revoked when the list changes or
+ * the form goes: each one holds the whole file in memory.
  */
 function usePreviews(photos: readonly File[]): string[] {
   const [urls, setUrls] = useState<string[]>([])

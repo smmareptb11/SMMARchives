@@ -56,7 +56,6 @@ main:has(.map) {
   padding: 10px 12px;
 }
 
-/* The mark of the lane's family, in the montage's grey. */
 /* The way back to the view the map opened on, beside the zoom: four corners, a frame. */
 .overview .maplibregl-ctrl-icon {
   background-color: #333;
@@ -76,10 +75,7 @@ main:has(.map) {
   border-radius: 3px;
 }
 
-/*
- * One family a line, in the panel over the map. The map opens on what it holds
- * with room left under this panel, so it hides none of the outermost sources.
- */
+/* One family a line, in the panel over the map. */
 .layers {
   display: flex;
   flex-direction: column;
@@ -117,10 +113,8 @@ main:has(.map) {
 }
 
 /*
- * The switch on the sources the replay holds nothing of, on a line of its own.
- *
- * Under the families and not among them, because it is not one: it thins every
- * family at once, and a sixth box on that row would read as a sixth family.
+ * The switch on the sources the replay holds nothing of, on a line under the
+ * families: it thins them all, and among them it would read as one more.
  */
 .mutes {
   display: flex;
@@ -147,10 +141,7 @@ main:has(.map) {
   margin: 0.15rem 0;
 }
 
-/*
- * The open sources' windows, stacked among themselves and together over the
- * map. Letting the pointer through wherever no window is.
- */
+/* The open windows, stacked over the map, letting the pointer through wherever none is. */
 .callouts {
   position: absolute;
   inset: 0;
@@ -316,9 +307,8 @@ main:has(.map) {
 }
 
 /*
- * What a camera showed, in the shape of most of them, and no taller than the
- * map leaves the panel room for: the rest of the panel stays in sight. Fitted
- * rather than cropped, so a view keeps all it shows.
+ * What a camera showed, short enough for the rest of the panel to stay in sight,
+ * and fitted rather than cropped so a view keeps all it shows.
  */
 .callout .view {
   display: block;
@@ -374,9 +364,8 @@ main:has(.map) {
 }
 
 /*
- * The colour is the panel's rather than its paragraphs': written on every `p`,
- * it would beat any rule for one line written with a single class, and a value
- * or a refusal would lose its own.
+ * No colour on `p`: it would beat any one-class rule for a line, and a value or
+ * a refusal would lose its own.
  */
 .callout-body p {
   margin: 0.25rem 0 0;
@@ -440,11 +429,9 @@ main:has(.map) {
 
 @media (max-width: 700px) {
   /*
-   * On a phone a detail takes the map's whole room, as the mockup's panes do:
-   * the window in front alone, standing still, and the others behind it until
-   * it is closed. Nothing there amends a report, as nothing there administers.
+   * On a phone a detail takes the map's whole room: the front window alone,
+   * standing still, over the history as well, which it may close back onto.
    */
-  /* Over the history as well, which a detail opened from it closes back onto. */
   .callouts {
     z-index: 9;
   }
@@ -464,10 +451,9 @@ main:has(.map) {
   }
 
   /*
-   * A phone's layers: folded, a button over the map's corner, as the mockup's
-   * legend is; unfolded, the panel under the same title row. That row is the
-   * fold, sized for a finger, its word left to the screen reader and an arrow
-   * shown in its place.
+   * A phone's layers: folded, a button over the map's corner; unfolded, the panel
+   * under the same title row. That row is the fold, sized for a finger, its word
+   * left to the screen reader and an arrow shown in its place.
    */
   .map-legend {
     width: min(300px, calc(100% - 24px));

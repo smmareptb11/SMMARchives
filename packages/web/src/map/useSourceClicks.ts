@@ -7,19 +7,12 @@ import { KINDS, sourceUnder } from './sources.ts'
 import type { Detail } from './useWindows.ts'
 
 /**
- * What the measuring sources and the reports answer to a click. The map itself
+ * What the measuring sources and the reports answer to a click; the map itself
  * answers none.
  *
- * One handler asking what is under the pointer, rather than one per family: a
- * handler per family fires once per family the click covers, and one click
- * would open a detail for each.
- *
- * Which of a report or a source is meant is `clickedOf`'s to say. A report
- * opens the sheet rather than a source's detail, being what was written rather
- * than what was measured at the instant.
- *
- * On the shapes and not on their white rings: a ring is wider than the shape it
- * backs, and clicking beside a rain gauge would open the rain gauge.
+ * One handler asking what is under the pointer, since one per family would open
+ * a detail for each family the click covers. Asked of the shapes and not of
+ * their white rings, which are wider: clicking beside a gauge would open it.
  */
 export function useSourceClicks(
   map: MapLibreMap | undefined,
@@ -63,13 +56,10 @@ export function useSourceClicks(
 /**
  * The hand the pointer takes over something that answers a click.
  *
- * Asking what is underneath, rather than one handler per family: sliding from a
- * rain gauge onto a station fires the gauge's leave after the station's enter,
- * and the pointer would go back to an arrow over a marker.
- *
- * Once per frame at most, and never while the map is moving: MapLibre passes
- * every pointer sample through, and asking what is under the pointer walks the
- * three hundred sources drawn — on the frames the map is already repainting.
+ * Asking what is underneath, since with a handler per family the gauge's leave
+ * fires after the station's enter, and the pointer turns back to an arrow over a
+ * marker. Once per frame at most, and never while the map moves: each question
+ * walks every source drawn.
  */
 function pointerOver(
   map: MapLibreMap,

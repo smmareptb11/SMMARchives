@@ -73,19 +73,16 @@ function useRoute(): Route {
 }
 
 /**
- * One replay: its construction while it runs, what it holds once it is over.
- *
- * The manifest is read first, and the stream opened only on a build that is
- * still running: a replay constituted last week has nothing to follow, and
- * opening a stream on it would wait for news that will never come.
+ * One replay: its construction while it runs, what it holds once it is over. The
+ * stream is opened only on a build still running: on a finished replay, it would
+ * wait for news that never comes.
  */
 function Replay({ id }: { id: string }) {
   const [manifest, setManifest] = useState<ReplayManifest | undefined>(undefined)
   const [build, setBuild] = useState<BuildState>(EMPTY)
   const [failure, setFailure] = useState<{ error: unknown } | undefined>(undefined)
-  // Held apart from the manifest: replacing it would hand the screen new data
-  // set references and reload every one of them, and a build's stream, holding
-  // its own copy, could answer with the publication as it was.
+  // Held apart from the manifest: replacing it would reload every data set, and
+  // a build's stream, holding its own copy, could answer with the publication as it was.
   const [publication, setPublication] = useState<{ at: string | undefined } | undefined>(undefined)
 
   useEffect(

@@ -20,12 +20,9 @@ import { trackWidthOf } from './tracks/ruler.ts'
 import { TrackList, type TrackListProps } from './tracks/TrackList.tsx'
 
 /**
- * The transport, and the lanes under it: scrolled on their own, under a
- * transport and a ruler that stay.
- *
- * On a phone the lanes fold under the transport, which a finger pulls up to
- * open them, follow the reading line as it moves along them, and fold under a
- * detail.
+ * The transport, and the lanes under it, scrolled on their own under a transport
+ * and a ruler that stay. On a phone the lanes fold under the transport, which a
+ * finger pulls up to open them, and fold again under a detail.
  */
 export function Montage({
   manifest,

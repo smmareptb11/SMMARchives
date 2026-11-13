@@ -29,9 +29,8 @@
 }
 
 /*
- * One bar, drawn in two places: over the lanes, and over a station's curve.
- * They show the same instant, and the documentation of the interface says so —
- * which they would stop doing the day one of them was made thicker alone.
+ * One bar in two places, over the lanes and over a station's curve: they show the
+ * same instant, so neither changes alone.
  */
 .playhead,
 .plot .instant {
@@ -212,10 +211,7 @@
     flex-basis: 100%;
   }
 
-  /*
-   * A phone's transport, as the mockup lays it out: the instant first and
-   * large, then the speed, then buttons sized for a finger.
-   */
+  /* A phone's transport: the instant first and large, the speed, then buttons for a finger. */
   .transport .clock {
     order: 1;
     display: grid;
@@ -318,9 +314,8 @@
   }
 
   /*
-   * A phone's transport on one line and one rhythm: the instant on its left,
-   * then the speed drawn as a button like its neighbours, its list laid over it
-   * unseen. The play button says whether the replay plays.
+   * On one line and one rhythm: the speed drawn as a button like its neighbours,
+   * its list laid over it unseen. The play button alone says whether it plays.
    */
   .transport .clock {
     grid-template-columns: auto;

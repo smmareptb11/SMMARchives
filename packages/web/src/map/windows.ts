@@ -10,10 +10,8 @@ export type Measured = { kind: 'source'; source: DrawnSource } | { kind: 'camera
 export type Subject = Measured | { kind: 'report'; id: string }
 
 /**
- * A window open on the screen.
- *
- * `rank` stacks it: the highest is in front. `step` is its place in the cascade
- * it opened in, which only says where it first stands.
+ * A window open on the screen. `rank` stacks it, the highest in front; `step` is
+ * its place in the cascade, which only says where it first stands.
  */
 export type Window = { key: string; subject: Subject; rank: number; step: number }
 
@@ -31,12 +29,7 @@ export function keyOf(subject: Subject): string {
   return `${subject.source.kind}:${String(subject.source.id)}`
 }
 
-/**
- * The windows with this subject's in front.
- *
- * A subject already open is brought forward rather than opened twice: two
- * windows saying the same thing would only hide each other.
- */
+/** The windows with this subject's in front: one already open is raised, not opened twice. */
 export function opening(windows: readonly Window[], subject: Subject): readonly Window[] {
   const key = keyOf(subject)
   if (windows.some((one) => one.key === key)) return raising(windows, key)

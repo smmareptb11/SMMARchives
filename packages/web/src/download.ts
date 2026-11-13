@@ -89,12 +89,9 @@ export type Around = {
  * Saves a canvas as a PNG under the name given, on an opaque background, with
  * what is to be written around it.
  *
- * Copied onto a second canvas first: uPlot paints no background, and its PNG
- * would come out transparent wherever nothing is drawn — unreadable once opened
- * on a dark background or pasted into a document. Through a `blob:` address
- * rather than a `data:` one, which carries the whole image in a string and
- * meets the browsers' limits on a large one; the link is put in the page before
- * it is clicked, which some browsers require, and the address freed after.
+ * Copied onto a second canvas first: uPlot paints no background. Through a
+ * `blob:` address, as a `data:` one meets the browsers' limits on a large image;
+ * the link is put in the page before it is clicked, which some browsers require.
  */
 export function downloadCanvasPng(
   canvas: HTMLCanvasElement,

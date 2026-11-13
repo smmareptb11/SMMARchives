@@ -1,12 +1,9 @@
 import { SHADES } from './rain.ts'
 
 /**
- * The colours a canvas has to repeat, because it cannot read the stylesheet.
- *
- * `styles/base.css` holds the one definition of each; MapLibre paints from an
- * expression and uPlot from a drawing context, and neither reads a custom
- * property. This is the one place that spells the values a second time, so
- * that a change of palette has two files to visit and not four.
+ * The colours a canvas has to repeat, because neither MapLibre nor uPlot reads a
+ * custom property: `styles/base.css` holds the one definition of each, and this
+ * is the one place that spells them a second time.
  */
 
 /** `--brand`: the mark of a source on the map, and the curve of a station. */
@@ -19,11 +16,8 @@ export const MUTED = '#536372'
 export const NIGHT_MUTED = '#8fa3b4'
 
 /**
- * `--rain`: the bars of a rain gauge, on its lane and in its bubble.
- *
- * Read off the map's own ramp rather than spelled again, as `NEGLIGIBLE` is:
- * the bars and the markers speak the same blue, and two copies would drift
- * apart at the first change of ramp.
+ * `--rain`: the bars of a rain gauge, on its lane and in its bubble, read off the
+ * map's own ramp so that the bars and the markers speak the same blue.
  */
 export const RAIN = SHADES[3].colour
 

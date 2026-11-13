@@ -8,10 +8,9 @@ import { publicationOf } from './publication.ts'
 import { goTo, signInPath } from './routing.ts'
 
 /**
- * Publishing a replay, or withdrawing it, from its own screen: what is
- * published is what the administrator has just been looking at.
- *
- * Neither asks first, since either is undone by the other.
+ * Publishing a replay, or withdrawing it, from its own screen: what is published
+ * is what the administrator has just been looking at. Neither asks first, since
+ * either is undone by the other.
  */
 export function PublicationControl({
   manifest,

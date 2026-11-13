@@ -38,29 +38,20 @@ const HEIGHT = 200
 const TOTAL = 2
 
 /**
- * The pixels a bar keeps whatever it measures, so no measure goes undrawn.
- *
- * The width is what a measure carrying no step falls back on, which is most of
- * a whole-parc replay's gauges, and only it: a bar with a step is as wide as
- * that step, see `barWidthOf`. A bar one pixel wide reads
- * as a rule and not as a quantity; wide enough to be a bar, narrow enough that
- * nobody reads it as a span the gauge never gave.
+ * The pixels a bar keeps whatever it measures, so no measure goes undrawn. The
+ * width serves only a measure without a step (see `barWidthOf`): wide enough to
+ * read as a bar, narrow enough not to read as a span the gauge never gave.
  */
 const LEAST_WIDTH = 8
 const LEAST_HEIGHT = 2
 
 /**
- * What a rain gauge measured, measure by measure, and how much that adds up to
- * over the window, as the Acycliq widget draws it.
+ * What a rain gauge measured, measure by measure, and its running total over the
+ * window on an axis of its own, as the Acycliq widget draws it.
  *
- * Bars and not a curve: a gauge gives what fell during a step, where a station
- * gives a level at an instant. The running total rises over them, on an axis
- * of its own.
- *
- * Drawn by hand in a hook rather than by uPlot's own bars, because a bar here
- * covers the step it was gathered over: uPlot centres a bar on its instant and
- * takes its width from the gap to the next one, which says nothing when a gauge
- * has a single measure.
+ * Bars painted by hand rather than uPlot's: a bar covers the step it was
+ * gathered over, where uPlot centres it on its instant and sizes it from the
+ * next one, which a lone measure does not have.
  */
 export function RainChart({
   steps,
@@ -76,9 +67,8 @@ export function RainChart({
   const holder = useRef<HTMLDivElement>(null)
   const drawn = useRef<Drawn | undefined>(undefined)
 
-  // The instant is read by the hook when it paints, never watched by the effect
-  // that builds the chart: a chart thrown away and rebuilt sixty times a second
-  // would draw nothing but itself.
+  // Read by the draw hook, never watched by the build: rebuilt on every tick,
+  // the chart would draw nothing but itself.
   const reading = useRef<Cursor>(at)
   reading.current = at
   // Read once by the build, which must not watch it: the effect below follows it.
@@ -98,12 +88,9 @@ export function RainChart({
     }
   }, [steps, period])
 
-  // Over the whole period, two things follow the reading, and only one of them
-  // is a drawing. The rule slides on every tick and is a node the browser moves;
-  // the bars change at most once per measure — repainting them sixty times a
-  // second would redraw two hundred and eighty-nine rectangles and relabel both
-  // axes to move a line. Over a span the bars slide under the rule, and moving
-  // them is a drawing on every tick, as a station's curve is.
+  // Over the whole period, only the rule moves on every tick, and the bars are
+  // repainted when the reading passes a measure. Over a span the bars slide
+  // under the rule, which is a drawing on every tick.
   useLayoutEffect(() => {
     const held = drawn.current
     if (held === undefined) return
@@ -156,11 +143,9 @@ function frame(held: Drawn, steps: readonly Step[], window: { min: number; max: 
 }
 
 /**
- * uPlot is asked for the frame and never for the marks: the bars and the total
- * are painted by hand, the bars over the span each measure was gathered on.
- *
- * Fresh for every chart, as the axes are: uPlot writes its own state into the
- * arrays it is handed, and two gauges open side by side would share it.
+ * uPlot is asked for the frame and never for the marks, which are painted by
+ * hand. Fresh for every chart, as the axes are: uPlot writes its own state into
+ * the arrays it is handed.
  */
 const series = (): uPlot.Series[] => [
   {},
@@ -203,9 +188,7 @@ function plot(
       scales: {
         // The window belongs to the reading, so uPlot must not fit the data.
         x: { time: true, auto: false, ...window },
-        // From zero, always, and both of them: a bar and a total are read
-        // against the floor they stand on, and a scale starting elsewhere would
-        // make a small step look like a large one.
+        // Both from zero: a scale starting elsewhere makes a small step look large.
         y: { auto: false, min: 0, max: framed.current.rainTop },
         total: { auto: false, min: 0, max: framed.current.totalTop },
       },
@@ -246,11 +229,8 @@ function clip(chart: uPlot): void {
 }
 
 /**
- * One bar per measure, over the span it was gathered on.
- *
- * A floor of a few pixels: a measure of zero draws a bar, and so does a lone
- * measure, which carries no step and is therefore an instant wide.
- * Neither is an absence, and a bar nobody can see is what an absence looks like.
+ * One bar per measure, over the span it was gathered on, never under a few
+ * pixels: a measure of zero, or a lone one an instant wide, is not an absence.
  */
 function paint(chart: uPlot, steps: readonly Step[], states: readonly BarState[]): void {
   const { ctx } = chart
@@ -281,18 +261,13 @@ function bar(
   const tall = Math.max(floor - reached, LEAST_HEIGHT * uPlot.pxRatio)
 
   ctx.globalAlpha = state === 'ahead' ? AHEAD : 1
-  // The measure the header's total stops at, darker than the ones behind it.
-  // Not the red of the reading: that one rules the instant, and a bar wearing
-  // it would claim to be where the reading is rather than what it last passed.
+  // The measure the header's total stops at, darker; not the reading's red,
+  // which marks the instant rather than the last measure passed.
   ctx.fillStyle = state === 'read' ? BRAND : RAIN
   ctx.fillRect(ends - wide, floor - tall, wide, tall)
 }
 
-/**
- * The running total, measure to measure, as faint as the bars past the one the
- * reading stands on: what is ahead of the reading is what the replay holds, not
- * what the reader has been shown fall.
- */
+/** The running total, measure to measure, faint past the reading as the bars are. */
 function trace(
   chart: uPlot,
   steps: readonly Step[],

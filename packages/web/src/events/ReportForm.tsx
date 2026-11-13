@@ -44,10 +44,8 @@ export type ReportFormProps = {
 }
 
 /**
- * Reporting an event, or amending one, in the right-hand column.
- *
- * One form for both: what an agent writes is the same, and only the start
- * differs — blank from the reading's instant, or filled in from the event.
+ * Reporting an event, or amending one, in the right-hand column: one form,
+ * blank from the reading's instant or filled in from the event.
  */
 export function ReportForm(props: ReportFormProps) {
   const { editing, at, onTouched } = props
@@ -185,12 +183,7 @@ function useChosenPhotos(editing: ReplayEvent | undefined, onChange: () => void)
   }
 }
 
-/**
- * Judging the draft, sending it, and saying why it was refused.
- *
- * The form's own rules first, in French and beside each field; then the API's,
- * placed beside the field it names.
- */
+/** Judging the draft by the form's rules, then the API's, and saying why it was refused. */
 function useSending(
   props: ReportFormProps,
   draft: Draft,

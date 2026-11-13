@@ -10,10 +10,8 @@ import type { Pill } from './pills.ts'
 export type Reading = { at: Cursor; value: number }
 
 /**
- * A measured value as the interface writes it, which is in French.
- *
- * Two decimals at most: Aquasys gives a flow to the centilitre, and a bubble
- * reading `3.0700000000000003 m³/s` says less than one reading `3,07`.
+ * A measured value as the interface writes it: in French, and to the centilitre
+ * Aquasys gives, never `3.0700000000000003`.
  */
 const MEASURED = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 })
 
@@ -24,19 +22,10 @@ export function formatValue(value: number): string {
 export type Series = { quantity: Quantity; unit: string; points: Reading[] }
 
 /**
- * The quantity a station is watched on, which is the one worth showing.
- *
- * Its alert ladder says it, and failing one its drought ladder: a mark of a
- * past flood says what was reached once, never what is being watched. The
- * alert ladder comes first, being the one the curve draws and the replay
- * crosses; a drought scale reads the other way round, but still names the
- * quantity the station is judged on.
- *
- * A ladder bearing on two quantities — the contract allows it, a threshold's
- * identifier being unique within a station *and* a quantity — is read on the
- * one carrying the most thresholds. The richest ladder is the one the station
- * is really judged against, and the order the replay froze them in decides
- * nothing.
+ * The quantity a station is watched on: its alert ladder's, failing one its
+ * drought ladder's, never a flood mark's, which says what was reached once. A
+ * ladder on two quantities, which the contract allows, is read on the one
+ * carrying the most thresholds.
  */
 export function watchedQuantity(thresholds: readonly Threshold[], stationId: number): Quantity {
   return (
@@ -62,10 +51,8 @@ export const NAMED: Record<Quantity, string> = {
 
 /**
  * The quantities a station's chart switches between, those it measured none
- * of over the period greyed out.
- *
- * Only those known to be empty: a quantity still being read, or failing to be,
- * has no series yet and stays offered, and the chart says what became of it.
+ * of over the period greyed out: one still being read, or failing to be, stays
+ * offered.
  */
 export function quantitiesFor(
   read: Partial<Record<Quantity, Series | undefined>>,
@@ -79,12 +66,8 @@ export function quantitiesFor(
 
 /**
  * The quantity a station's chart opens on: the one it is watched on, which the
- * map and the lanes show too.
- *
- * Unless the chart offers no way back to it. A ladder on rainfall is one the
- * contract allows, and a chart opened on it would show no choice picked, and
- * lose it at the first click: the level is then where it opens, which is what a
- * station without any ladder is read on.
+ * map and the lanes show too, or the level when the chart cannot offer it, as a
+ * ladder on rainfall.
  */
 export function openedQuantity(thresholds: readonly Threshold[], stationId: number): Quantity {
   const watched = watchedQuantity(thresholds, stationId)
@@ -105,11 +88,8 @@ export const LEVEL_DATUMS: readonly Pill<LevelDatum>[] = [
 export type LevelView = { datum: LevelDatum; shift: number }
 
 /**
- * The datum picked, reached from the one the source measures the station from
- * by the NGF altitude of its gauge zero, one way or the other.
- *
- * Without that altitude no level can be moved: it is shown from the datum it
- * was measured from, whichever was picked.
+ * The datum picked, reached from the measured one by the NGF altitude of the
+ * gauge zero; without that altitude, the measured one whichever was picked.
  */
 export function levelView(
   measuredFrom: LevelDatum,
@@ -158,7 +138,6 @@ function richestQuantity(
   return [...counted].sort((one, other) => other[1] - one[1])[0]?.[0]
 }
 
-/** What a rung of the alert ladder is drawn as: a line at a value, coloured. */
 /** A threshold as the chart draws it and its legend names it. */
 export type Rung = {
   value: number
@@ -169,21 +148,15 @@ export type Rung = {
 }
 
 /**
- * A rung the source gave no colour to.
- *
- * Its own grey rather than the one the axes are drawn in: two fifths of the
- * parc's thresholds carry no colour, and a rung in the colour of the frame it
- * is read against is a rung nobody picks out. This one is the widget's.
+ * A rung the source gave no colour to, in the widget's grey: in the axes' own,
+ * it would vanish into the frame it is read against.
  */
 export const UNCOLOURED = '#94a3b8'
 
 /**
- * The rungs drawn behind the curve: the alert thresholds of the quantity shown.
- *
- * A mark of a past flood is not one of them — it says what was reached once,
- * on another quantity more often than not — and neither is a drought scale,
- * which reads the other way round. Both would be read as thresholds the station
- * is being judged against at this instant.
+ * The rungs drawn behind the curve: the alert thresholds of the quantity shown,
+ * never a flood mark or a drought scale, which would read as thresholds the
+ * station is judged against at this instant.
  */
 export function ladderOf(
   thresholds: readonly Threshold[],
@@ -202,8 +175,7 @@ export function ladderOf(
         label: one.label,
         assumed: one.natureIsFallback,
       }))
-      // The order the replay froze them in says nothing, and the worker's own
-      // `ladders()` is sorted: one word, one meaning, across the two packages.
+      // Sorted as the worker's `ladders()` is: one word, one meaning.
       .sort((one, other) => one.value - other.value)
   )
 }
@@ -214,10 +186,8 @@ export function seriesOf(
   sourceId: number,
   quantity: Quantity,
 ): Series {
-  // On the quantity as much as on the source: a station measured on two of them
-  // would otherwise draw its levels on an axis of flows. The family is not part
-  // of it — the rain gauges measure rainfall alone, so no homonym of a station
-  // can answer to a level or a flow.
+  // On the quantity too, or a station measured on two draws its levels on an
+  // axis of flows. It stands for the family: rainfall is the rain gauges' alone.
   const points = measures
     .filter((one) => one.sourceId === sourceId && one.quantity === quantity)
     .map((one) => ({ at: Date.parse(one.at), value: one.value }))

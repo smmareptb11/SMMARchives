@@ -95,6 +95,7 @@ main {
   object-fit: contain;
 }
 
+/* The two washes `map/layers.ts` paints the perimeters with. */
 .swatch.territory {
   background: color-mix(in srgb, var(--brand) 6%, transparent);
   border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);

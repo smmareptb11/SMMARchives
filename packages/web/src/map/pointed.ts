@@ -13,10 +13,8 @@ export type Pointed = { source: Kind; id: number } | { report: string } | { came
 
 /**
  * Where the lanes and the history say what the pointer rests on, and where the
- * map hears it.
- *
- * Held outside React's state: a pointer sweeping down three hundred lanes would
- * otherwise render the whole screen once per lane crossed, to move one outline.
+ * map hears it. Outside React's state, or a pointer sweeping down the lanes would
+ * render the whole screen once per lane crossed.
  */
 export type Pointer = {
   get: () => Pointed | undefined

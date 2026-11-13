@@ -22,20 +22,14 @@ import { Montage } from './Montage.tsx'
 import { useContent } from './useReplayContent.ts'
 
 /**
- * Loaded on the screen that draws one, and on no other.
- *
- * MapLibre and its stylesheet weigh a megabyte of script and eighty kilobytes
- * of style. Imported here, they land in the first chunk, and the creation form
- * — which shows no map — waits for them before it can draw a text field.
+ * Loaded on the screen that draws one, and on no other: imported here, MapLibre
+ * would land in the first chunk, and every screen would wait for it.
  */
 const MapView = lazy(async () => ({ default: (await import('./map/MapView.tsx')).MapView }))
 
 /**
- * One replay: the map of what it holds, and the lanes of when it happened.
- *
- * The loading lives here rather than in either view, because both read the same
- * data sets — the crossings that will colour a station are the crossings that
- * draw its segment. Loading them twice would be reading the same thing twice.
+ * One replay: the map of what it holds, and the lanes of when it happened, both
+ * read from the data sets loaded once here.
  */
 export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
   const { content, failure, changes } = useContent(manifest)
@@ -53,15 +47,8 @@ export function ReplayScreen({ manifest }: { manifest: ReplayManifest }) {
 }
 
 /**
- * The reading, shared by the map and the lanes.
- *
- * Its own component because the cursor rests on a replay that has arrived: a
- * hook above the loading would have to invent a period for a replay nobody has
- * read yet.
- *
- * Colouring at an instant asks nothing new of the API: a crossing carries its
- * start, its end and its colour, so the same events the lanes draw are what the
- * map paints with.
+ * The reading, shared by the map and the lanes: its own component, since the
+ * cursor needs the period of a replay that has arrived.
  */
 function Replayed({
   manifest,
@@ -77,10 +64,8 @@ function Replayed({
   // Above the map and the lanes because it reaches both: a replay keeps the
   // sources that answered nothing, and the reader says when to see them.
   const [mutesShown, setMutesShown] = useState(false)
-  // Built here rather than inside the lanes, because the switch's own count is
-  // read off them: built twice, the number on the switch and the lanes under it
-  // could disagree. On the replay alone, so a click on the switch filters what
-  // is built rather than building it again.
+  // Built here, once per replay: the switch's count is read off them, and built
+  // twice, the switch and the lanes under it could disagree.
   const families = useMemo(() => lanesOf(content), [content])
   const heldBack = useMemo(() => heldIn(families), [families])
   const panel = usePanel()
@@ -123,10 +108,8 @@ function Replayed({
 }
 
 /**
- * The map, and the windows over it.
- *
- * The windows apart from the map, which arrives last: a report's window opens
- * from the lanes and the history as well.
+ * The map, and the windows over it, apart from the map, which arrives last: a
+ * report's window opens from the lanes and the history as well.
  */
 function MapSection({
   manifest,
@@ -190,7 +173,7 @@ function useReading(manifest: ReplayManifest, content: ReplayContent) {
       reading.seek(cursorAt(manifest.period, fraction))
     },
     // `reading.seek` is memoised by `useCursor`; `reading` itself is a new object on every
-    // render, so watching it would rebuild this callback sixty times a second.
+    // render, so watching it would rebuild this callback on every frame.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the stable member, not the object
     [reading.seek, manifest.period],
   )

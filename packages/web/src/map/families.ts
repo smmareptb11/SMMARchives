@@ -16,11 +16,9 @@ export type Family = (typeof FAMILIES)[number]
 export type Shown = Record<Family, boolean>
 
 /**
- * What each family is called, in the one place the map names them.
- *
- * Both numbers: the legend names a family, a bubble names one source of it, and
- * the two sitting on the same map must not name the same shape differently. The
- * lanes below keep their own names, for a fourth family the map folds away.
+ * What the map calls each family: one for a bubble, many for the legend, kept
+ * together so that the two never name a shape differently. The lanes keep their
+ * own names.
  */
 export const NAMES: Record<Family, { one: string; many: string }> = {
   report: { one: 'Événement saisi', many: 'Événements saisis' },
@@ -32,12 +30,9 @@ export const NAMES: Record<Family, { one: string; many: string }> = {
 }
 
 /**
- * What a family's mark is drawn in, beside its name in the panel.
- *
- * The map's neutral for the two hydro families, which is what a station under
- * every threshold shows. A rain gauge takes the panel's own grey instead: no
- * gauge is drawn in that neutral, and it falls between two classes of the ramp
- * under the row, so the shape would read as a quantity.
+ * What a family's mark is drawn in, beside its name in the panel: the map's
+ * neutral for the hydro families. A rain gauge takes the panel's grey, since that
+ * neutral falls inside the ramp under the row and would read as a quantity.
  */
 export function swatchColourOf(family: Family): string {
   if (family === 'report') return REPORT
@@ -45,12 +40,8 @@ export function swatchColourOf(family: Family): string {
 }
 
 /**
- * The families this replay holds, and no others, with the territory the
- * application carries for every replay.
- *
- * A switch for a family the replay does not hold answers nothing when it is
- * cut: no layer to hide, no marker to take off. A switch that does nothing
- * tells a reader less than no switch at all.
+ * The families this replay holds, and no others, with the territory every replay
+ * carries: a switch that cuts nothing tells a reader less than no switch.
  */
 export function familiesOf(content: ReplayContent): Family[] {
   const drawn = new Set(content.stations.map((one) => kindOf(one.category)))

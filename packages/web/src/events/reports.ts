@@ -3,12 +3,7 @@ import type { ReplayEvent } from '@smmarchives/shared/contracts/event.ts'
 
 import type { Cursor } from '../transport/reading.ts'
 
-/**
- * The events agents reported, in the order they happened.
- *
- * Told apart by their origin and never by a missing source: a crossing is
- * derived from a station, and a fact an agent wrote down belongs to none.
- */
+/** The events agents reported, in order: told by their origin, never by a missing source. */
 export function reportsOf(events: readonly ReplayEvent[]): ReplayEvent[] {
   return events
     .filter((one) => one.origin === 'manual')
@@ -16,12 +11,9 @@ export function reportsOf(events: readonly ReplayEvent[]): ReplayEvent[] {
 }
 
 /**
- * The row each span is drawn on, so that none hides another.
- *
- * Two agents reporting the same instant would otherwise draw one mark over the
- * other, and the one underneath could neither be seen nor clicked. Each span
- * takes the first row whose last span has ended by its start; spans that only
- * touch share a row. Taken in the order given, which is the order they began.
+ * The row each span is drawn on, so that none hides another: the first row whose
+ * last span has ended by its start, spans that only touch sharing one. Taken in
+ * the order given, which is the order they began.
  */
 export function rowsOf(spans: readonly { left: number; width: number }[]): number[] {
   const ends: number[] = []
@@ -35,11 +27,8 @@ export function rowsOf(spans: readonly { left: number; width: number }[]): numbe
 }
 
 /**
- * Where the reading goes when an event's sheet opens: its start, which is the
- * instant the map shows it under way.
- *
- * Held within the period, though the API already keeps an agent's event there:
- * a reading never stands outside the replay it reads.
+ * Where the reading goes when an event's sheet opens: its start, held within the
+ * period, since a reading never stands outside the replay it reads.
  */
 export function instantToRead(event: ReplayEvent, period: TimeWindow): Cursor {
   const from = Date.parse(event.from)

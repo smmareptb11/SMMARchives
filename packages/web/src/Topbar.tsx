@@ -54,10 +54,8 @@ type Slot = { slot: HTMLElement | null; setSlot: (slot: HTMLElement | null) => v
 const SlotContext = createContext<Slot>({ slot: null, setSlot: () => {} })
 
 /**
- * Where a screen puts commands of its own in the band.
- *
- * The band is drawn above the screen and owns none of its state: the screen
- * keeps its state and draws into the band through a portal.
+ * Where a screen puts commands of its own in the band, which owns none of the
+ * screen's state: the screen draws into it through a portal.
  */
 export function TopbarSlotProvider({ children }: { children: ReactNode }) {
   const [slot, setSlot] = useState<HTMLElement | null>(null)

@@ -7,7 +7,7 @@ import { gaugesWithoutRain, stationsWithoutMeasures } from '../mutes.ts'
 import { clearOf, type Padding, type Rect } from './framing.ts'
 import type { ReplayContent } from '../tracks/lanes.ts'
 
-/** The three symbols the map draws, and the only three. */
+/** The three families of sources the map draws. */
 export const KINDS = ['watercourse', 'structure', 'rain-gauge'] as const
 
 export type Kind = (typeof KINDS)[number]
@@ -57,12 +57,9 @@ export function sourcesOf(content: ReplayContent): SourcesOnTheMap {
 const FRAMED = { top: 40, right: 280, bottom: 40, left: 40 }
 
 /**
- * The room left around the sources, for a map of this size.
- *
- * The full room while it leaves the sources at least half the map, less in
- * proportion otherwise: on a small window, room the map does not have makes
- * MapLibre give up, and the replay would open on the basin rather than on what
- * it holds.
+ * The room left around the sources, for a map of this size: the full room while
+ * it leaves them at least half the map, less in proportion otherwise, since room
+ * the map does not have makes MapLibre give up the framing.
  */
 export function framedIn(width: number, height: number): typeof FRAMED {
   const across = Math.min(1, width / 2 / (FRAMED.left + FRAMED.right))
@@ -80,12 +77,9 @@ type Bounds = [[number, number], [number, number]]
 
 /**
  * Where the map opens, and the room left around it: as close as it can while
- * showing every source, and none of them under the legend.
- *
- * On a phone, on the stations and the structures, which are what a replay is
- * about: the rain gauges reach well past the basin, and framed with them the
- * basin is a third of a small screen. On all of its sources when it holds no
- * station.
+ * showing every source, and none of them under the legend. On a phone, on the
+ * stations and structures alone, since the rain gauges reach well past the
+ * basin; on every source when the replay holds no station.
  */
 export function openingOf(
   content: ReplayContent,
@@ -142,16 +136,11 @@ function boundsAround(points: readonly [number, number][]): Bounds | undefined {
 }
 
 /**
- * Both Aquasys families in one list, each source carrying its family in its key.
- *
- * `watercourse:4` and `rain-gauge:4` are two different sources: the two
- * families number theirs independently, and 58 rain gauges of the parc carry a
- * station's identifier. Nothing downstream may address a source by that
- * identifier alone — which is why a key, and not an identifier, is what a
- * colour is handed out against.
+ * Both Aquasys families in one list, each source carrying its family in its key:
+ * `watercourse:4` and `rain-gauge:4` are two sources, since the families number
+ * theirs independently. Nothing downstream addresses a source by identifier alone.
  */
 function everySource(content: ReplayContent): Source[] {
-  // One set per family: a station and a rain gauge may share a number.
   const unmeasured = stationsWithoutMeasures(content.stations, content.measuredStations)
   const mute = gaugesWithoutRain(content.rainGauges, content.rain)
 
@@ -177,11 +166,8 @@ function sourceOf(
 }
 
 /**
- * How a source is named once it has left the list it came from.
- *
- * The one place the shape is spelled: everything that hands out a colour, reads
- * one back, or looks a drawn feature up goes through here, so the rule that a
- * key carries its family cannot be forgotten in one of them.
+ * How a source is named once it has left the list it came from: whatever hands
+ * out a colour, reads one back or looks a drawn feature up goes through here.
  */
 export function keyOf(kind: Kind, id: number): string {
   return `${prefixOf(kind)}${String(id)}`
@@ -228,15 +214,9 @@ export function drawnStation(station: Station): DrawnSource | undefined {
 type DrawnFeature = { properties: Record<string, unknown> | null; geometry: Geometry }
 
 /**
- * Which of the sources under a pointer the reader meant.
- *
- * A station before a rain gauge, wherever the two stand on the same spot: the
- * station is the one carrying a threshold, and the parc holds two hundred and
- * twenty-nine gauges over ninety-four stations, so the collision is ordinary.
- *
- * Read here because it is written here: the properties a drawn feature carries
- * are the ones `sourcesOf` put on it, and a second place reading them would
- * drift from this one.
+ * Which of the sources under a pointer the reader meant: a station before a rain
+ * gauge on the same spot, since the station carries the thresholds. Reads the
+ * properties `sourcesOf` writes, and should stay beside it.
  */
 export function sourceUnder(features: readonly DrawnFeature[]): DrawnSource | undefined {
   const sources = features.map(drawnSourceOf).filter((one) => one !== undefined)

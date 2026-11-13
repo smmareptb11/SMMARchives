@@ -17,12 +17,9 @@ export type View = {
 export type Views = ReadonlyMap<string, readonly View[]>
 
 /**
- * What a replay holds of each camera, read once for a reading that lasts.
- *
- * A view whose two downloads both failed is left out: whoever draws a camera
- * asks this rather than reading the paths, or the strip and the map disagree
- * about which views the replay holds. The instants are parsed here and never
- * again — `transport/reading.ts` keeps the cursor a number for the same reason.
+ * What a replay holds of each camera, read once for a reading that lasts. A view
+ * whose two downloads both failed is left out: whoever draws a camera asks this
+ * rather than the paths, or the strip and the map disagree.
  */
 export function viewsOf(images: readonly FrozenWebcamImage[]): Views {
   const byCamera = new Map<string, View[]>()
@@ -46,22 +43,17 @@ export function instantOf(view: View) {
 }
 
 /**
- * When the view shown was taken, seen from the instant read.
- *
- * A camera that went dark goes on showing its last view, which would otherwise
- * read as the scene at that instant.
+ * When the view shown was taken, seen from the instant read: a camera that went
+ * dark goes on showing its last view, which would otherwise read as the scene now.
  */
 export function takenWhen(view: View, at: Cursor): string {
   return `Image prise ${formatSince(instantOf(view), fromEpochMilliseconds(at))}`
 }
 
 /**
- * What a camera showed at an instant: its last view before it.
- *
- * A view holds until the next one is taken — the rule the lane's strip draws
- * from the same list, which is what makes the two views of a replay agree.
- * Nothing before the camera looked for the first time, which is not the same
- * as a camera showing black.
+ * What a camera showed at an instant: its last view before it, the rule the
+ * lane's strip draws by too. Nothing before the camera first looked, which is not
+ * a camera showing black.
  */
 export function viewAt(views: Views, code: string, at: Cursor): View | undefined {
   const held = views.get(code)
@@ -80,13 +72,9 @@ export type Steps = {
 }
 
 /**
- * The views on either side of the one shown, for stepping from view to view.
- *
- * Read with the same rule as `viewAt`, so a step lands the cursor on the very
- * instant of a view and the view shown is that one. A step always reaches
- * another instant — two views taken at once are one stop — and stays within
- * the period, which is where the reading can go: a step that cannot move the
- * cursor is no step.
+ * The views on either side of the one shown, read by `viewAt`'s rule so that a
+ * step lands on the instant of a view and shows it. A step always reaches another
+ * instant within the period: two views taken at once are one stop.
  */
 export function viewStepsOf(views: Views, code: string, at: Cursor, period: TimeWindow): Steps {
   const from = Date.parse(period.from)

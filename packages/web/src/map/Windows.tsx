@@ -8,11 +8,9 @@ import type { Detail } from './useWindows.ts'
 import { frontOf, type Window } from './windows.ts'
 
 /**
- * Every window open over the map, stacked as the reader last touched them.
- *
- * Here rather than in the map, because a report's window opens from the lanes
- * and the history as well, and the map is the part of the screen that arrives
- * last.
+ * Every window open over the map, stacked as the reader last touched them. Apart
+ * from the map, which arrives last, since a report's window opens from the lanes
+ * and the history too.
  */
 export function Windows({
   windows,

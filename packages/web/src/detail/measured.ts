@@ -10,11 +10,8 @@ const READING: Measured = { series: undefined, failure: undefined }
 export type Held = Measured & { replayId: string; sourceId: number; quantity: Quantity }
 
 /**
- * What was read, if it is what is asked for now; being read otherwise.
- *
- * The answer to the last question asked stays held until the next one comes
- * back, and a reader switching quantities would otherwise be shown, for one
- * frame, the level under the button that says flow.
+ * What was read, if it is what is asked for now; being read otherwise, or a
+ * switch of quantity would show for one frame the level under the flow button.
  */
 export function measuredFor(
   held: Held | undefined,

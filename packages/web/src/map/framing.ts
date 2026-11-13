@@ -23,11 +23,9 @@ const WORLD = 512
  * The room to leave around the sources so that the map shows them all as close
  * as it can, and none of them under the legend.
  *
- * Three framings, each as close as its room allows: an even margin all round,
- * the sources kept below the legend, or kept beside it. The closest of those
- * that leave the legend's rectangle clear is the one: a legend reserved its
- * whole height down the side, where it covers only a corner, puts the replay
- * half a zoom further than it needs to be.
+ * An even margin, the sources below the legend, or beside it: the closest of
+ * those that leave the legend clear. Always reserving the legend's side would
+ * frame the replay further out for a legend that covers only a corner.
  */
 export function clearOf(
   points: readonly [number, number][],

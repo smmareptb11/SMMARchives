@@ -11,11 +11,8 @@ import type { View } from './ViewSwitch.tsx'
 /**
  * What the right-hand column and the map pass each other: the place the form
  * puts an event on, where a card of the history sends the map, and on a phone
- * which of the two is on screen.
- *
- * A crossing also opens its station's detail and holds the reading on its
- * start, as a report's window holds it on the event. A lane's name opens its
- * source's or its camera's detail the same way, and leaves the reading where it is.
+ * which of the two is on screen. A crossing also opens its station's detail and
+ * holds the reading on its start, as a report's window holds it on the event.
  */
 export function useBetweenColumnAndMap(content: ReplayContent, reading: Reading) {
   const [placement, setPlacement] = useState<Placement | undefined>(undefined)

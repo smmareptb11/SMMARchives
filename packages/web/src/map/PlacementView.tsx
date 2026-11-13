@@ -50,12 +50,10 @@ export function usePlacing(listening: boolean): boolean {
 }
 
 /**
- * What the report form shows on the replay's map, and what it listens for.
- *
- * The place chosen stays drawn while the form is open. While the agent places
- * it, the map takes each click as a spot, outlines the extent the place must
- * fall in, draws an area from its first corner to the pointer, and says so in
- * a band at its top. A double click does not zoom while `placing` holds.
+ * What the report form shows on the replay's map, and what it listens for: the
+ * place chosen while the form is open and, while the agent places it, each click
+ * taken as a spot, the extent it must fall in, the area drawn to the pointer, and
+ * a band saying what to click.
  */
 export function PlacementView({
   map,
@@ -69,7 +67,7 @@ export function PlacementView({
 }) {
   const listening = placement?.listening
 
-  // The layers first, then what they draw: both on the map they are given.
+  // The layers first, then what they draw.
   useEffect(() => {
     if (map !== undefined && map.getSource(SOURCE) === undefined) drawOn(map)
   }, [map])

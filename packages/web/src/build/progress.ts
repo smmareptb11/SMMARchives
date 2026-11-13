@@ -15,20 +15,14 @@ export type BuildState = {
 export const EMPTY: BuildState = { manifest: undefined, journal: [] }
 
 /**
- * How much of the trace the screen holds.
- *
- * A build of three days writes thousands of lines, and a page that kept them
- * all would grow until the browser gave up. The tail is what an operator reads
- * while it runs; the whole journal stays one route away.
+ * How much of the trace the screen holds: a long build writes more lines than a
+ * page can keep, and the whole journal stays one route away.
  */
 export const JOURNAL_KEPT = 500
 
 /**
- * What one event does to the screen.
- *
- * Checked against the contracts rather than trusted: this is the one place a
- * value crosses into the browser from outside it, and an event nobody can read
- * leaves the screen as it was instead of emptying it.
+ * What one event does to the screen, checked against the contracts rather than
+ * trusted: an event nobody can read leaves the screen as it was.
  */
 export function reduceProgress(state: BuildState, event: StreamEvent): BuildState {
   if (event.event === 'manifest') {
@@ -42,11 +36,9 @@ export function reduceProgress(state: BuildState, event: StreamEvent): BuildStat
 }
 
 /**
- * Follows a build, and answers how to stop following it.
- *
- * The reconnection is the browser's: `EventSource` sends `Last-Event-ID` back
- * on its own and the stream resumes on the line after the last one seen — so
- * nothing here replays the journal, which would double every line on screen.
+ * Follows a build, and answers how to stop following it. `EventSource` resumes
+ * on its own after the last line seen, so nothing here replays the journal,
+ * which would double every line on screen.
  */
 export function followBuild(id: string, onChange: (state: BuildState) => void): () => void {
   const source = new EventSource(`/replays/${id}/progress`)
@@ -89,11 +81,8 @@ export function isAtEnd(box: {
 
 /**
  * Reads a replay, then follows its build when one is under way, and answers how
- * to stop — whichever of the two it has reached.
- *
- * A reader who leaves before the manifest comes back follows nothing: the
- * stream opened then would have nobody left to close it, and would go on
- * reporting to a screen that is gone.
+ * to stop, whichever of the two it has reached. A reader who leaves before the
+ * manifest comes back follows nothing: nobody would be left to close the stream.
  */
 export function readThenFollow(
   read: () => Promise<ReplayManifest>,

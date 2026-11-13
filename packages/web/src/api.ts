@@ -9,11 +9,9 @@ import type { Report } from './events/draft.ts'
 import { ApiError, problemOf } from './problems.ts'
 
 /**
- * Every call the interface makes, and no other.
- *
- * Relative paths on purpose: one origin serves the bundle and forwards these
- * to the API, in development through Vite and in production through the
- * reverse proxy. Nothing here knows where the API lives.
+ * Every call the interface makes, and no other. Relative paths on purpose: one
+ * origin serves the bundle and forwards these to the API, through Vite or the
+ * reverse proxy.
  */
 async function ask<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init)
@@ -28,10 +26,8 @@ async function send(path: string, init: RequestInit): Promise<void> {
 }
 
 /**
- * Says `lost` when the API answers that nobody is signed in.
- *
- * The interface asks about the session once, and a session expires: the first
- * write refused for want of one is how it learns, wherever that write was.
+ * Says `lost` when the API answers that nobody is signed in: the interface asks
+ * about the session once, and learns it expired from the first write refused.
  */
 export const sessionLost = new EventTarget()
 

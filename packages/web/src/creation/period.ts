@@ -5,10 +5,8 @@ import { toInstant } from '../time.ts'
 export type Period = { period: TimeWindow } | { refusal: string }
 
 /**
- * What the two fields amount to, or why they amount to nothing.
- *
- * Nothing here builds a date: the conversion from French time belongs to
- * `time.ts`, and a second one would be a second answer to the same question.
+ * What the two fields amount to, or why they amount to nothing. Nothing here
+ * builds a date: the conversion from French time belongs to `time.ts`.
  */
 export function periodOf(from: string, to: string, now: number = Date.now()): Period {
   const start = toInstant(from)
@@ -45,10 +43,8 @@ export function lengthWarning(from: string, to: string): string | undefined {
 }
 
 /**
- * How long the replay would cover, counted on the instants.
- *
- * Counted there rather than on the calendar, because the night the clocks go
- * back is twenty-five hours long and the replay covers all of them.
+ * How long the replay would cover, counted on the instants rather than the
+ * calendar: the night the clocks go back is twenty-five hours long.
  */
 export function hoursBetween(from: string, to: string): number | undefined {
   const start = toInstant(from)
@@ -58,12 +54,8 @@ export function hoursBetween(from: string, to: string): number | undefined {
 }
 
 /**
- * What the end shows as it is opened: what it holds, or else the start.
- *
- * A date picker left empty opens on today, years away from the flood being
- * replayed, and nothing tells it to open elsewhere but a value. The start is
- * that value: the end is mostly the same day or the next. Nothing while the
- * start is not an hour, which is the picker's own today again.
+ * What the end shows as it is opened: what it holds, or else the start, since a
+ * date picker left empty opens on today, far from the flood being replayed.
  */
 export function endOnOpening(from: string, to: string): string {
   if (to !== '') return to

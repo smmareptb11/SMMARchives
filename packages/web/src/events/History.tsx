@@ -31,11 +31,8 @@ export type HistoryProps = {
 }
 
 /**
- * What had happened by the instant read, beside the map: the crossings and
- * what agents reported, oldest first, as the mockup's feed shows them.
- *
- * It grows as the reading runs and shrinks when it goes back. Where reporting
- * starts sits in its heading, and the form opens in its place.
+ * What had happened by the instant read, beside the map: the crossings and what
+ * agents reported, oldest first. The form opens in its place.
  */
 export function History({ action, content, replayId, at, playing, onOpen }: HistoryProps) {
   const entries = useMemo(

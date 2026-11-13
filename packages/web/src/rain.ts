@@ -15,13 +15,9 @@ export type Gauge = {
   /** Its running totals, oldest first. */
   fallen: Fallen[]
   /**
-   * The median gap between two of its measures, in minutes.
-   *
-   * Nothing when the gauge holds a single measure, and **zero when two of them
-   * share an instant** — Aquasys aligns its dates on five minutes and nothing
-   * stops it repeating one. Zero is not a step: whatever reads this has to
-   * answer for it, or it writes « toutes les 0 minutes » and draws every bar an
-   * instant wide without saying why.
+   * The median gap between two of its measures, in minutes: nothing for a single
+   * measure, zero for measures too close to tell apart. Read it through
+   * `readable`, never as a span as it stands.
    */
   stepMinutes: number | undefined
 }
@@ -37,23 +33,12 @@ export type Rain = {
 }
 
 /**
- * The parc's rain, gauge by gauge, with its totals already run up.
+ * The parc's rain, gauge by gauge, as running totals: a gauge gives what fell
+ * during a step, so two measures of five millimetres are ten, never a rise to
+ * five. Worked out once, then read at each instant.
  *
- * Worked out once and read at each instant, which is the shape `viewsOf` and
- * `seriesOf` already take: an open bubble asks sixty times a second, and the
- * map is about to ask for two hundred and twenty-nine gauges on those same
- * frames.
- *
- * Totals run up rather than measures kept: a rain gauge gives what fell during
- * a step, where a station gives the water's level at an instant. Two points of
- * five millimetres are ten millimetres of rain, and were never a rise of five.
- *
- * A gauge that measured nothing has no entry, which is what tells it from one
- * that measured zero.
- *
- * The quantity is what keeps this on one family, and what makes an identifier
- * without a family safe here — `seriesOf` filters on it for the same reason,
- * and both stop being safe the day one quantity is collected on both families.
+ * The quantity is what keeps this on rain gauges: an identifier names one source
+ * of each family.
  */
 export function gaugesOf(measures: readonly Measure[]): Gauges {
   const held = new Map<number, Measure[]>()
@@ -80,13 +65,8 @@ export function rainAt(gauge: Gauge, at: Cursor): Rain {
 }
 
 /**
- * One gauge's measures, run up into totals, one entry per instant.
- *
- * Two rows on the same instant are added rather than kept apart. Nothing in the
- * contract forbids them and Aquasys aligns its dates on five minutes, so the
- * pair is reachable; kept apart they give a median gap of zero, two bars drawn
- * on the same pixel, and two marks under one key. Added, they are what the
- * running total already made of them.
+ * One gauge's running totals, one entry per instant: two measures at one
+ * instant, which Aquasys can send, are added as the total would add them.
  */
 function gaugeOf(measures: readonly Measure[]): Gauge {
   const perInstant = new Map<Cursor, number>()
@@ -113,16 +93,9 @@ function gaugeOf(measures: readonly Measure[]): Gauge {
 type Shade = { from: number; colour: string }
 
 /**
- * The classes a total is read in on the map, and the blue of each.
- *
- * Fixed, and never stretched over the replay being read. A scale taken from the
- * open replay would always use the whole ramp, but the same blue would mean
- * twenty millimetres on one flood and two hundred on another, and two replays
- * would stop being comparable.
- *
- * Blues alone, sharing nothing with the colours Aquasys gives a threshold: the
- * map carries two languages of colour at once, and a reader must be able to
- * tell which one a marker speaks without remembering a table.
+ * The classes a total is read in on the map, and their blues. Fixed rather than
+ * fitted to the replay, so that a blue means the same rain on every replay;
+ * blues alone, so that none reads as a threshold's colour.
  */
 export const SHADES = [
   { from: 0, colour: '#bfd7ed' },
@@ -133,11 +106,8 @@ export const SHADES = [
 ] as const satisfies readonly Shade[]
 
 /**
- * What a gauge that measured nothing in the period shows.
- *
- * Outside the ramp on purpose: the palest blue would say « it did not rain »
- * where nothing was measured at all, and the map's own neutral is the blue of a
- * station under every threshold, which says even less.
+ * What a gauge that measured nothing shows: a grey outside the ramp, whose
+ * palest blue would say that it did not rain.
  */
 export const UNMEASURED = '#9aa7b2'
 
@@ -150,29 +120,13 @@ export function shadeOf(millimetres: number): string {
 export type Step = { from: Cursor; at: Cursor; millimetres: number }
 
 /**
- * What each measure put into the running total, and over what span.
+ * What each measure added to the running total, and the span it covers: from the
+ * measure before it to its own instant, where its total is reached. A measure of
+ * zero is kept: the gauge looked, and nothing had fallen.
  *
- * Read back from the totals rather than kept beside them: the totals are what
- * the map and the bubble already rest on, and a second list of the same figures
- * would let a lane and a bubble disagree about one measure.
- *
- * A measure of zero is one of them. The gauge looked and nothing had fallen,
- * which is not what an absent measure says — and a bar of zero height is still
- * a bar, which is the whole difference the lane has to draw.
- *
- * The span ends on the measure's own instant, because that is where its total
- * is reached: a daily gauge read at 14 h carries hours that fell before, which
- * is what the map's own silences already say.
- *
- * And it begins where the measure before it was taken, never one median step
- * back from it. Aquasys serves event-driven series whose gaps are five, twenty
- * -five and a hundred and twenty minutes inside two days: given the median,
- * their bars overlap and paint rain on hours it did not fall on, which is the
- * one thing this screen exists to get right. The median is the fallback for the
- * first measure alone, which has nothing before it.
- *
- * A gauge whose step cannot be read — one measure, or measures too close to
- * separate — is left a point in time rather than handed a span nobody measured.
+ * Never one median step back: Aquasys's series are event-driven, and a median
+ * span would paint rain on hours it did not fall on. The median serves the first
+ * measure alone; without a readable step, it is an instant.
  */
 export function stepsOf(gauge: Gauge): Step[] {
   const fallback = readable(gauge.stepMinutes) ? gauge.stepMinutes * 60_000 : 0
@@ -190,69 +144,34 @@ export function stepsOf(gauge: Gauge): Step[] {
 }
 
 /**
- * The floor a scale of bars cannot go under, which is the ramp's own first bound.
- *
- * Without it, a gauge whose heaviest step was two millimetres would draw that
- * step at full height and read as a deluge beside the gauge that took a hundred.
- * Read off `SHADES` rather than spelled again: the map stops calling a total
- * negligible at that same millimetre, and two copies would drift apart at the
- * first change of ramp.
+ * The floor a scale of bars never goes under, the ramp's first bound: a gauge
+ * whose heaviest step was two millimetres must not read as a deluge.
  */
 const NEGLIGIBLE = SHADES[1].from
 
 /**
- * What a set of bars is measured against: the heaviest step among them.
- *
- * One function, two readings, and the caller chooses which by what it hands in.
- * A bubble passes one gauge's steps, because it carries an axis of figures and
- * a scale that says what it is can show that gauge's episode best. A lane
- * carries no axis and is read against the lane above and the lane below, so the
- * lanes pass the whole parc's steps: given its own scale, a gauge with a single
- * measure draws it full height whatever it measured — and two hundred and ten of
- * the two hundred and fourteen gauges of a whole-parc replay hold exactly one.
- * Two hundred and ten identical bars say nothing; against the parc, a gauge that
- * took two millimetres is a stub beside one that took two hundred.
- *
- * Of the replay and not of the ramp: a replay where nothing passed twenty
- * millimetres would draw every lane as a stub on a scale fixed at two hundred.
+ * What a set of bars is measured against: the heaviest of their steps. A window
+ * passes one gauge's steps; the lanes pass the whole parc's, since most gauges
+ * hold a single measure and, each on its own scale, would all be drawn full
+ * height.
  */
 export function scaleOf(steps: readonly Step[]): number {
   return steps.reduce<number>((heaviest, one) => Math.max(heaviest, one.millimetres), NEGLIGIBLE)
 }
 
-/**
- * What a bar of a lane says of itself: what fell, and over how long.
- *
- * The span is named because the bar draws it: a daily gauge's bar covers half
- * the lane, and a reader has to know that width is one measure and not a day of
- * them. It is handed in already written, because it is the gauge's and not the
- * bar's: a gauge at a five-minute step has two hundred and eighty-nine bars to
- * name, and the same three words for every one of them.
- */
+/** What a bar of a lane says of itself: what fell, and over the gauge's span. */
 export function barSaid(millimetres: number, over: string | undefined): string {
   const fell = `${formatValue(millimetres)} ${UNITS.rainfall}`
 
   return over === undefined ? fell : `${fell} sur ${over}`
 }
 
-/**
- * Whether a step can be read at all, which no caller may take for granted.
- *
- * The one place the two ways of having none are folded together: a gauge with a
- * single measure gives no gap to measure, and a gauge whose measures share an
- * instant gives one of zero. Neither is a span, and `stepsOf` draws both as the
- * instant they are.
- */
+/** Whether a step is a span: a single measure has none, nor measures too close to tell apart. */
 function readable(stepMinutes: number | undefined): stepMinutes is number {
   return stepMinutes !== undefined && stepMinutes > 0
 }
 
-/**
- * « 24 heures », « 5 minutes » — hours and minutes, never days: a span is read.
- *
- * Nothing when the gauge gave no step to read: one measure, or measures too
- * close to separate. A span nobody measured is not claimed.
- */
+/** « 24 heures », « 5 minutes »: hours and minutes, never days; nothing without a span. */
 export function spanSaid(stepMinutes: number | undefined): string | undefined {
   if (!readable(stepMinutes)) return undefined
 
@@ -261,13 +180,7 @@ export function spanSaid(stepMinutes: number | undefined): string | undefined {
 
 const rounded = (count: number) => Math.round(count * 10) / 10
 
-/**
- * « 2,5 heures », « 1 heure », « 5 minutes ».
- *
- * The one rule of agreement and the one rounding, for both sentences a gauge
- * says of itself: written twice they disagreed under the minute, which is a gap
- * Aquasys's event-driven series produce.
- */
+/** « 2,5 heures », « 1 heure », « 5 minutes »: one rounding and one agreement for both spans. */
 function counted(count: number, unit: string): string {
   const step = rounded(count)
 

@@ -11,13 +11,10 @@ export type Unreadable = {
 }
 
 /**
- * Why a replay cannot be shown, in the interface's language, or undefined
- * while that rests on a session not yet settled.
- *
- * The API answers a replay a stranger may not see as it answers one that does
- * not exist, so a stranger's 404 is both, and only the administrator's is one.
- * What the API says in its own words is never shown: it speaks to whoever
- * repairs, in English.
+ * Why a replay cannot be shown, in the interface's language, or undefined while
+ * that rests on a session not yet settled. The API answers a replay a stranger
+ * may not see as one that does not exist, so a stranger's 404 is both. The API's
+ * own words, written for whoever repairs, are never shown.
  */
 export function unreadableReplay(
   error: unknown,
@@ -74,11 +71,9 @@ function saidOf(error: unknown, signedIn: boolean): Said {
 }
 
 /**
- * Whether the session must be asked again before saying anything.
- *
- * The interface learns of the session once, and it may have expired since: the
- * API then answers the administrator as a stranger, and "does not exist" would
- * be said of a replay that is only unpublished.
+ * Whether the session must be asked again before saying anything: expired, it
+ * gets the administrator answered as a stranger, and « does not exist » said of a
+ * replay that is only unpublished.
  */
 export function confirmsSession(error: unknown, signedIn: boolean | undefined): boolean {
   return error instanceof ApiError && error.problem.status === 404 && signedIn === true

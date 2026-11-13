@@ -26,11 +26,8 @@ export type PlaceChoiceProps = {
 
 /**
  * Where the event happened: a spot, or an area spanned by two corners, on the
- * replay's own map.
- *
- * The agent starts placing and the map listens until the place is set or given
- * up: in between, a click on a station opens nothing, so the map that shows the
- * replay can also take the place of what happened in it.
+ * replay's own map, which listens until the place is set or given up and opens
+ * nothing meanwhile.
  */
 export function PlaceChoice({
   extent,
@@ -70,10 +67,8 @@ export function PlaceChoice({
 }
 
 /**
- * What the map is handed while the form is open, and what it makes of a click.
- *
- * Published again whenever what it draws or how it listens changes, and taken
- * back once the form is gone, so the map never draws a place for no form.
+ * What the map is handed while the form is open, and what it makes of a click;
+ * taken back once the form is gone, so the map never draws a place for no form.
  */
 function usePlacing({
   extent,

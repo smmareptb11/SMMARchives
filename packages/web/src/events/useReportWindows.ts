@@ -10,19 +10,13 @@ import { instantToRead } from './reports.ts'
 import type { Panel } from './usePanel.ts'
 
 /**
- * Opening a report's window, and bringing the reading to the event.
+ * Opening a report's window, and bringing the reading, paused, to the event so it
+ * stays under way on the map. Once saved, from the event itself, which the content
+ * may not hold yet.
  *
- * Paused there, so the event stays under way on the map while it is read. From
- * the event itself once the form has saved it, as the content may not hold it
- * yet: which places the reading on an event whose time was just changed.
- *
- * By its name from the map, the lanes and the history — and not while the form
- * places an event, when a window would cover the spot to click. The events and
- * the placing are read through refs, so the lanes handed `openReport` are not
- * redrawn each time an event is saved or removed.
- *
- * The window of the event the form amends closes as the form opens: the form
- * says all the window said, and what it says is about to change.
+ * By its name, never while the form places an event, when a window would cover
+ * the spot to click; through refs, so the lanes handed `openReport` are not
+ * redrawn on every save. The window of the event amended closes as the form opens.
  */
 export function useReportWindows(
   content: ReplayContent,

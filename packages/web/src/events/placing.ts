@@ -18,11 +18,9 @@ export type Placed = { position: EventPosition } | { refusal: string }
 export type Mode = 'point' | 'area'
 
 /**
- * What the form asks of the replay's map while it is open: what to draw, and —
- * while the agent places the event — where a click on the map goes.
- *
- * The form keeps the decision, the map only shows and listens: what a click
- * makes of a spot is `pointAt`'s and `rectangleOf`'s, wherever the click landed.
+ * What the form asks of the replay's map while it is open: what to draw, and,
+ * while the agent places the event, where a click goes. The map only shows and
+ * listens: what a click makes of a spot is the form's to decide.
  */
 export type Placement = {
   drawing: FeatureCollection
@@ -66,11 +64,8 @@ export function rectangleRing([lon, lat]: Spot, [otherLon, otherLat]: Spot): Spo
 }
 
 /**
- * The area two opposite corners span, if the replay covers it.
- *
- * Two clicks place it, as one places a spot, and it can neither cross itself
- * nor enclose nothing once it has a width and a height. Both corners within the
- * extent is enough — an extent is a rectangle, so it holds whatever they span.
+ * The area two opposite corners span, if the replay covers it: both corners
+ * within the extent are enough, the extent being a rectangle too.
  */
 export function rectangleOf(corner: Spot, opposite: Spot, extent: BoundingBox): Placed {
   if (corner[0] === opposite[0] || corner[1] === opposite[1]) {

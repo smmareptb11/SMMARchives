@@ -36,10 +36,8 @@ import { useMeasures } from './useMeasures.ts'
 
 /**
  * What a station measured: the value at the instant being read, and the curve
- * of the hours around it, in the quantity the reader picks.
- *
- * What the map cannot give: a colour says which threshold is crossed, and never
- * how high the water is, nor whether it is still rising.
+ * of the hours around it, in the quantity the reader picks. What the map cannot
+ * give: how high the water is, and whether it is still rising.
  */
 export function StationMeasures({
   replayId,
@@ -168,10 +166,8 @@ function DatumPicker({
 const UNKNOWN_DATUM = 'Cote NGF du zéro d’échelle inconnue pour cette station'
 
 /**
- * The measures and the ladder as a level view shows them, untouched without one.
- *
- * Both are kept the same objects from one frame to the next: the chart is
- * rebuilt whenever its series changes, and the window renders on every tick.
+ * The measures and the ladder as a level view shows them, untouched without one,
+ * kept the same objects across ticks: the chart is rebuilt when its series changes.
  */
 function useLevelView(
   { series, failure }: Measured,
@@ -219,9 +215,8 @@ function Curve({
   /** Where the image of the chart is taken from. */
   area: RefObject<HTMLDivElement | null>
 }) {
-  // Holding the room the value and the curve will take, from the very first
-  // frame: the window would otherwise grow under the reader's eyes once the
-  // measures arrive, and shrink when a quantity holds none or fails to be read.
+  // In the room the value and the curve take, from the first frame, so the
+  // window never grows or shrinks as the measures arrive, lack or fail.
   if (failure !== undefined) return <InPlaceOfCurve said={failure} refused />
   if (series === undefined) return <InPlaceOfCurve said="Lecture des mesures…" />
 
@@ -234,9 +229,8 @@ function Curve({
   return (
     <>
       <Value series={series} at={at} />
-      {/* Another station, another quantity or another datum is another chart,
-          and never the same one handed a new ladder: what the chart reads once
-          when it is built cannot go stale. */}
+      {/* Another station, quantity or datum is another chart, so that what the
+          chart reads once when built cannot go stale. */}
       <div className="exported" ref={area}>
         <StationChart
           key={`${String(sourceId)} ${quantity} ${datum ?? ''}`}

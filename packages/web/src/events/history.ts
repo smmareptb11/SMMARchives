@@ -4,10 +4,7 @@ import type { Station } from '@smmarchives/shared/contracts/station.ts'
 import { epochOf } from '../time.ts'
 import type { Cursor } from '../transport/reading.ts'
 
-/**
- * How long the event last begun stays set apart, in time read: twenty minutes,
- * as the mockup does — long enough to be seen while the reading runs.
- */
+/** How long the event last begun stays set apart, in time read: long enough to be seen running. */
 const LATEST_MS = 20 * 60 * 1000
 
 /** One line of the history, as the column draws it. */
@@ -38,11 +35,7 @@ export type HistoryEntry = {
 
 /**
  * What the history holds at an instant: every event begun by then, crossings
- * and reports alike, oldest first.
- *
- * Cumulative, so it grows as the reading runs and shrinks when it goes back:
- * the history is what had happened by the instant read, not all the replay
- * holds.
+ * and reports alike, oldest first; it shrinks when the reading goes back.
  */
 export function historyAt(
   events: readonly ReplayEvent[],

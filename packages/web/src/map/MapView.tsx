@@ -35,12 +35,7 @@ import type { Placement } from '../events/placing.ts'
 /** The Aude basin, so a replay holding nothing placed still opens somewhere. */
 const FALLBACK = { center: [2.55, 43.17] as [number, number], zoom: 8.6 }
 
-/**
- * Builds the map once, tears it down once, and says whether it has ground.
- *
- * Its own hook because it runs a single time whatever else changes, where the
- * component around it re-renders on every tick of the cursor.
- */
+/** Builds the map once, tears it down once, and says whether it has ground. */
 function useMountedMap(
   held: RefObject<ReplayContent>,
   drawn: RefObject<MapLibreMap | undefined>,
@@ -65,9 +60,8 @@ function useMountedMap(
       })
       map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right')
 
-      // On the style being set, not on the first render: what a source needs is
-      // somewhere to be added to, and tiles that never arrive would otherwise
-      // take the whole parc down with them.
+      // On the style being set rather than on the tiles: tiles that never arrive
+      // would otherwise take the whole parc down with them.
       const created = map
       map.once('styledata', () => {
         drawEverything(created, held)
@@ -108,18 +102,9 @@ function drawEverything(map: MapLibreMap, held: RefObject<ReplayContent>): void 
 }
 
 /**
- * Repaints the parc when what it shows changes, and never before it exists.
- *
- * The colours are rebuilt on every tick, so the object is always new, where
- * what it holds changes twice per crossing and once per class a rain gauge
- * climbs into. And `setPaintProperty` asks MapLibre for a full update whether
- * or not the value differs, so calling it on every tick would repaint the whole
- * parc sixty times a second to draw the same thing.
- *
- * What was kept is the painting itself and not a signature of it. Two hundred
- * and thirty-six entries spelled out, sorted and joined cost 30 µs a frame
- * against 7 µs to compare two maps — and the sort could never change the
- * answer, both producers walking lists the replay holds still.
+ * Repaints the parc when what it shows changes, and never before it exists. The
+ * colours are a new object at every tick, and `setPaintProperty` repaints the
+ * whole parc whether or not the value differs: the painting is compared first.
  */
 function usePaintedSources(
   ready: boolean,
@@ -167,12 +152,9 @@ function usePaintedReports(
 }
 
 /**
- * What the reader kept, applied to the map that draws it.
- *
- * Two effects rather than one, so neither switch redoes the other's work over
- * three hundred sources; `map/layers.ts` says what each of them answers. The
- * cameras are markers and not layers, so neither reaches them: `WebcamMarkers`
- * reads the same two states as props.
+ * What the reader kept, applied to the map, in two effects so that neither
+ * switch redoes the other's work. The cameras are markers, not layers:
+ * `WebcamMarkers` reads the same two states as props.
  */
 function useShownSources(map: MapLibreMap | undefined, shown: Shown, mutesShown: boolean): void {
   useEffect(() => {
@@ -300,13 +282,7 @@ export function MapView({
   )
 }
 
-/**
- * The map itself, mounted once and torn down once.
- *
- * Apart from what repaints it, because a component that both builds a map and
- * follows a cursor reads as two things at once — and only one of them runs more
- * than a single time.
- */
+/** The map itself, mounted once and torn down once, apart from what repaints it. */
 function Ground({
   content,
   drawn,

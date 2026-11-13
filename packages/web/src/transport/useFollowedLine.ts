@@ -11,19 +11,12 @@ import type { Reading } from './useCursor.ts'
 const ASKED = 250
 
 /**
- * The lanes of a phone following the reading line as it moves along them.
+ * The lanes of a phone following the reading line as it moves along them, as
+ * `following` decides. What the reader asked for holds only an instant, so that
+ * a jump that went nowhere is not answered later.
  *
- * The line moves, the lanes stand still under it, and turn a page as it nears
- * the edge of those shown. Opened, they open on the line in their middle; a
- * jump the reader asked for — an event, a lane tapped, the ruler dragged —
- * brings it back there when it lands out of sight, and turns no page: under a
- * finger dragging the ruler, a page turned would move the instant it points
- * at. What the reader asked for holds only an instant, so a jump that went
- * nowhere is not answered later. The reader scrolls them freely, and moves
- * nothing by it: scrolled away from the line, they are left there, and no
- * page turns until the line is in sight again. Nothing runs wider than a phone.
- *
- * Returns what to call before such a jump.
+ * Returns what to call before a jump the reader asks for: an event, a lane
+ * tapped, the ruler dragged.
  */
 export function useFollowedLine(
   scroller: RefObject<HTMLDivElement | null>,

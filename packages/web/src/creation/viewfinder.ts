@@ -13,11 +13,8 @@ import {
 } from './extent.ts'
 
 /**
- * The map and whether a rectangle narrows it.
- *
- * Not narrowed is the whole territory, which has no rectangle: a replay of the
- * whole fleet sends no extent, and a rectangle would drop the sources that have
- * no position.
+ * The map and whether a rectangle narrows it. Not narrowed, it sends no extent:
+ * a rectangle over the whole territory would drop the sources with no position.
  */
 export type Picker = {
   map: MapLibreMap
@@ -51,12 +48,9 @@ export function pickerOn(
 }
 
 /**
- * A map that stays north up, flat, and no wider than the territory.
- *
- * The extent is read off two corners of the screen: turned or tilted, the map
- * would send a box wider than the rectangle drawn over it. Zooming out past the
- * opening view, or moving further off it than the frame needs to reach its
- * edges, would only show ground holding nothing to replay.
+ * A map that stays north up, flat, and no wider than the territory: the extent is
+ * read off two corners of the screen, and turned or tilted, the map would send a
+ * box wider than the rectangle drawn over it.
  */
 export function basinMap(container: HTMLElement, style: string | StyleSpecification): MapLibreMap {
   const map = new MapLibreMap({
@@ -70,9 +64,8 @@ export function basinMap(container: HTMLElement, style: string | StyleSpecificat
     touchPitch: false,
     maxPitch: 0,
   })
-  // Again whenever the map is resized — a window narrowed, a phone turned:
-  // bounds held for the size it opened at would leave the frame short of an
-  // edge, or let it past one.
+  // Again whenever the map is resized: bounds held for the size it opened at
+  // would leave the frame short of an edge, or let it past one.
   const holdWithin = () => {
     const size = sizeOf(map)
     const reach = reachOf(FRAME, size)
@@ -90,11 +83,8 @@ export function basinMap(container: HTMLElement, style: string | StyleSpecificat
 }
 
 /**
- * Tells the form what the rectangle frames once the map comes to rest: the
- * form only needs the extent to send it.
- *
- * Until then, the form holds the extent framed before the move, so it also
- * hears that a narrowed map is moving.
+ * Tells the form what the rectangle frames once the map comes to rest, and that
+ * a narrowed map is moving: until then, the form holds the extent framed before.
  */
 export function listen(picker: Picker): void {
   picker.map.on('movestart', (event) => {
@@ -110,11 +100,9 @@ export function listen(picker: Picker): void {
 }
 
 /**
- * Moves the map so the rectangle frames these bounds, and narrows to them.
- *
- * The frame keeps its proportions, so what it frames holds the bounds and
- * meets them on one axis only. The move ends like any other, which is when the
- * form hears of the extent, named after the union it was framed on.
+ * Moves the map so the rectangle frames these bounds, and narrows to them. The
+ * frame keeps its proportions, so it meets the bounds on one axis only; the form
+ * hears of the extent when the move ends, as after any other.
  */
 export function frameOn(picker: Picker, bounds: BoundingBox, territory: string): void {
   picker.narrowed = true
@@ -129,10 +117,9 @@ export function frameOn(picker: Picker, bounds: BoundingBox, territory: string):
 }
 
 /**
- * Tells the form what the rectangle frames, or the whole territory.
- *
- * A rectangle landing on no area tells nothing, which keeps the last extent:
- * the API refuses a rectangle without width or height.
+ * Tells the form what the rectangle frames, or the whole territory. A rectangle
+ * landing on no area keeps the last extent: the API refuses one without width
+ * or height.
  */
 export function settle(picker: Picker): void {
   if (!picker.narrowed) {

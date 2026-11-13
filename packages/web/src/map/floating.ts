@@ -5,11 +5,9 @@ export type Offset = { x: number; y: number }
 export type Box = { left: number; top: number; width: number; height: number }
 
 /**
- * The move asked for, held within the screen.
- *
- * A panel pushed off the screen would take its heading along, and with it the
- * only hold there is to bring it back. One taller or wider than the screen
- * keeps its top and its left in sight, where its heading and its way out are.
+ * The move asked for, held within the screen, where the panel's heading is the
+ * only hold to bring it back. One larger than the screen keeps its top and left
+ * in sight, where its heading and its way out are.
  */
 export function offsetWithin(
   box: Box,
