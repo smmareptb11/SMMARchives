@@ -9,3 +9,5 @@ coverage/
 !.env.sample
 
 .DS_Store
+
+media/
