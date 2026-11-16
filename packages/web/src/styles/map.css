@@ -1,10 +1,5 @@
 /* The replay's map, its legend, and the windows a source or a camera opens over it. */
 
-/* The map wants the width a form's reading column is right to refuse. */
-main:has(.map) {
-  max-width: 82rem;
-}
-
 .replay-map .map {
   position: absolute;
   inset: 0;
